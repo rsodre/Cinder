@@ -55,6 +55,12 @@ void TriMesh::appendIndices( uint32_t *indices, size_t num )
 	mIndices.insert( mIndices.end(), indices, indices + num );
 }
 
+void TriMesh::appendNormals( const Vec3f *normals, size_t num )
+{
+	for( size_t v = 0; v < num; ++v )
+		mNormals.push_back( normals[v] );
+}
+
 void TriMesh::appendNormals( const Vec4d *normals, size_t num )
 {
 	for( size_t v = 0; v < num; ++v )
