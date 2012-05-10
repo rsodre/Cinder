@@ -520,6 +520,87 @@ namespace cinder { namespace qb {
 	{
 		__qbDrawTri( v0, v1, v2, NULL );
 	}
+	//
+	// based on void gl::draw( const TriMesh2d &mesh )
+	void drawStrokedTris( const TriMesh2d &mesh )
+	{
+		if( mesh.getNumVertices() <= 0 )
+			return;
+		
+		glEnableClientState( GL_VERTEX_ARRAY );
+		for (int t = 0 ; t < mesh.getNumTriangles() ; t++)
+		{
+			if( mesh.hasColorsRgb() ) {
+				glColorPointer( 3, GL_FLOAT, 0, &(mesh.getColorsRGB()[0]) );
+				glEnableClientState( GL_COLOR_ARRAY );
+			}
+			else if( mesh.hasColorsRgba() ) {
+				glColorPointer( 4, GL_FLOAT, 0, &(mesh.getColorsRGBA()[0]) );
+				glEnableClientState( GL_COLOR_ARRAY );
+			}
+			else 
+				glDisableClientState( GL_COLOR_ARRAY );	
+			
+			glVertexPointer( 2, GL_FLOAT, 0, &(mesh.getVertices()[0]) );
+			glEnableClientState( GL_VERTEX_ARRAY );
+			
+#if defined ( CINDER_GLES )
+			// TODO: Test this...
+			GLushort indices[3];
+			for ( size_t i = 0; i < 3; i++ ) {
+				indices[ i ] = static_cast<GLushort>( mesh.getIndices()[ t*3+i ] );
+			}
+			glDrawElements( GL_LINE_LOOP, 3, GL_UNSIGNED_SHORT, (const GLvoid*)indices );
+#else
+			glDrawRangeElements( GL_LINE_LOOP, 0, mesh.getNumVertices(), 3, GL_UNSIGNED_INT, &(mesh.getIndices()[t*3]) );
+#endif
+		}
+		glDisableClientState( GL_VERTEX_ARRAY );
+		
+		
+		glDisableClientState( GL_VERTEX_ARRAY );
+		glDisableClientState( GL_COLOR_ARRAY );
+	}
+	void drawStrokedTris( const TriMesh &mesh )
+	{
+		if( mesh.getNumVertices() <= 0 )
+			return;
+		
+		glEnableClientState( GL_VERTEX_ARRAY );
+		for (int t = 0 ; t < mesh.getNumTriangles() ; t++)
+		{
+			if( mesh.hasColorsRGB() ) {
+				glColorPointer( 3, GL_FLOAT, 0, &(mesh.getColorsRGB()[0]) );
+				glEnableClientState( GL_COLOR_ARRAY );
+			}
+			else if( mesh.hasColorsRGBA() ) {
+				glColorPointer( 4, GL_FLOAT, 0, &(mesh.getColorsRGBA()[0]) );
+				glEnableClientState( GL_COLOR_ARRAY );
+			}
+			else 
+				glDisableClientState( GL_COLOR_ARRAY );	
+			
+			glVertexPointer( 3, GL_FLOAT, 0, &(mesh.getVertices()[0]) );
+			glEnableClientState( GL_VERTEX_ARRAY );
+			
+#if defined ( CINDER_GLES )
+			// TODO: Test this...
+			GLushort indices[3];
+			for ( size_t i = 0; i < 3; i++ ) {
+				indices[ i ] = static_cast<GLushort>( mesh.getIndices()[ t*3+i ] );
+			}
+			glDrawElements( GL_LINE_LOOP, 3, GL_UNSIGNED_SHORT, (const GLvoid*)indices );
+#else
+			glDrawRangeElements( GL_LINE_LOOP, 0, mesh.getNumVertices(), 3, GL_UNSIGNED_INT, &(mesh.getIndices()[t*3]) );
+#endif
+		}
+		glDisableClientState( GL_VERTEX_ARRAY );
+		
+		
+		glDisableClientState( GL_VERTEX_ARRAY );
+		glDisableClientState( GL_COLOR_ARRAY );
+	}
+	
 	
 	
 	////////////////////////////////////////////////////
@@ -592,79 +673,36 @@ namespace cinder { namespace qb {
 	//
 	// QB POLYS
 	// 
-	void drawSolidPoly( qbPoly & poly )
+	void drawSolidPoly( qbPoly & poly, float depth )
 	{
-		switch ( poly.getType() )
+		if ( depth == 0 )
+			gl::draw( poly.getTrisFront() );
+		else
 		{
-			case QBPOLY_POINT:
-				qb::drawPoints( poly.getVertices() );
-				break;
-			case QBPOLY_POLYLINE:
-				qb::drawStrokedPoly( poly.getVertices(), false );
-				break;
-			case QBPOLY_POLYGON:
-				qb::drawSolidPoly( poly.getVertices(), poly.getBounds(), Vec2f(1,1) );
-				break;
-			case QBPOLY_TRI:
-				__qbDrawTri( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getBounds(), Vec2f(1,1) );
-				break;
-			case QBPOLY_QUAD:
-				qb::drawQuad( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getVertex(3) );
-				break;
-			case QBPOLY_RECT:
-			case QBPOLY_SQUARE:
-				gl::drawSolidRect( poly.getBounds() );
-				break;
+			glPushMatrix();
+			glScalef( 1, 1, depth );
+			gl::draw( poly.getTrisExtrude() );
+			glTranslatef( 0, 0, 0.5 );
+			gl::draw( poly.getTrisFront() );
+			glTranslatef( 0, 0, -1 );
+			gl::draw( poly.getTrisBack() );
+			glPopMatrix();
 		}
 	}
 	void drawSolidPoly( qbPoly & poly, gl::GlslProg & shader )
 	{
-		switch ( poly.getType() )
-		{
-			case QBPOLY_POINT:
-				qb::drawPoints( poly.getVertices() );
-				break;
-			case QBPOLY_POLYLINE:
-				qb::drawStrokedPoly( poly.getVertices(), false );
-				break;
-			case QBPOLY_TRI:
-				shader.uniform( "u_flagBi", (bool) false );
-				__qbDrawTri( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getBounds(), Vec2f(1,1) );
-				break; 
-			case QBPOLY_QUAD:
-				qb::drawQuad( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getVertex(3), shader );
-				break;
-			default:
-				shader.uniform( "u_flagBi", (bool) false );
-				qb::drawSolidPoly( poly );
-				break;
-		}
+		// TODO:: REVISAR!!!
+		qb::drawQuad( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getVertex(3), shader );
 	}
 	void drawSolidPoly( qbSourceSelector & src, qbPoly & poly, const int unit )
 	{
+		// TODO:: REVISAR!!!
 		if (src.getTexture())
 		{
 			if (AUTO_ALPHA)	src.enableAlphaBlending();
 			src.bind( unit );
 
-			switch ( poly.getType() )
-			{
-				case QBPOLY_POINT:
-					qb::drawPoints( poly.getVertices() );
-					break;
-				case QBPOLY_POLYLINE:
-					qb::drawStrokedPoly( poly.getVertices(), false );
-					break;
-				case QBPOLY_TRI:
-					__qbDrawTri( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getBounds(), src.getUV() );
-					break;
-				case QBPOLY_QUAD:
-					qb::drawQuad( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getVertex(3), src.getUV() );
-					break;
-				default:
-					qb::drawSolidPoly( poly );
-					break;
-			}
+			qb::drawQuad( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getVertex(3), src.getUV() );
 			
 			src.unbind();
 			if (AUTO_ALPHA)	src.disableAlphaBlending();
@@ -672,31 +710,13 @@ namespace cinder { namespace qb {
 	}
 	void drawSolidPoly( qbSourceSelector & src, qbPoly & poly, gl::GlslProg & shader, const int unit )
 	{
+		// TODO:: REVISAR!!!
 		if (src.getTexture())
 		{
 			if (AUTO_ALPHA)	src.enableAlphaBlending();
 			src.bind( unit );
 			
-			switch ( poly.getType() )
-			{
-				case QBPOLY_POINT:
-					qb::drawPoints( poly.getVertices() );
-					break;
-				case QBPOLY_POLYLINE:
-					qb::drawStrokedPoly( poly.getVertices(), false );
-					break;
-				case QBPOLY_TRI:
-					shader.uniform( "u_flagBi", (bool) false );
-					__qbDrawTri( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getBounds(), src.getUV() );
-					break;
-				case QBPOLY_QUAD:
-					qb::drawQuad( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getVertex(3), shader, unit, src.getUV() );
-					break;
-				default:
-					shader.uniform( "u_flagBi", (bool) false );
-					qb::drawSolidPoly( poly );
-					break;
-			}
+			qb::drawQuad( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getVertex(3), shader, unit, src.getUV() );
 			
 			src.unbind();
 			if (AUTO_ALPHA)	src.disableAlphaBlending();
@@ -704,27 +724,44 @@ namespace cinder { namespace qb {
 	}
 	//
 	// Wireframe
-	void drawStrokedPoly( qbPoly & poly )
+	void drawStrokedPoly( qbPoly & poly, float depth )
 	{
-		switch ( poly.getType() )
+		std::vector<qbPolyContour> & contours = poly.getContours();
+		if ( depth == 0 )
 		{
-			case QBPOLY_POINT:
-				qb::drawPoints( poly.getVertices() );
-				break;
-			case QBPOLY_TRI:
-				qb::drawStrokedTri( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2) );
-				break;
-			case QBPOLY_QUAD:
-				qb::drawStrokedQuad( poly.getVertex(0), poly.getVertex(1), poly.getVertex(2), poly.getVertex(3) );
-				break;
-			case QBPOLY_RECT:
-			case QBPOLY_SQUARE:
-				gl::drawStrokedRect( poly.getBounds() );
-				break;
-			case QBPOLY_POLYLINE:
-			case QBPOLY_POLYGON:
-				qb::drawStrokedPoly( poly.getVertices(), poly.isClosed() );
-				break;
+			for (int c = 0 ; c < contours.size() ; c++ )
+				gl::draw( contours[c].mPoints );
+		}
+		else
+		{
+			glPushMatrix();
+			glScalef( 1, 1, depth );
+			if ( ! poly.isSmooth() )
+				qb::drawLines( poly.getLinesExtrude() );
+			glTranslatef( 0, 0, 0.5 );
+			for (int c = 0 ; c < contours.size() ; c++ )
+				gl::draw( contours[c].mPoints );
+			glTranslatef( 0, 0, -1 );
+			for (int c = 0 ; c < contours.size() ; c++ )
+				gl::draw( contours[c].mPoints );
+			glPopMatrix();
+		}
+	}
+	void drawStrokedPolyTris( qbPoly & poly, float depth )
+	{
+		if ( depth == 0 )
+			qb::drawStrokedTris( poly.getTrisFront() );
+		else
+		{
+			glPushMatrix();
+			glScalef( 1, 1, depth );
+			if ( ! poly.isSmooth() )
+				qb::drawStrokedTris( poly.getTrisExtrude() );
+			glTranslatef( 0, 0, 0.5 );
+			qb::drawStrokedTris( poly.getTrisFront() );
+			glTranslatef( 0, 0, -1 );
+			qb::drawStrokedTris( poly.getTrisBack() );
+			glPopMatrix();
 		}
 	}
 	//
@@ -749,7 +786,7 @@ namespace cinder { namespace qb {
 	{
 		glBegin( GL_POINTS );
 		for (int v = 0 ; v < vs.size() ; v++)
-			if ( ! vs[v].mDup )		// unique vertexes
+			if ( ! vs[v].bDup )		// unique vertexes
 				glVertex3f( vs[v].x, vs[v].y, vs[v].z );
 		glEnd();
 		// TODO::Usar isto, que nao funciona nao sei porque...
@@ -771,7 +808,25 @@ namespace cinder { namespace qb {
 	}
 	
 	
-	
+	////////////////////////////////////////////////////
+	//
+	// LINES
+	// 
+	void drawLines( const std::vector<Vec3f> & ps )
+	{
+		ClientBoolState vertexArrayState( GL_VERTEX_ARRAY );
+		GLfloat * vertices = new GLfloat[ ps.size() * 3 ];
+		for ( int i = 0; i < ps.size(); i++ ) {
+			vertices[ i*3+0 ] = ps[i].x;
+			vertices[ i*3+1 ] = ps[i].y;
+			vertices[ i*3+2 ] = ps[i].z;
+		}
+		glEnableClientState( GL_VERTEX_ARRAY );
+		glVertexPointer( 3, GL_FLOAT, 0, vertices );
+		glDrawArrays( GL_LINES, 0, ps.size() );
+		delete [] vertices;
+	}
+
 	
 	
 	

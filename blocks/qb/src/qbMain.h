@@ -175,7 +175,8 @@ public:
 	void	placeCameraLeft();					// Place STEREO Camera
 	void	placeCameraRight();					// Place STEREO Camera
 	void	placeCameraWindow();				// Place WINDOW camera to draw FBOs
-	void	bindFbo()							{ mFboRender.bindFramebuffer(); }				// RENDER Fbo
+	void	bindFbo();							// RENDER Fbo
+	void	bindFbo( ColorA c );				// RENDER Fbo
 	void	bindFboLeft()						{ if (mConfig->getInt(QBCFG_CAMERA_TYPE) == CAMERA_TYPE_STEREO) mFboLeft.bindFramebuffer(); }	// STEREO Fbo
 	void	bindFboRight()						{ if (mConfig->getInt(QBCFG_CAMERA_TYPE) == CAMERA_TYPE_STEREO) mFboRight.bindFramebuffer(); }	// STEREO Fbo
 	void	bindFbo( int i )					{ mFbos[i].bindFramebuffer(); }					// Additional FBOs
@@ -189,6 +190,7 @@ public:
 	void	drawFbo( Rectf b, Area a )			{ gl::draw( mFboRender.getTexture(), a, b ); }
 	void	drawFbo( int i )					{ gl::draw( mFbos[i].getTexture() ); }
 	void	drawFbo( int i, Rectf b )			{ gl::draw( mFbos[i].getTexture(), b ); }
+	void	drawModul8( Rectf b, bool flip=false );
 	void	finishAndDraw();
 
 	//

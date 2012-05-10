@@ -1501,7 +1501,7 @@ namespace cinder { namespace sgui {
 	}
 	
 	void ListVarControl::resize() {
-		float gapY = SimpleGUI::labelSize.y + SimpleGUI::padding.y;
+		float gapY = ( name.length() ? SimpleGUI::labelSize.y + SimpleGUI::padding.y : 0 );
 		activeAreaBase = Rectf(0, gapY, SimpleGUI::buttonSize.x, gapY);
 		for (int i = 0 ; i < items.size(); i++) {
 			items[i].activeAreaBase = Rectf(0,
@@ -1526,9 +1526,12 @@ namespace cinder { namespace sgui {
 		gl::drawSolidRect(backArea+pos);
 		
 		// control name
-		gl::enableAlphaBlending();
-		gl::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
-		gl::disableAlphaBlending();
+		if ( name.length() )
+		{
+			gl::enableAlphaBlending();
+			gl::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
+			gl::disableAlphaBlending();
+		}
 	}
 	
 	void ListVarControl::drawList(Vec2f pos) {
@@ -1602,14 +1605,15 @@ namespace cinder { namespace sgui {
 		}
 		else
 		{
+			float gapY = ( name.length() ? SimpleGUI::labelSize.y + SimpleGUI::padding.y : 0 );
 			activeAreaBase = Rectf(0,
-								   (SimpleGUI::labelSize + SimpleGUI::padding).y,
+								   gapY,
 								   SimpleGUI::buttonSize.x,
-								   (SimpleGUI::labelSize + SimpleGUI::padding + SimpleGUI::buttonSize).y );
+								   gapY+(SimpleGUI::buttonSize).y );
 			backArea = Rectf((-SimpleGUI::padding).x,
 							 (-SimpleGUI::padding).y,
 							 (SimpleGUI::buttonSize + SimpleGUI::padding).x,
-							 (SimpleGUI::labelSize + SimpleGUI::buttonSize + SimpleGUI::padding*2).y );
+							 gapY+(SimpleGUI::buttonSize + SimpleGUI::padding).y );
 		}
 		// button area
 		dropButtonActiveAreaBase = activeAreaBase;

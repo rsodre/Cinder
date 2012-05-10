@@ -83,6 +83,8 @@ namespace cinder { namespace qb {
 	void drawTri( const Vec3f & v0, const Vec3f & v1, const Vec3f & v2 );
 	void drawTri(qbSourceSelector & src, const Vec3f & v0, const Vec3f & v1, const Vec3f & v2, gl::GlslProg & shader, const int unit=0 );
 	void drawStrokedTri( const Vec3f & v0, const Vec3f & v1, const Vec3f & v2 );
+	void drawStrokedTris( const TriMesh2d &mesh );
+	void drawStrokedTris( const TriMesh &mesh );
 	//
 	// Source-textured quads
 	void draw( qbSourceSelector & src );
@@ -97,16 +99,20 @@ namespace cinder { namespace qb {
 	void drawStrokedPoly( const std::vector<qbPolyVertex> & vs, bool closed );
 	//
 	// QB Polys
-	void drawSolidPoly( qbPoly & poly );
+	void drawSolidPoly( qbPoly & poly, float depth=0.0f );
 	void drawSolidPoly( qbPoly & poly, gl::GlslProg & shader, const int unit=0 );
 	void drawSolidPoly( qbSourceSelector & src, qbPoly & poly, const int unit=0 );
 	void drawSolidPoly( qbSourceSelector & src, qbPoly & poly, gl::GlslProg & shader, const int unit=0 );
-	void drawStrokedPoly( qbPoly & poly );
-	void drawPolyPoints( qbPoly & poly );
+	void drawStrokedPoly( qbPoly & poly, float depth=0.0f );
+	void drawStrokedPolyTris( qbPoly & poly, float depth=0.0f );
 	//
 	// Points
+	void drawPolyPoints( qbPoly & poly );
 	void drawPoint( const Vec3f & v );
 	void drawPoints( const std::vector<qbPolyVertex> & vs );
+	//
+	// Lines
+	void drawLines( const std::vector<Vec3f> & ps );
 	
 	
 	

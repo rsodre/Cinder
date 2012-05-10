@@ -57,6 +57,22 @@ enum enumQBCfg
 
 //
 // Camera Types
+enum enum_qbModul8Inputs {
+	MODUL8_OFF,
+	MODUL8_BELOW,
+	MODUL8_ABOVE,
+	// count
+	MODUL8_INPUT_COUNT
+};
+#define LABELS_MODUL8_INPUT \
+"Modul8 OFF",\
+"Modul8 Below",\
+"Modul8 Above",\
+/*"Dome",*/\
+NULL
+
+//
+// Camera Types
 enum enum_qbCameraType {
 	CAMERA_TYPE_ORTHO,
 	CAMERA_TYPE_PERSP,
@@ -65,8 +81,6 @@ enum enum_qbCameraType {
 	// count
 	CAMERA_TYPE_COUNT
 };
-//
-// Loop names
 #define LABELS_CAMERA_TYPE \
 "Orthographic",\
 "Perspective",\

@@ -34,7 +34,7 @@ qbConfig::qbConfig() : ciConfigGuiSimple()
 	this->addInt(QBCFG_RENDER_STILL_SECONDS, "QBCFG_RENDER_STILL_SECONDS", 0, 0, 60);
 	this->addBool(QBCFG_RENDER_REWIND, "QBCFG_RENDER_REWIND", true);
 	this->addBool(QBCFG_FIT_SOURCES_TO_RENDER, "QBCFG_FIT_SOURCES_TO_RENDER", true);
-	this->addBool(QBCFG_MODUL8_INPUT, "QBCFG_MODUL8_INPUT", false);
+	this->addInt(QBCFG_MODUL8_INPUT, "QBCFG_MODUL8_INPUT", 0, 0, MODUL8_INPUT_COUNT);
 	this->addBool(QBCFG_SYPHON_OUTPUT, "QBCFG_SYPHON_OUTPUT", false);
 	
 	// Readonly
@@ -99,9 +99,6 @@ qbConfig::qbConfig() : ciConfigGuiSimple()
 	this->guiAddGroup("> "+_qb.mScreenName);
 	this->guiAddButton("Load Config",				(ciConfigGuiBase*)this, (bool(ciConfigGuiBase::*)(ci::app::MouseEvent)) &qbConfig::cbLoad)->setTriggerUp();
 	this->guiAddButton("Save Config",				(ciConfigGuiBase*)this, (bool(ciConfigGuiBase::*)(ci::app::MouseEvent)) &qbConfig::cbSave)->setTriggerUp();
-	this->guiAddParam(QBCFG_MODUL8_INPUT,			"Modul8 Input" );
-	if ( _qb.bSyphonOutput )
-		this->guiAddParam(QBCFG_SYPHON_OUTPUT,			"Syphon Output" );
 	// Readonly
 	this->guiAddSeparator();
 	this->guiAddParam(DUMMY_RENDER_WIDTH,			"Render Width" );
@@ -123,6 +120,14 @@ qbConfig::qbConfig() : ciConfigGuiSimple()
 	this->guiAddParam(QBCFG_CAMERA_TYPE,			"> CAMERA" );
 	this->guiAddParam(QBCFG_METRIC_THROW,			"Camera Throw" );
 	this->guiAddParam(QBCFG_CAMERA_GROUND,			"Camera on Ground" );
+	// Syphon
+	this->guiAddSeparator();
+	this->guiAddText("> SYPHON");
+	this->setValueLabels(QBCFG_MODUL8_INPUT, LABELS_MODUL8_INPUT);
+	this->setFlag(QBCFG_MODUL8_INPUT, CFG_FLAG_DROP_DOWN);
+	this->guiAddParam(QBCFG_MODUL8_INPUT,			"" );
+	if ( _qb.bSyphonOutput )
+		this->guiAddParam(QBCFG_SYPHON_OUTPUT,			"Syphon Output" );
 	//
 	// ANIMATION + RENDER
 	//

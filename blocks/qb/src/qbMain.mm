@@ -25,6 +25,8 @@ namespace cinder { namespace qb {
 	//
 	qbMain::qbMain()
 	{
+		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+
 		bInited					= false;
 		bDrawGui				= true;
 		bVerbose				= true;
@@ -40,6 +42,8 @@ namespace cinder { namespace qb {
 		
 		for (int u = 0 ; u < QB_MAX_UNITS ; u++ )
 			mBoundSource[u]	= -1;
+		
+		[pool drain];
 	}
 	qbMain::~qbMain()
 	{
@@ -196,11 +200,6 @@ namespace cinder { namespace qb {
 				break;
 			case '/':
 				mConfig->invert( QBCFG_PLAY_BACKWARDS );
-				break;
-			case 'm':
-			case 'M':
-				if (event.isMetaDown()) // COMMAND
-					mConfig->invert( QBCFG_MODUL8_INPUT );
 				break;
 			case 'y':
 			case 'Y':
@@ -608,6 +607,21 @@ namespace cinder { namespace qb {
 		// Make FBO ..., alpha, color, depth);
 		mFbos[i] = gl::Fbo( mRenderWidth, mRenderHeight, true, true, true );
 	}
+	//
+	// Biond FBO for drawing
+	void qbMain::bindFbo()
+	{
+		mFboRender.bindFramebuffer();
+		if ( _cfg.getInt(QBCFG_MODUL8_INPUT) == MODUL8_BELOW )
+			this->drawModul8( QB_BOUNDS );
+	}
+	void qbMain::bindFbo( ColorA c )
+	{
+		mFboRender.bindFramebuffer();
+		gl::clear(c);
+		if ( _cfg.getInt(QBCFG_MODUL8_INPUT) == MODUL8_BELOW )
+			this->drawModul8( QB_BOUNDS );
+	}
 
 	////////////////////////
 	//
@@ -809,15 +823,31 @@ namespace cinder { namespace qb {
 		this->unbindFbo();
 	}
 	
-	
-
-	
+	//
+	// Draw Final FBO to Window
+	void qbMain::drawModul8( Rectf b, bool flip )
+	{
+		// TODO:: FLIPAR AUTOMATICAMENTE
+		if (flip)
+		{
+			glPushMatrix();
+			glTranslatef(0,mFboRender.getHeight(),0);
+			glScalef(1.0, -1.0, 1.0);
+		}
+		gl::color( Color::white() );
+		gl::enableAlphaBlending();
+		mSyphonModul8.draw( b );
+		gl::disableAlphaBlending();
+		if (flip)
+			glPopMatrix();
+	}
 	
 	//
 	// Draw Final FBO to Window
 	void qbMain::finishAndDraw()
 	{
 		this->unbindAllSources();
+		this->disableLights();
 		
 		glNormal3f(0,0,1);
 		gl::color( Color::white() );
@@ -827,20 +857,12 @@ namespace cinder { namespace qb {
 			this->blendStereo();
 		
 		// Draw Modul8
-		if ( _cfg.getBool(QBCFG_MODUL8_INPUT) )
+		if ( _cfg.getInt(QBCFG_MODUL8_INPUT) == MODUL8_ABOVE )
 		{
 			this->bindFbo();
 			gl::setMatricesWindow( mFboRender.getSize() );
 			gl::setViewport( mFboRender.getBounds() );
-			gl::enableAlphaBlending();
-			// TODO:: FLIPAR AUTOMATICAMENTE
-			glPushMatrix();
-			glTranslatef(0,mFboRender.getHeight(),0);
-			glScalef(1.0, -1.0, 1.0);
-			gl::color( Color::white() );
-			mSyphonModul8.draw( mFboRender.getBounds() );
-			glPopMatrix();
-			gl::disableAlphaBlending();
+			this->drawModul8( mFboRender.getBounds(), true );
 			this->unbindFbo();
 		}
 		
