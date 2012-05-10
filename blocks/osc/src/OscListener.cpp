@@ -24,6 +24,7 @@
  POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "cinder/app/App.h" 
 #include "cinder/Thread.h" 
 #include "cinder/Utilities.h"
 #include "OscListener.h"
