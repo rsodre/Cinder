@@ -1567,7 +1567,8 @@ Shape2d	Rect::getShape() const
 	result.lineTo( mRect.x2, mRect.y1 );
 	result.lineTo( mRect.x2, mRect.y2 );
 	result.lineTo( mRect.x1, mRect.y2 );	
-	result.lineTo( mRect.x1, mRect.y1 );	
+	result.lineTo( mRect.x1, mRect.y1 );
+	result.close();
 	return result;
 }
 
