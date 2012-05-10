@@ -69,6 +69,9 @@ class RectT {
 	RectT		scaledCentered( T scale ) const;
 	void		scale( T scale );
 	RectT		scaled( T scale ) const;
+	// ROGER
+	void		scale( const Vec2<T> &scale );
+	RectT		scaled( const Vec2<T> &scale ) const;
 	
 	// ROGER
 	RectT<T>	flippedX() { return RectT<T>(x2,y1,x1,y2); }
@@ -118,6 +121,10 @@ class RectT {
 	const RectT<T>		operator-( const Vec2<T> &o ) const { return this->getOffset( -o ); }
 	const RectT<T>		operator*( T s ) const { return this->scaled( s ); }
 	const RectT<T>		operator/( T s ) const { return this->scaled( ((T)1) / s ); }
+
+	// ROGER
+	const RectT<T>		operator*( const Vec2<T> s ) const { return this->scaled( s ); }
+	const RectT<T>		operator/( const Vec2<T> s ) const { return this->scaled( (Vec2<T>::one()) / s ); }
 
 	const RectT<T>		operator+( const RectT<T>& rhs ) const { return RectT<T>( x1 + rhs.x1, y1 + rhs.y1, x2 + rhs.x2, y2 + rhs.y2 ); }
 	const RectT<T>		operator-( const RectT<T>& rhs ) const { return RectT<T>( x1 - rhs.x1, y1 - rhs.y1, x2 - rhs.x2, y2 - rhs.y2 ); }
