@@ -8,9 +8,7 @@ global gCompiler
 def copyIgnore( path, names ):
     result = []
     for name in names:
-        if name == 'vc9' and gCompiler != 'vc9':
-            result.append( name )
-        elif name == 'vc10' and gCompiler != 'vc10':
+        if name == 'vc10' and gCompiler != 'vc10':
             result.append( name )
         elif name == 'ios' and gCompiler != 'xcode':
             result.append( name )
@@ -22,8 +20,6 @@ def copyIgnore( path, names ):
             result.append( name )
         elif name == 'msw' and gCompiler == 'xcode':
             result.append( name )
-        elif re.search( "libboost.*-vc90.*", name ) != None and gCompiler != 'vc9':
-            result.append( name )
         elif re.search( "libboost.*-vc100.*", name ) != None and gCompiler != 'vc10':
             result.append( name )
         elif name == 'boost':
@@ -34,16 +30,14 @@ def copyIgnore( path, names ):
 
 def printUsage():
     print "Run from the root of the repository (having run vcvars):"
-    print "git checkout-index -a -f --prefix=../cinder_temp/"
-    print "cd ../cinder_temp"
-    print "python tools/packageRelease.py (version number) (xcode|vc9|vc10)"
+    print "python tools/packageRelease.py (version number) (xcode|vc10)"
 
 def processExport( outputName, compilerName, version ):
     print "creating a clean clone of cinder"
     baseDir = os.getcwd()
     os.system( "git checkout-index -a -f --prefix=../cinder_temp/" )
     print "creating a clean clone of Cinder-OpenCV"
-    os.chdir( baseDir + os.sep + "blocks" + os.sep + "Cinder-OpenCV" )
+    os.chdir( baseDir + os.sep + "blocks" + os.sep + "opencv" )
     os.system( "git checkout-index -a -f --prefix=../../../cinder_temp/blocks/opencv/" )
     os.chdir( baseDir + os.sep + ".." + os.sep + "cinder_temp" )
     outputDir = baseDir + os.sep + ".." + os.sep + "cinder_" + version + "_" + outputName + os.sep
@@ -72,10 +66,7 @@ elif sys.argv[2] == 'xcode':
     os.system( "./fullbuild.sh" )
     shutil.rmtree( outputDir + "xcode/build" )
     os.chdir( outputDir + "lib" )
-    os.system( "strip -r *.a" )
-elif sys.argv[2] == 'vc9':
-    gCompiler = 'vc9'
-    processExport( "vc2008", "vc9", sys.argv[1] )
+    os.system( "strip -S -r *.a" )
 elif sys.argv[2] == 'vc10':
     gCompiler = 'vc10'
     processExport( "vc2010", "vc10", sys.argv[1] )
