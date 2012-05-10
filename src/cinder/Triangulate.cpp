@@ -90,6 +90,9 @@ void Triangulator::addShape( const Shape2d &shape, float approximationScale )
 void Triangulator::addPath( const Path2d &path, float approximationScale )
 {
 	vector<Vec2f> subdivided = path.subdivide( approximationScale );
+	// ROGER -- add single points as adges
+	if ( subdivided.size() == 0 && path.getNumPoints() > 0 )
+		subdivided = path.getPoints();
 	tessAddContour( mTess.get(), 2, &subdivided[0], sizeof(float) * 2, subdivided.size() );
 }
 
