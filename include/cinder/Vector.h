@@ -1282,6 +1282,30 @@ Vec2<T> fromPolar( Vec2<T> pol )
 	return Vec2<T>( math<T>::cos( pol.y ) *  pol.x , math<T>::sin( pol.y ) *  pol.x );
 }
 
+// ROGER
+//! Calculate the normal of a triangle
+template<typename T>
+Vec3<T> triangleNormal( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
+{
+	Vec3<T> u( p1 - p0 );
+	Vec3<T> v( p2 - p0 );
+	Vec3<T> n( u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x );
+	return n.normalized();
+}
+
+	// ROGER
+	//! Calculate the centroid of a triangle
+	template<typename T>
+	Vec2<T> triangleCentroid( Vec2<T> p0, Vec2<T> p1, Vec2<T> p2 )
+	{
+		return Vec2<T>( (p0.x+p1.x+p2.x)/3.0f, (p0.y+p1.y+p2.y)/3.0f );
+	}
+	template<typename T>
+	Vec3<T> triangleCentroid( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
+	{
+		return Vec3<T>( (p0.x+p1.x+p2.x)/3.0f, (p0.y+p1.y+p2.y)/3.0f, (p0.z+p1.z+p2.z)/3.0f );
+	}
+	
 template<typename T,typename Y> inline Vec2<T> operator *( Y s, const Vec2<T> &v ) { return Vec2<T>( v.x * s, v.y * s ); }
 template<typename T,typename Y> inline Vec2<T> operator *( const Vec2<T> &v, Y s ) { return Vec2<T>( v.x * s, v.y * s ); }
 template<typename T,typename Y> inline Vec3<T> operator *( Y s, const Vec3<T> &v ) { return Vec3<T>( v.x * s, v.y * s, v.z * s ); }
