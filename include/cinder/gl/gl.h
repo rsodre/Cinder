@@ -351,6 +351,27 @@ struct SaveFramebufferBinding {
 	GLint		mOldValue;
 };
 
+// ROGER
+//! Convenience class which pushes and pops the currently blending state
+struct SaveBlendingState {
+	SaveBlendingState();
+	~SaveBlendingState();
+private:
+	GLboolean	mEnabledValue;
+	GLint		mSourceValue;
+	GLint		mDestValue;
+};
+
+// ROGER
+//! Convenience class which pushes and pops the currently depth buffer state
+struct SaveDepthState {
+	SaveDepthState();
+	~SaveDepthState();
+private:
+	GLboolean	mDepthTestValue;
+	GLboolean	mDepthMaskValue;
+};
+
 #if defined( CINDER_MSW )
 //! Initializes the GLee library. This is generally called automatically by the application and is only necessary if you need to use GLee before your app's setup() method is called.
 void initializeGlee();

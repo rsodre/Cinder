@@ -1573,4 +1573,35 @@ SaveFramebufferBinding::~SaveFramebufferBinding()
 #endif
 }
 
+// ROGER
+///////////////////////////////////////////////////////////////////////////////
+// SaveBlendingState
+SaveBlendingState::SaveBlendingState() {
+	glGetBooleanv( GL_BLEND, &mEnabledValue );
+	glGetIntegerv( GL_BLEND_SRC, &mSourceValue );
+	glGetIntegerv( GL_BLEND_DST, &mDestValue );
+}
+SaveBlendingState::~SaveBlendingState() {
+	if( mEnabledValue )
+		glEnable( GL_BLEND );
+	else
+		glDisable( GL_BLEND );
+	glBlendFunc( mSourceValue, mDestValue );
+}
+
+// ROGER
+///////////////////////////////////////////////////////////////////////////////
+// SaveDepthState
+SaveDepthState::SaveDepthState() {
+	glGetBooleanv( GL_DEPTH_TEST, &mDepthTestValue );
+	glGetBooleanv( GL_DEPTH_WRITEMASK, &mDepthMaskValue );
+}
+SaveDepthState::~SaveDepthState() {
+	if( mDepthTestValue )
+		glEnable( GL_DEPTH_TEST );
+	else
+		glDisable( GL_DEPTH_TEST );
+	enableDepthWrite( mDepthMaskValue );
+}
+
 } } // namespace gl::cinder
