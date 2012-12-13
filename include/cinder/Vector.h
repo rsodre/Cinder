@@ -151,6 +151,13 @@ class Vec2
 		return ! ( *this == rhs );
 	}
 
+	// ROGER
+	// This makes no sense, but allows me to use Vecs as keys in std::map<key,value>
+	bool operator<( const Vec2<T> &rhs ) const
+	{
+		return ( x*4096 + y ) < ( rhs.x*4096 + rhs.y );
+	}
+	
 	T dot( const Vec2<T> &rhs ) const
 	{
 		return x * rhs.x + y * rhs.y;
@@ -415,6 +422,13 @@ public:
 		return !( *this == rhs );
 	}
 
+	// ROGER
+	// This makes no sense, but allows me to use Vecs as keys in std::map<key,value>
+	bool operator<( const Vec3<T> &rhs ) const
+	{
+		return ( x*4096 + y + z ) < ( rhs.x*4096 + rhs.y + rhs.z );
+	}
+	
 	T dot( const Vec3<T> &rhs ) const
 	{
 		return x*rhs.x + y*rhs.y + z*rhs.z;
@@ -768,6 +782,13 @@ class Vec4
 		return ! (*this == rhs); 
 	}
 
+	// ROGER
+	// This makes no sense, but allows me to use Vecs as keys in std::map<key,value>
+	bool operator<( const Vec4<T> &rhs ) const
+	{
+		return ( x*4096 + y + z + w ) < ( rhs.x*4096 + rhs.y + rhs.z + rhs.w );
+	}
+	
 	T dot( const Vec4<T> &rhs ) const
 	{
 		return x*rhs.x + y*rhs.y + z*rhs.z;
