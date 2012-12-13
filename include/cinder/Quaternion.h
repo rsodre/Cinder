@@ -52,6 +52,8 @@ public:
 	Quaternion( const Quaternion<FromT>& q ) : w( static_cast<T>( q.w ) ), v( q.v ) {}
 
 	Quaternion( T aW, T x, T y, T z ): w( aW ), v( x, y, z ) {}	
+	// ROGER -- construct from Vec4
+	Quaternion( const Vec4<T> &v ) { this->set( v ); }
 	// construct from axis-angle
 	Quaternion( const Vec3<T> &axis, T radians ) { set( axis, radians ); } 
 	Quaternion( const Vec3<T> &from, const Vec3<T> &to ) { set( from, to ); }
@@ -63,6 +65,16 @@ public:
 	explicit Quaternion( const Y &v )
 		: w( QUATCONV<Quaternion<typename Quaternion::TYPE>,Y>::getW( v ) ), v( QUATCONV<typename Quaternion::TYPE,Y>::getX( v ), QUATCONV<typename Quaternion::TYPE,Y>::getY( v ), QUATCONV<typename Quaternion::TYPE,Y>::getZ( v ) )
 	{}
+	
+	// ROGER -- Vec4
+	void set( const Vec4<T> & v )
+	{
+		this->set( v.w, v.x, v.y, v.z );
+	}
+	Vec4<T> getVec4() const
+	{
+		return Vec4<T>( v.x, v.y, v.z, w );
+	}
 	
 	// get axis-angle representation's axis
 	Vec3<T> getAxis() const
