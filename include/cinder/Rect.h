@@ -117,6 +117,11 @@ class RectT {
 	/** Expands the Rect to include \a rect in its interior **/
 	void		include( const RectT &rect );
 
+	// ROGER
+	//! Add width and height
+	void		add( Vec2<T> &off ) { x2 += off.x; y2 += off.y; }
+	void		add( T addX, T addY ) { x2 += addX; y2 += addY; }
+
 	const RectT<T>		operator+( const Vec2<T> &o ) const { return this->getOffset( o ); }
 	const RectT<T>		operator-( const Vec2<T> &o ) const { return this->getOffset( -o ); }
 	const RectT<T>		operator*( T s ) const { return this->scaled( s ); }

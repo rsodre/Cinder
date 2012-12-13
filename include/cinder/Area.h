@@ -52,6 +52,11 @@ class AreaT {
 	Vec2<T>			getSize() const { return Vec2<T>( x2 - x1, y2 - y1 ); }
 	T				calcArea() const { return getWidth() * getHeight(); }
 	
+	// ROGER
+	AreaT<T>		flippedX() { return AreaT<T>(x2,y1,x1,y2); }
+	AreaT<T>		flippedY() { return AreaT<T>(x1,y2,x2,y1); }
+	AreaT<T>		flippedXY() { return AreaT<T>(x2,y2,x1,y1); }
+
 	void			clipBy( const AreaT<T> &clip );
 	AreaT<T>		getClipBy( const AreaT<T> &clip ) const;
 
@@ -66,6 +71,12 @@ class AreaT {
 	//! Expands the AreaT by \a expandX horizontally and \a expandY vertically. \a expandX is subtracted from \c x1 and added to \c x2 and \a expandY is subtracted from \c y1 and added to \c y2.
 	void			expand( T expandX, T expandY ) { x1 -= expandX; x2 += expandX; y1 -= expandY; y2 += expandY; }
 
+	// ROGER
+	//! Add width and height
+	void			add( Vec2<T> &off ) { x2 += off.x; y2 += off.y; }
+	void			add( Vec2<float> &off ) { x2 += off.x; y2 += off.y; }	// ROGER -- REMOVER ISTO!!!
+	void			add( T addX, T addY ) { x2 += addX; y2 += addY; }
+	
 	T				getX1() const { return x1; }
 	void			setX1( T aX1 ) { x1 = aX1; }
 	T				getY1() const { return y1; }
@@ -75,6 +86,8 @@ class AreaT {
 	T				getY2() const { return y2; }
 	void			setY2( T aY2 ) { y2 = aY2; }
 	Vec2<T>			getUL() const { return Vec2<T>( x1, y1 ); } // left-top offset
+	Vec2<T>			getUR() const { return Vec2<T>( x2, y1 ); } // right-top offset
+	Vec2<T>			getLL() const { return Vec2<T>( x1, y2 ); } // left-bottom offset
 	Vec2<T>			getLR() const { return Vec2<T>( x2, y2 ); } // right-bottom offset
 
 	bool			contains( const Vec2<T> &offset ) const;
