@@ -2274,7 +2274,8 @@ void Doc::loadDoc( DataSourceRef source, fs::path filePath )
 
 	// we can't parse the group w/o having parsed the viewBox, dimensions, etc, so we have to do this manually:
 	if( xml.hasChild( "switch" ) )		// when saved with "preserve Illustrator editing capabilities", svg data is inside a "switch"
-		Group::parse( xml.getChild( "switch" ) );
+		//Group::parse( xml.getChild( "switch" ) );
+		Group::parse( xml.getChild( "switch" ).getChild( "g" ) );	// ROGER -- jump another extra group
 	else
 		Group::parse( xml );
 }

@@ -337,6 +337,13 @@
     return YES;
 }
 
+// ROGER
+// File dragging
+- (NSDragOperation)draggingUpdated:(id <NSDraggingInfo>)sender
+{
+	return NSDragOperationCopy;
+}
+
 - (void)applicationWillResignActive:(NSNotification *)aNotification
 {
 #if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5

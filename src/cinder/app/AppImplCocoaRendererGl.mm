@@ -159,6 +159,7 @@
 			NSOpenGLPFADepthSize, (NSOpenGLPixelFormatAttribute)24,
 	        NSOpenGLPFASampleBuffers, (NSOpenGLPixelFormatAttribute)1,
 			NSOpenGLPFANoRecovery,
+			NSOpenGLPFAAllowOfflineRenderers, // ROGER: lets OpenGL know this context is offline renderer aware -- http://developer.apple.com/library/mac/#technotes/tn2229/_index.html
 			(NSOpenGLPixelFormatAttribute)0
 		};
 		
@@ -173,6 +174,7 @@
 	        NSOpenGLPFASampleBuffers, (NSOpenGLPixelFormatAttribute)1, 
 			NSOpenGLPFASamples, (NSOpenGLPixelFormatAttribute)cinder::app::RendererGl::sAntiAliasingSamples[antialiasLevel],
 			NSOpenGLPFANoRecovery,
+			NSOpenGLPFAAllowOfflineRenderers, // ROGER: lets OpenGL know this context is offline renderer aware -- http://developer.apple.com/library/mac/#technotes/tn2229/_index.html
 			(NSOpenGLPixelFormatAttribute)0
 		};
 		
