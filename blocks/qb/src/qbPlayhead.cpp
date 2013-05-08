@@ -23,17 +23,25 @@ namespace cinder { namespace qb {
 	{
 		this->play(false);
 	}
-	void qbMain::play( bool p )
+	void qbMain::play( bool _p )
 	{
-		if (p)
+		if (_p)
 			mPlayhead.resume();
 		else
 			mPlayhead.stop();
+		// Sources
+		/*
+		std::map<int,qbSourceSelector>::const_iterator it;
+		for ( it = mSources.begin() ; it != mSources.end(); it++ )
+		{
+			int i = it->first;
+			if (this->source(i))
+				this->source(i).play(_p);
+		}
+		*/
 	}
-	void qbMain::rewind()
+	void qbMain::rewindSources()
 	{
-		mPlayhead.rewind();
-		// Rewind Sources
 		std::map<int,qbSourceSelector>::const_iterator it;
 		for ( it = mSources.begin() ; it != mSources.end(); it++ )
 		{
@@ -53,18 +61,24 @@ namespace cinder { namespace qb {
 	//
 	qbPlayhead::qbPlayhead()
 	{
-		bIsPlaying = false;
-		bShouldRewind = false;
-		mCurrentFrame = 0;
-		mSeconds = 0.0;
+		this->rewind();
+		this->stop();
 	}
+	
+	double qbPlayhead::getSeconds()
+	{
+		if ( _cfg.getBool(QBCFG_PLAY_BACKWARDS) && QB_ANIM_DURATION )
+			return QB_ANIM_DURATION - mSeconds - QB_FRAME_DURATION;
+		else
+			return mSeconds;
+	}
+
 	
 	//
 	// Rewind + Start
 	void qbPlayhead::start()
 	{
-		bIsPlaying = true;
-		mLastTime = CFAbsoluteTimeGetCurrent();
+		bPlaying = true;
 		this->rewind();
 	}
 	
@@ -72,25 +86,28 @@ namespace cinder { namespace qb {
 	// Rewind
 	void qbPlayhead::rewind()
 	{
-		bShouldRewind = true;
-		//this->update();
+		mLastTime = CFAbsoluteTimeGetCurrent();
+		mSeconds = 0.0;
+		mCurrentFrame = 0;
+		bShouldRewind = false;
+		//printf("PLAYHEAD << REWIND\n");
 	}
 	
 	//
 	// Play = Rewind
 	void qbPlayhead::stop()
 	{
-		if ( bIsPlaying )
-			bIsPlaying = false;
+		if ( bPlaying )
+			bPlaying = false;
 	}
 	
 	//
 	// Play = Rewind
 	void qbPlayhead::resume()
 	{
-		if ( ! bIsPlaying )
+		if ( ! bPlaying )
 		{
-			bIsPlaying = true;
+			bPlaying = true;
 			mLastTime = CFAbsoluteTimeGetCurrent();
 		}
 	}
@@ -99,43 +116,54 @@ namespace cinder { namespace qb {
 	// Update
 	void qbPlayhead::update()
 	{
-		if ( bIsPlaying )
+		if ( bPlaying )
 		{
-			int dir = ( _qb.isPlayingBackwards() ? -1.0 : 1.0 );
 			double now = CFAbsoluteTimeGetCurrent();
 			// Realtime = Play continuously, may lose frames
-			if ( bShouldRewind )
+			if ( _qb.isPreviewRealtime() )
 			{
-				mSeconds = 0.0;
-				mCurrentFrame = 0;
-				bShouldRewind = false;
-			}
-			else if ( _qb.isPreviewRealtime() )
-			{
-				mSeconds += (now - mLastTime) * dir;
-				mCurrentFrame = (int) (mSeconds * _qb.getFrameRate());
+				mSeconds += (now - mLastTime);
+				mCurrentFrame = (int) (mSeconds * QB_FRAMERATE);
 			}
 			// Not Realtime = Play frame by frame
 			else
 			{
-				mSeconds += QB_FRAME_DURATION * dir;
 				mCurrentFrame++;
+				mSeconds = ( mCurrentFrame * QB_FRAME_DURATION );
 			}
-			// clamp animation
-			if (_qb.getRenderSeconds() > 0 && mSeconds > _qb.getRenderSeconds())
-				_qb.rewind();
+			// Loop!
+			if ( _qb.getRenderSeconds() > 0.0 && mSeconds >= _qb.getRenderSeconds() )
+				bShouldRewind = true;
+			// Remember when we rendered for realtime preview
 			mLastTime = now;
-			//printf("PLAYHEAD real[%d] secs[%.2f] fr[%d]\n",_qb.isPreviewRealtime(),mSeconds,mCurrentFrame);
 		}
+		// Rewind!!
+		if ( bShouldRewind )
+		{
+			this->rewind();
+			_qb.rewindSources();
+		}
+		if ( _renderer.isRendering() )
+			printf("PLAYHEAD  >  secs %.6f / %.6f    fr %d / %d\n",mSeconds,(_qb.getRenderSeconds()-QB_FRAME_DURATION),mCurrentFrame,_qb.getRenderFrames());
 		// Update GUI
-		_cfg.set(QBCFG_PLAYING, bIsPlaying);
+		_cfg.set(QBCFG_PLAYING, bPlaying);
 		_cfg.set(QBCFG_CURRENT_TIME, mSeconds);
-		_cfg.set(DUMMY_CURRENT_FRAME, (int)mCurrentFrame);
+		std::stringstream os;
+		os << (mCurrentFrame+1) << "/" << ( _qb.getRenderFrames() ? toString(_qb.getRenderFrames()) : std::string("?") );
+		_cfg.set(DUMMY_CURRENT_FRAME, os.str());
+		// freshness
+		bFresh = (mLastFrame != mCurrentFrame);
+		mLastFrame = mCurrentFrame;
+	}
+	void qbPlayhead::seekToProg( float _prog )
+	{
+		double t = _qb.getRenderSeconds() * _prog;
+		this->seekToTime( t );
 	}
 	void qbPlayhead::seekToTime( double _s )
 	{
 		mSeconds = _s;
-		mCurrentFrame = (int) (mSeconds * _qb.getFrameRate());
+		mCurrentFrame = (int) (mSeconds * QB_FRAMERATE);
 		mLastTime = CFAbsoluteTimeGetCurrent();
 	}
 

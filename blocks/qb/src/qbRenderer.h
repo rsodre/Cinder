@@ -7,6 +7,7 @@
 #pragma once
 
 #include "cinder/Cinder.h"
+#include "cinder/Utilities.h"
 #include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
 //#include "cinder/audio/Output.h"
@@ -21,52 +22,55 @@ namespace cinder { namespace qb {
 		qbRenderer();
 		~qbRenderer();
 		
-		std::string &		getStatus()				{ return mStatus; }
-		std::string &		getProgressString()		{ return mProgressString; }
-		std::string &		getTimeString()			{ return mTimeString; }
-		bool				isRendering()			{ return bIsRendering; }
-		float				getProg();
+		std::string &	getStatusString()			{ return mStatus; }
+		std::string &	getProgString()				{ return mProgString; }
+		std::string &	getFramestring()			{ return mFramesString; }
+		std::string		getTimeEstimatedString()	{ return ( mFramesMax == 0 ? "?" : toTime(mTimeEstimated) ); }
+		std::string		getTimeElapsedString()		{ return toTime(mTimeElapsed); }
+		std::string		getTimeRemainingString()	{ return ( mFramesMax == 0 ? "?" : toTime(mTimeRemaining) ); }
+		bool			isRendering()				{ return bIsRendering; }
+		float			getProg();
 		
-		void				setFolder( const std::string & _folder );
-		void				setFileMovie( const std::string & _f );
-		void				setFileImage( const std::string & _f );
+		void			setFolder( const std::string & _folder );
+		void			setFileNameBase( const std::string & _f );
 		
-		void				start( const std::string & _f="" );
-		void				stop();
-		void				finish();
+		void			start( const std::string & _f="" );
+		void			stop();
+		void			finish();
+		void			startstop();
+
+		void			takeScreenshot();
+		void			takeScreenshot( const ImageSourceRef & _aframe );
+		void			takeScreenshot( const ImageSourceRef & _aframe, const std::string _filename );
 		
-		void				takeScreenshot( const ImageSourceRef & _aframe );
-		void				takeScreenshot( const ImageSourceRef & _aframe, const std::string _filename );
-		
-		void				add();
-		void				add( const ImageSourceRef & _aframe );
+		void			add();
+		void			add( const ImageSourceRef & _aframe );
 		
 		
 	private:
 		
 		void				reset();
-		std::string			makeFileNameSerial( std::string _p, std::string _f );
-		std::string			makeFileNameTime( std::string _p, std::string _f );
-		std::string			makeFrameNameSerial();
+		std::string			makeFileNameTime( std::string _p, std::string _f, std::string _ext="" );
+		std::string			makeFileNameSerial();
 		void				open();
 		void				commit( const ImageSourceRef & _aframe );
 		void				updateStatus();
 		
 		qtime::MovieWriter	mMovieWriter;
 		std::string			mStatus;
-		std::string			mProgressString;
-		std::string			mTimeString;
+		std::string			mProgString;
+		std::string			mFramesString;
 		std::string			mFolder;
-		std::string			mFileBaseMovie;
-		std::string			mFileBaseImage;
-		std::string			mFile;
+		std::string			mFileNameBase;
+		std::string			mFileName;			// the actual file name being written
 		int					mFramesMax;
 		int					mFramesStill;
 		int					mFramesAdded;
 		int					mFramesStarted;		// for progress only
-		double				mTimeStart, mTimeElapsed;
+		double				mTimeStart, mTimeElapsed, mTimeEstimated, mTimeRemaining;
 		bool				bOpened;
 		bool				bIsRendering;
+		float				mAppFramerate;
 		
 		//audio::SourceRef	mAudioStop;
 		//audio::SourceRef	mAudioFinish;

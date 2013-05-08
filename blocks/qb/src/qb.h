@@ -4,6 +4,15 @@
 //  Created by Roger Sodre on 01/07/2011
 //  Copyright 2011 Studio Avante. All rights reserved.
 //
+//
+//	PREPROCESSOR MACROS :
+//	QB_DM	-- enables DomeMaster 
+//	QB_COLOR_REDUCTION	-- enables OpenCV
+//		blocks: Cinder-OpenCV, osc
+//
+//
+//
+//
 #pragma once
 
 #include "cinder/Cinder.h"
@@ -20,10 +29,15 @@ namespace cinder { namespace qb {
 #define _qb						(qb::__qb)
 #define _cfg					(*(qb::__qb.mConfig))
 #define _dome					(qb::__qb.mDomeMaster)
+#define _palette				(qb::__qb.mPalette)
+#define _renderer				(qb::__qb.mRenderer)
+#define _src(s)					(qb::__qb.source(s))
+#define _touch					(qb::__qb.mTouch)
 
 // Render unit: The rendered scene size in pixels
 #define QB_RENDER_WIDTH			(_qb.getRenderWidth())
 #define QB_RENDER_HEIGHT		(_qb.getRenderHeight())
+#define QB_RENDER_SIZE			(_qb.getRenderSize())
 #define QB_RENDER_ASPECT		(_qb.getRenderAspect())
 #define QB_RENDER_BOUNDS		(_qb.getRenderBounds())
 
@@ -38,19 +52,22 @@ namespace cinder { namespace qb {
 #define QB_ASPECT				(_qb.getMetricAspect())
 #define QB_SCALE				(_qb.getMetricScale())
 #define QB_SIZE					(_qb.getMetricSize())
-#define QB_BOUNDS				(_qb.getMetricBounds())
+#define QB_BOUNDS				(_qb.getMetricBounds()+_qb.getCameraOffset().xy())
 #define QB_CENTER				(_qb.getMetricCenter())
 
 // Animation
-#define QB_FRAMERATE			(_qb.getFrameRate())
-#define QB_FRAME_DURATION		(1.0/_qb.getFrameRate())
+#define QB_FRAMERATE			(_qb.getRenderFrameRate())
+#define QB_FRAME_DURATION		(1.0/QB_FRAMERATE)
 #define QB_TIME					(_qb.getTime())
-#define QB_ANIM_PROG			fmod(_qb.getTime()/_qb.getRenderSeconds(),1.0)
+#define QB_PROG					(_qb.getTime()/(_qb.getRenderSeconds()-QB_FRAME_DURATION))	// 0.0 .. 1.0
+#define QB_ANIM_PROG			fmod(_qb.getTime()/_qb.getRenderSeconds(),1.0)				// 0.0 .. 0.99 (looper)
 #define QB_ANIM_FRAMES			(QB_FRAMERATE*_qb.getRenderSeconds())
+#define QB_ANIM_DURATION		(_qb.getRenderSeconds())
 
 // misc
 #define QB_VERBOSE				(_qb.bVerbose)
 #define QB_APP_NAME				(_qb.getAppName())
+#define QB_APP_VERSION			(_qb.getAppVersion())
 #define QB_CAPTURE_FOLDER		"/Users/Roger/Desktop/CAPTURE/"
 #define QB_FONT					(_qb.mFont)
 
@@ -93,8 +110,6 @@ namespace cinder { namespace qb {
 	//
 	// Transformations
 	Rectf	rectToFit( Rectf src, Rectf dst );
-	void	transformToFit( Area src, Area dst );
-	void	transformToFit( Vec2i src, Vec2i dst );
 	//
 	// fx
 	void superFastBlur(unsigned char *pix, int w, int h, int radius);

@@ -78,6 +78,7 @@ namespace cinder { namespace qb {
 	void drawQuad( qbSourceSelector & src, const Vec2f & v0, const Vec2f & v1, const Vec2f & v2, const Vec2f & v3, gl::GlslProg & shader, const int unit=0 );
 	void drawQuad( qbSourceSelector & src, const Vec3f & v0, const Vec3f & v1, const Vec3f & v2, const Vec3f & v3, gl::GlslProg & shader, const int unit=0 );
 	void drawStrokedQuad( const Vec2f & v0, const Vec2f & v1, const Vec2f & v2, const Vec2f & v3 );
+	void drawStrokedQuad( const Vec3f & v0, const Vec3f & v1, const Vec3f & v2, const Vec3f & v3 );
 	//
 	// Tris
 	void drawTri( const Vec3f & v0, const Vec3f & v1, const Vec3f & v2 );
@@ -107,7 +108,7 @@ namespace cinder { namespace qb {
 	void drawStrokedPolyTris( qbPoly & poly, float depth=0.0f );
 	//
 	// Points
-	void drawPolyPoints( qbPoly & poly );
+	void drawPolyPoints( qbPoly & poly, float depth=0.0f );
 	void drawPoint( const Vec3f & v );
 	void drawPoints( const std::vector<qbPolyVertex> & vs );
 	//

@@ -321,6 +321,10 @@ namespace cinder { namespace qb {
 		glVertexPointer( 3, GL_FLOAT, 0, vertices );
 		glDrawElements( GL_TRIANGLE_STRIP, QB_QUAD_VERTICES, GL_UNSIGNED_BYTE, __qbQuadIndices );
 	}
+	void drawStrokedQuad( const Vec2f & v0, const Vec2f & v1, const Vec2f & v2, const Vec2f & v3 )
+	{
+		qb::drawStrokedQuad( Vec3f(v0,0), Vec3f(v1,0), Vec3f(v2,0), Vec3f(v3,0) );
+	}
 	void drawStrokedQuad( const Vec3f & v0, const Vec3f & v1, const Vec3f & v2, const Vec3f & v3 )
 	{
 		ClientBoolState vertexArrayState( GL_VERTEX_ARRAY );
@@ -731,6 +735,7 @@ namespace cinder { namespace qb {
 		{
 			for (int c = 0 ; c < contours.size() ; c++ )
 				gl::draw( contours[c].mPoints );
+				//qb::drawLines( contours[c].mPoints );
 		}
 		else
 		{
@@ -766,9 +771,20 @@ namespace cinder { namespace qb {
 	}
 	//
 	// Poly Points
-	void drawPolyPoints( qbPoly & poly )
+	void drawPolyPoints( qbPoly & poly, float depth )
 	{
-		qb::drawPoints( poly.getVertices() );
+		if ( depth == 0 )
+			qb::drawPoints( poly.getVertices() );
+		else
+		{
+			glPushMatrix();
+			glScalef( 1, 1, depth );
+			glTranslatef( 0, 0, 0.5 );
+			qb::drawPoints( poly.getVertices() );
+			glTranslatef( 0, 0, -1 );
+			qb::drawPoints( poly.getVertices() );
+			glPopMatrix();
+		}
 	}
 	
 	

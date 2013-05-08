@@ -47,20 +47,21 @@ namespace cinder { namespace qb {
 		virtual void	bind(int unit=0);
 		virtual void	unbind();
 		
-		virtual void	enableAlphaBlending()	{ if (bHasAlpha) gl::enableAlphaBlending(); }
-		virtual void	disableAlphaBlending()	{ if (bHasAlpha) gl::disableAlphaBlending(); }
+		virtual void	enableAlphaBlending()			{ if (bHasAlpha) gl::enableAlphaBlending(); }
+		virtual void	disableAlphaBlending()			{ if (bHasAlpha) gl::disableAlphaBlending(); }
 		virtual void	drawInfo(const Vec2f & p);
 		
-		virtual void		play(bool _p=true)	{ bPlaying = _p; }
-		virtual void		stop()				{ bPlaying = false; }
-		virtual void		rewind()			{}
-		bool				isPlaying()			{ return bPlaying; }
+		virtual void		rewind()					{}
+		virtual void		play(bool _p=true)			{ bPlaying = _p; }
+		void				stop()						{ this->play(false); }
+		bool				isPlaying()					{ return bPlaying; }
+		virtual void		playBackwards(bool _b=true)	{ bBackwards = _b; }
 
-		virtual const int	getFrameCount()		{ return 1; }
-		virtual const int	getCurrentFrame()	{ return 0; }
-		virtual const float	getDuration()		{ return 0.0; }
-		virtual const float	getCurrentTime()	{ return 0.0; }
-		virtual const float	getFrameRate()		{ return 0.0; }
+		virtual const int	getFrameCount()				{ return 1; }
+		virtual const int	getCurrentFrame()			{ return 0; }
+		virtual const float	getDuration()				{ return 0.0; }
+		virtual const float	getCurrentTime()			{ return 0.0; }
+		virtual const float	getFrameRate()				{ return 0.0; }
 		
 		const gl::Texture	& getTexture()
 		{
@@ -75,6 +76,7 @@ namespace cinder { namespace qb {
 			return mSurface;
 		}
 		const GLfloat		* getTexes()		{ return (GLfloat*) mCubeTexes; }
+		const std::string	& getFullPath()		{ return mFullPath; }
 		const std::string	& getName()			{ return mName; }
 		const std::string	& getDesc()			{ return mDesc; }
 		const bool			hasAlpha()			{ return bHasAlpha; }
@@ -86,15 +88,17 @@ namespace cinder { namespace qb {
 		const Vec2f			& getUV()			{ return mUV; }
 		Rectf				getBounds()			{ return Rectf(Vec2f::zero(),mSize); }
 		
-		ColorA				getColor(float _px, float _py);
+		ColorA				getColorProg(float _px, float _py);
 
 	protected:
 		bool				bPlaying;
+		bool				bBackwards;
 		bool				bBundled;
 		bool				bHasAlpha;
 		int					mBoundUnit;
 		int					mSpawnedAtFrame;	// frame number where source was loaded
 		Vec2i				mSize;
+		std::string			mFullPath;
 		std::string			mName;
 		std::string			mDesc;
 		std::string			mDesc2;
@@ -156,8 +160,10 @@ namespace cinder { namespace qb {
 		int					mFrameCount;
 		int					mCurrentFrame;
 		float				mDuration;
+		float				mDurationQT;
 		float				mCurrentTime;
 		float				mFrameRate;
+		float				mFrameTime;
 		
 		double	mTimeProfiler;
 	};
@@ -216,11 +222,8 @@ namespace cinder { namespace qb {
 		void		setSource( qbSourceBase * newSrc );
 		// ciConfig integration
 		void			setList( int _key, std::string _name );
-		void			useConfigSelector( int _id, ci::ciConfig *_ptr=NULL );
+		void			useConfigSelector( int _id, ci::ciConfig *_ptr=NULL, bool popValueList=true );
 		void			useConfigTrigger( int _id, ci::ciConfig *_ptr=NULL );
-		std::string		* getNamePointer()		{ return &mConfigName; }
-		std::string		* getDescPointer()		{ return &mConfigDesc; }
-		gl::Texture		* getTexturePointer()	{ return &mConfigTexture; }
 
 		// From actual source
 		void			update();
@@ -230,10 +233,11 @@ namespace cinder { namespace qb {
 		const void		disableAlphaBlending()		{ if (mSrc) mSrc->disableAlphaBlending(); }
 		const void		drawInfo(const Vec2f & p)	{ if (mSrc) mSrc->drawInfo(p); }
 		// movies
-		const void		play(bool _p=true)		{ if (mSrc) mSrc->play(_p); }
-		const void		stop()					{ if (mSrc) mSrc->stop(); }
-		const void		rewind()				{ if (mSrc) mSrc->rewind(); }
-		const bool		isPlaying()				{ return ( mSrc ? mSrc->isPlaying() : false ); }
+		const void		play(bool _p=true)			{ if (mSrc) mSrc->play(_p); }
+		const void		stop()						{ if (mSrc) mSrc->stop(); }
+		const void		rewind()					{ if (mSrc) mSrc->rewind(); }
+		const bool		isPlaying()					{ return ( mSrc ? mSrc->isPlaying() : false ); }
+		const void		playBackwards(bool _b=true)	{ if (mSrc) mSrc->playBackwards(_b); }
 		// movie getters
 		const int		getFrameCount()			{ return ( mSrc ? mSrc->getFrameCount() : 0 ); }
 		const int		getCurrentFrame()		{ return ( mSrc ? mSrc->getCurrentFrame() : 0 ); }
@@ -244,6 +248,7 @@ namespace cinder { namespace qb {
 		const gl::Texture	& getTexture()		{ return ( mSrc ? mSrc->getTexture() : mNullTex ); }
 		//const Surface8u		& getSurface()		{ return ( mSrc ? mSrc->getSurface() : mNullSurf ); }
 		const GLfloat		* getTexes()		{ return ( mSrc ? mSrc->getTexes() : NULL ); }
+		const std::string	getFullPath()		{ return ( mSrc ? mSrc->getFullPath() : "" ); }
 		const std::string	getName()			{ return ( mSrc ? mSrc->getName() : "Null" ); }
 		const std::string	getDesc()			{ return ( mSrc ? mSrc->getDesc() : "Null" ); }
 		const bool		hasAlpha()				{ return ( mSrc ? mSrc->hasAlpha() : false ); }
@@ -255,7 +260,7 @@ namespace cinder { namespace qb {
 		const Vec2f		& getUV()				{ return ( mSrc ? mSrc->getUV() : mNullVec2f ); }
 		const Rectf		getBounds()				{ return ( mSrc ? mSrc->getBounds() : Rectf() ); }
 		// from surface
-		ColorA			getColor(float _px, float _py)	{ return ( mSrc ? mSrc->getColor(_px,_py) : ColorA::black() ); }
+		ColorA			getColorProg(float _px, float _py)	{ return ( mSrc ? mSrc->getColorProg(_px,_py) : ColorA::black() ); }
 
 	protected:
 		std::shared_ptr<qbSourceBase>		mSrc;
@@ -283,4 +288,5 @@ namespace cinder { namespace qb {
 	
 	
 } } // cinder::qb
+
 

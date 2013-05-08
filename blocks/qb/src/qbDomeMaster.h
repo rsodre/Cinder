@@ -11,10 +11,11 @@
 #include "cinder/Surface.h"
 #include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
+#include "cinder/gl/DisplayList.h"
 
-#define DXYI(X,Y)				((Y)*mSize.x+(X))
+#define DXYI(X,Y)					((Y)*mSize.x+(X))
 
-#define XYZ_LATLNG(lat,lng)		(qbDomeMaster::getPosFromLatLng(lat,lng))
+#define LATLNG_TO_XYZ(lat,lng)		(qbDomeMaster::getPosFromLatLng(lat,lng))
 
 namespace cinder { namespace qb {
 	
@@ -37,11 +38,12 @@ namespace cinder { namespace qb {
 		Vec3f			project2D( const Vec3f & p );
 		Vec3f			lerp2D( const float fact, const Vec3f & p0, const Vec3f & p1 );
 		
-		void			drawLineSegmented( const Vec3f & p0, const Vec3f & p1, float segmentSize );
-		void			drawLineSegmented2D( const Vec3f & p0, const Vec3f & p1, float segmentSize );
+		void			drawLineSegmented( const Vec3f & p0, const Vec3f & p1, int segments );
+		void			drawLineSegmented2D( const Vec3f & p0, const Vec3f & p1, int segments );
 
-		Vec3f			getIntersectionFrom( const Vec3f & p0, const Vec3f & p1 );
-		void			drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, float segmentSize );
+		Vec3f			getIntersectionFrom( const Vec3f & p0, const Vec3f & p1, bool closest=false );
+		void			drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest=false );
+		void			drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, const Vec3f & op0, const Vec3f & op1, int segments, bool closest=false );
 
 		
 		gl::Texture &	getMaskTexture()					{ return mMaskTexture; }
@@ -50,23 +52,29 @@ namespace cinder { namespace qb {
 		void			drawNormals();
 		void			drawNormals( Rectf bounds );
 		void			drawMask();
-		void			drawGrid();
-		void			drawMesh( Vec2f uv=Vec2f::one() );
-		void			drawProjectors();
+		void			drawGrid( bool esfera=false );
+		void			drawMesh( Vec2f uv=Vec2f::one(), bool esfera=false );
 		
 		Vec2i			mSize;
 		Vec2i			mCenter;
 		Vec3f			mCenterf;
 		int				mRadius;
 		int				mDiameter;
-		float			mGridStep;
+		int				mGridStep;
+		int				mMeshStep;
 		
 		// Static
 		static Vec3f	getPosFromLatLng( float lat, float lng );
+		static Vec3f	getPosFromLatLngRad( float lat, float lng );
 		static Vec2f	texelToDome( Vec2f st );
 		static Vec2f	domeToTexel( Vec2f dc );
+		static Vec2f	domeToTexel( Vec3f pos );
+		static Vec2f	domeToGeo( Vec3f pos );
 		static float	domeRadius( Vec2f dc );
 		static float	getPixelAngle( Vec2f dc );
+		
+		static Vec3f	geoToDome( Vec2f st );
+		
 		
 		bool *			mMask;			// for x,y in a DM: Is inside circle?
 		float *			mLength;		// for x,y in a DM: distance from center
@@ -76,11 +84,14 @@ namespace cinder { namespace qb {
 		
 	private:
 		
-		void		makeMask();
+		void			makeMask();
 		
-		gl::Texture	mMaskTexture;
-		gl::Texture	mNormalTexture;
-		
+		gl::Texture			mMaskTexture;
+		gl::Texture			mNormalTexture;
+	
+		gl::DisplayList		mMeshGrid[2];		// 2 for dome/esfera
+		gl::DisplayList		mMeshDome[2];		// 2 for dome/esfera
+
 	};
 	
 	

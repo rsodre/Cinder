@@ -16,25 +16,30 @@ namespace cinder { namespace qb {
 		qbPlayhead();
 		
 		void			update();
+		void			seekToProg( float _prog );
 		void			seekToTime( double _s );
+		void			scheduleRewind()			{ bShouldRewind = true; }
 
+		bool			isPlaying()					{ return bPlaying; }
+		bool			isFresh()					{ return bFresh; }
+		int				getCurrentFrame()			{ return mCurrentFrame; }
+		double			getSeconds();
+		
 		void			start();
-		void			rewind();
 		void			stop();
 		void			resume();
 		
-		bool			isPlaying()			{ return bIsPlaying; }
-		double			getSeconds()		{ return mSeconds; }
-		int				getCurrentFrame()	{ return mCurrentFrame; }
-		
 	private:
 		
-		bool			bIsPlaying;
+		bool			bPlaying;
 		bool			bShouldRewind;
 		double			mLastTime;
 		double			mSeconds;
 		int				mCurrentFrame;
+		int				mLastFrame;
+		bool			bFresh;
 		
+		void			rewind();
 	};
 	
 	

@@ -8,6 +8,7 @@
 #include "cinder/Filesystem.h"
 
 #include "qbSource.h"
+#include "qbPalette.h"
 #include "ciConfig.h"
 #include "qb.h"
 
@@ -29,6 +30,11 @@ namespace cinder { namespace qb {
 		if ( _f.compare(0,8,"syphon::") == 0 )
 		{
 			this->loadSyphon( _f.substr(8), "" );
+		}
+		else if ( _f.compare("qbSourcePalette") == 0 )
+		{
+			qbSourcePalette *newSrc = new qbSourcePalette();
+			this->setSource(newSrc);
 		}
 		else
 		{
@@ -80,23 +86,25 @@ namespace cinder { namespace qb {
 		if (mConfigSelectorId >= 0)
 			mConfigSelectorPtr->setValueLabel( mConfigSelectorId, _key,  getPathFileName(_name) );
 	}
-	void qbSourceSelector::useConfigSelector( int _id, ciConfig *_ptr )
+	void qbSourceSelector::useConfigSelector( int _id, ciConfig *_ptr, bool popValueList )
 	{
 		mConfigSelectorId = _id;
 		mConfigSelectorPtr = ( _ptr ? _ptr : &_cfg );
+		
 		//mConfigSelectorPtr->setValueLabels( mConfigSelectorId, mList );
-		std::map<int,std::string>::const_iterator it;
-		for ( it = mList.begin() ; it != mList.end(); it++ )
-			mConfigSelectorPtr->setValueLabel( mConfigSelectorId, it->first,  getPathFileName(it->second) );
+		if (popValueList)
+		{
+			std::map<int,std::string>::const_iterator it;
+			for ( it = mList.begin() ; it != mList.end(); it++ )
+				mConfigSelectorPtr->setValueLabel( mConfigSelectorId, it->first,  getPathFileName(it->second) );
+		}
+		else
+			mConfigSelectorPtr->setLimits(_id,0,mList.size()-1);
 	}
 	void qbSourceSelector::useConfigTrigger( int _id, ciConfig *_ptr )
 	{
 		mConfigTriggerId = _id;
 		mConfigTriggerPtr = ( _ptr ? _ptr : &_cfg );
-		if (mConfigTriggerPtr->getBool(mConfigTriggerId))
-			this->play();
-		else
-			this->stop();
 	}
 	//
 	// Main Loop update
@@ -120,7 +128,7 @@ namespace cinder { namespace qb {
 		// Config Trigger
 		if (mConfigTriggerId >= 0)
 		{
-			bool shouldBePlaying = ( mConfigTriggerPtr->getBool(mConfigTriggerId) != 0);
+			bool shouldBePlaying = mConfigTriggerPtr->getBool(mConfigTriggerId);
 			if ( ! mSrc->isPlaying() && shouldBePlaying )
 				this->play();
 			else if ( mSrc->isPlaying() && ! shouldBePlaying )
@@ -128,6 +136,8 @@ namespace cinder { namespace qb {
 		}
 		// update Frame
 		mSrc->updateFrame();
+		mConfigName = this->getName();
+		mConfigDesc = this->getDesc();
 		mConfigTexture = this->getTexture();
 	}
 
@@ -141,6 +151,7 @@ namespace cinder { namespace qb {
 		bPlaying		= false;
 		bBundled		= false;
 		bHasAlpha		= false;
+		bBackwards		= false;
 		mBoundUnit		= 0;
 		mSpawnedAtFrame = -1;
 		mSize = Vec2f::zero();
@@ -231,7 +242,7 @@ namespace cinder { namespace qb {
 	//
 	// MOTOLED
 	// input x/y as prog (0.0 to 1.0)
-	ColorA qbSourceBase::getColor( float _px, float _py )
+	ColorA qbSourceBase::getColorProg( float _px, float _py )
 	{
 		const Surface8u & surf = this->getSurface();
 		if ( ! surf )
@@ -240,7 +251,8 @@ namespace cinder { namespace qb {
 		int y = (int) (_py * mSize.y);
 		ColorA c = surf.getPixel(Vec2i(x,y));
 		//printf("____color %.2f %.2f = %d %d = %.2f %.2f %.2f\n",_px,_py,x,y,c.r,c.g,c.b);
-		return ( c.a == 0 ? ColorA::zero() : c );
+		//return ( c.a == 0 ? ColorA::zero() : c );
+		return c;
 	}
 	
 	
@@ -279,6 +291,7 @@ namespace cinder { namespace qb {
 		mDesc = os.str();
 		mDesc2 = "";
 		mSpawnedAtFrame = getElapsedFrames();
+		mFullPath = _f;
 		this->play();	// Always playing
 		
 		printf("SOURCE Image [%s] loaded!\n",theFile.c_str());
@@ -323,7 +336,10 @@ namespace cinder { namespace qb {
 			bHasAlpha = mMovie->hasAlpha();
 			mFrameCount = mMovie->getNumFrames() + 1;
 			mDuration = mMovie->getDuration();
-			mFrameRate = mMovie->getFramerate();
+			mFrameRate = (mFrameCount / mDuration);	//mMovie->getFramerate();
+			mFrameTime = (mDuration / mFrameCount);
+			mDurationQT = (mDuration - mFrameTime);
+			mFullPath = _f;
 		}
 		catch( ... ) {
 			printf("ERRO!!! MovieGl throws...\n");
@@ -344,13 +360,14 @@ namespace cinder { namespace qb {
 		os.str("");
 		os.setf(std::ios::fixed);
 		os.precision(1);
-		os << "Movie: " << mSize.x << " x " << mSize.y << " " << mDuration << "s";
+		os << "Movie: " << mSize.x << " x " << mSize.y << ", " << mDuration << "s";
 		mDesc = os.str();
 		mSpawnedAtFrame = getElapsedFrames();
 		
 		printf("SOURCE Movie [%s] loaded as %s!\n",theFile.c_str(),(mMovieGl?"MovieGl":"MovieSurface"));
 		return true;
 	}
+
 	//
 	// Get new Frame
 	// qbUpdateObject VIRTUAL
@@ -359,27 +376,35 @@ namespace cinder { namespace qb {
 		if ( ! mMovie )
 			return;
 		
-		// maybe this shouldn't be playing...
-		if ( ! _force && ! (bPlaying && _qb.isPlaying()) )
-		{
-			if ( mMovie->isPlaying() )
-				mMovie->stop();
-			return;
-		}
+		// start/stop
+		/* no need to play as we do it frame by frame
+		if ( bPlaying && ! mMovie->isPlaying() )
+			mMovie->play();
+		else if ( ! bPlaying && mMovie->isPlaying() )
+			mMovie->stop();
+		 */
 		
+		// maybe this shouldn't be playing...
+		if ( ( ! bPlaying || ! _qb.isPlaying() ) && ! _force )
+			return;
+		
+		// Time Profiler
 		double d = (app::getElapsedSeconds() - mTimeProfiler);
-		//printf("%d) t(%.5f) QB source in %s...\n",app::getElapsedFrames(),(float)d,mName.c_str());
 		mTimeProfiler = app::getElapsedSeconds();
 
 		bool newFrame = false;
 
 		// Always play frame by frame
 		float t = ( _qb.shouldRenderFitSources() ? QB_ANIM_PROG * mDuration : QB_TIME );
-		mMovie->seekToTime( math<float>::fmod( t, mDuration ) );
-		//mMovie->seekToFrame( _qb.getCurrentFrame() % mFrameCount );
+		if (_renderer.isRendering()) printf("PLAY   t0 %.8f    duration %.8f   qt %.8f\n",t,mDuration,mDurationQT);
+		t = math<float>::fmod( t, mDuration );
+		if (bBackwards)
+			t = (mDurationQT - t);
+		int fr = roundf(mFrameCount * (t/mDuration));
+		if (_renderer.isRendering()) printf("PLAY   t1 %.8f     fr %d\n",t,fr);
+		//mMovie->seekToTime( t );
+		mMovie->seekToFrame( fr );
 		newFrame = true;
-		//if (_qb.isRendering())
-		//	printf("SET FRAME  anim fr %d  t %.3f  >>  t %.3f/%.3f  new %d  (%s)\n",_qb.getCurrentFrame(),t,mMovie->getCurrentTime(),mDuration,(int)newFrame,mName.c_str());
 		
 		// load new frame?
 		if ( newFrame )
@@ -394,8 +419,10 @@ namespace cinder { namespace qb {
 				mSurface = mMovieSurface.getSurface();
 				mTex = gl::Texture( mSurface );
 			}
-			mCurrentTime = mMovie->getCurrentTime();
-			mCurrentFrame = (( mCurrentTime / mDuration) * mFrameCount);
+			//mCurrentTime = mMovie->getCurrentTime();
+			//mCurrentFrame = ((mCurrentTime / mDuration) * mFrameCount);
+			mCurrentTime = t;
+			mCurrentFrame = fr;
 
 			// calc UV?
 			this->makeUV( mTex.getMaxU(), mTex.getMaxV() );
@@ -408,8 +435,10 @@ namespace cinder { namespace qb {
 			os << mDuration << " s .. " << mCurrentTime << " s";
 			mDesc2 = os.str();
 		}
+//if (_renderer.isRendering())
+//printf("SOURCE PLAY  time %.8f / fr %d\n",mCurrentTime,mCurrentFrame);;
 
-		
+		// Time Profiler
 		d = (app::getElapsedSeconds() - mTimeProfiler);
 		//rintf("%d) t(%.5f) QB source out...\n",app::getElapsedFrames(),(float)d);
 		mTimeProfiler = app::getElapsedSeconds();

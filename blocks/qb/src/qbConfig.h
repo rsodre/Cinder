@@ -6,9 +6,9 @@
 //
 #pragma once
 
-#include "ciConfigGuiSimple.h"
+#include "ciConfigGui.h"
 
-#define QBCFG_THUMB_SIZE			Vec2f(80,80*0.75)
+#define QB_PALETTE_COUNT			5
 
 //////////////////////////////
 //
@@ -21,6 +21,7 @@ enum enumQBCfg
 	QBCFG_CAMERA_TYPE,
 	QBCFG_CAMERA_GROUND,
 	QBCFG_METRIC_THROW,
+	QBCFG_OPACITY,
 	// Animation
 	QBCFG_PLAYING,
 	QBCFG_PLAY_BACKWARDS,
@@ -29,15 +30,43 @@ enum enumQBCfg
 	QBCFG_PREVIEW_UPSCALE,
 	QBCFG_CURRENT_TIME,
 	// Render
-	QBCFG_TARGET_FRAMERATE,
+	QBCFG_RENDER_OPTIONS,
+	QBCFG_PRESERVE_ALPHA,
+	QBCFG_RENDER_PNG_SEQUENCE,
+	QBCFG_RENDER_FRAMERATE,
+	QBCFG_RENDER_QUALITY,
 	QBCFG_RENDER_SECONDS,
 	QBCFG_RENDER_STILL_SECONDS,
-	QBCFG_RENDER_REWIND,
 	QBCFG_FIT_SOURCES_TO_RENDER,
 	QBCFG_MODUL8_INPUT,
 	QBCFG_SYPHON_OUTPUT,
+	// Palette
+	QBCFG_PALETTE_FLAG,
+	QBCFG_PALETTE_COUNT,
+	QBCFG_PALETTE_MIN,
+	QBCFG_PALETTE_MAX,
+	QBCFG_PALETTE_COMPRESS,
+	QBCFG_PALETTE_1,
+	QBCFG_PALETTE_2,
+	QBCFG_PALETTE_3,
+	QBCFG_PALETTE_4,
+	QBCFG_PALETTE_5,
+	QBCFG_PERLIN_FLAG,
+	QBCFG_PERLIN_GRAYSCALE,
+	QBCFG_PERLIN_OCTAVE,
+	QBCFG_PERLIN_SPEED,
+	QBCFG_PERLIN_FREQ,
+	QBCFG_PERLIN_OFFSET,
+	QBCFG_PERLIN_SCALE,
+	QBCFG_PERLIN_COMPRESS,
+	QBCFG_PERLIN_TEXTURE,
+	QBCFG_PALETTE_NET_STATE,
+	QBCFG_PALETTE_NET_HOST,
+	QBCFG_PALETTE_NET_PORT,
+	QBCFG_PALETTE_REDUCE_TIME,
 	//
 	// READ ONLY
+	DUMMY_GPU,
 	DUMMY_RENDER_WIDTH,
 	DUMMY_RENDER_HEIGHT,
 	DUMMY_QB_WIDTH,
@@ -49,8 +78,10 @@ enum enumQBCfg
 	DUMMY_CURRENT_FPS,
 	DUMMY_CURRENT_FRAME,
 	DUMMY_RENDER_STATUS,
-	DUMMY_RENDER_PROGRESS,
-	DUMMY_RENDER_TIME,
+	DUMMY_RENDER_FRAMES,
+	DUMMY_RENDER_TIME_REMAINING,
+	DUMMY_RENDER_TIME_ELAPSED,
+	DUMMY_RENDER_TIME_ESTIMATED,
 	// # of params
 	QBCFG_COUNT
 };
@@ -88,32 +119,59 @@ enum enum_qbCameraType {
 /*"Dome",*/\
 NULL
 
+//
+// Palette Networking
+enum enum_qbPaletteNetworking {
+	PALETTE_NET_OFF = 0,
+	PALETTE_NET_SEND,
+	PALETTE_NET_RECEIVE,
+	// count
+	PALETTE_NET_COUNT
+};
+#define LABELS_PALETTE_NET \
+"OFF",\
+"Send",\
+"Receive",\
+NULL
+
 
 
 //
 // Config Class
-class qbConfig : public ci::ciConfigGuiSimple {
+class qbConfig : public ci::ciConfigGui {
 public:
 	qbConfig();
 	~qbConfig() {}
 
+	void	setup();
 	void	update();
 	
-	void	enableRenderControls( bool e=true )		{ renderPanel->enabled = e; }
+	void	enableQBGui( bool e=true )				{ columnRender->enable(); columnPalette->enable(); }
 	
-	void	clearRenderTexture( const Color & c=Color::white() );
-	void	setRenderTexture( gl::Texture & frame );
+	void	setRenderTexture( gl::Texture * frame );
 
-	gl::Fbo						mRenderTexFbo;
+	// tabs
+	sgui::TabControl			* tabQB;
+	// columns
+	sgui::ColumnControl			* columnQB;
+	sgui::ColumnControl			* columnRender;
+	sgui::ColumnControl			* columnPerlinSource;
+	sgui::ColumnControl			* columnPalette;
+	// panels
+	sgui::PanelControl			* panelSyphon;
+	sgui::PanelControl			* panelPaletteColors;
+	sgui::PanelControl			* panelPaletteReduction;
+	// controls
+	sgui::ButtonControl			* buttonPlaySwitch;
+	sgui::ButtonControl			* buttonRenderSwitch;
+	sgui::TextureVarControl		* controlRenderTexture;
+	sgui::TextureVarControl		* controlPaletteTexture;
+	// gui textures
 	gl::Texture					mNullTexture;
-
+	gl::Texture					mTexturePalette;
+	
 private:
 	
-	sgui::PanelControl*			renderPanel;
-	sgui::ButtonControl*		buttonPlaySwitch;
-	sgui::ButtonControl*		buttonRenderSwitch;
-	sgui::TextureVarControl*	mTextureControl;
-
 	bool	cbLoad( ci::app::MouseEvent event );
 	bool	cbSave( ci::app::MouseEvent event );
 	bool	cbPlaySwitch( ci::app::MouseEvent event );
@@ -121,6 +179,11 @@ private:
 	bool	cbRenderSwitch( ci::app::MouseEvent event );
 	bool	cbRenderFinish( ci::app::MouseEvent event );
 	bool	cbScreenshot( ci::app::MouseEvent event );
+	bool	cbPalette2Switch( ci::app::MouseEvent event );
+	bool	cbPalette3Switch( ci::app::MouseEvent event );
+	bool	cbPalette4Switch( ci::app::MouseEvent event );
+	bool	cbPalette5Switch( ci::app::MouseEvent event );
+	void	paletteSwitchColors( int cfg1, int cfg2 );
 
 	void	postSetCallback(int id, int i);
 	

@@ -26,6 +26,8 @@
 #include "qbConfig.h"
 #include "qbLight.h"
 #include "qbDomeMaster.h"
+#include "qbPalette.h"
+#include "qbTouch.h"
 
 #define QB_MAX_UNITS	8
 
@@ -36,10 +38,14 @@ public:
 	
 	qbMain();
 	~qbMain();
-	void	init( int _w, int _h, float _fr=60.0f, bool _autoWindowSize=true );
-	void	initDomeMaster();
+	void	enableMultiTouch( AppBasic::Settings *settings );
+	void	init();
+	void	init( int _w, int _h, bool _autoWindowSize=true );
+	void	initDomeMaster()						{ mDomeMaster.setup( mRenderWidth, mRenderHeight ); }
+	void	setScreenName(std::string name)			{ mScreenName = name; mConfig->guiSetName(name); };
 	bool	onResize( app::ResizeEvent event );
 	bool	onKeyDown( app::KeyEvent event );
+	bool	onFileDrop( FileDropEvent event );
 
 	// update Pool
 	void	updatePoolAdd( qbUpdateObject * o)		{ mUpdatePool.add(o); }
@@ -68,14 +74,25 @@ public:
 	gl::Light * light( int i )	{ return mLights[i]; }
 
 	// Setup
-	void	setFrameRate( float fr );
-	void	resizeRender( int w, int h );
-	void	resizePrint( int w, int h );
+	void	resizeMetric( Vec2f sz )				{ this->resizeMetric( sz.x, sz.y ); }
+	void	resizeRender( Vec2i sz )				{ this->resizeRender( sz.x, sz.y ); }
+	void	resizeWindow( Vec2i sz)					{ this->resizeWindow( sz.x, sz.y ); }
+	void	resizePrint( Vec2i sz )					{ this->resizePrint( sz.x, sz.y ); }
 	void	resizeMetric( float w, float h );
+	void	resizeRender( int w, int h );
 	void	resizeWindow( int w, int h);
+	void	resizePrint( int w, int h );
 	void	resizePreview();
 	void	setBackgroundColor( ci::Color _c )		{ mBackgroundColor = _c; }
-	void	enableRenderControls( bool e=true )		{ bRenderControls=e; mConfig->enableRenderControls(e); };
+	void	enableRenderControls( bool e=true )		{ bRenderControls=e; mConfig->columnRender->enable(e); };
+	void	enableSyphonControls( bool e=true )		{ bSyphonControls=e; mConfig->panelSyphon->enable(e); };
+	void	enablePaletteControls( bool e=true )	{ if (mConfig->columnPalette) mConfig->columnPalette->enable(e); if(mConfig->columnPerlinSource) mConfig->columnPerlinSource->enable(e); };
+	void	disableQBTab()	{
+		this->enableRenderControls( false );
+		this->enableSyphonControls( false );
+		this->enablePaletteControls( false );
+		mConfig->tabQB->enable(false);
+	};
 
 
 	// camera setup
@@ -85,7 +102,6 @@ public:
 	void	setCameraNear( const float n );
 	void	setCameraOnTheGround( const bool b=true );
 	void	setFarThrowMultiplyer( const float f );
-	void	setStereoSeparation( float s );
 	void	setCameraType( const int t );
 	void	setCameraStereo( bool b=true );
 	void	stereoSwitch();
@@ -95,13 +111,15 @@ public:
 	//
 	// Misc
 	std::string & getAppName()			{ return mAppName; }
+	std::string & getAppVersion()		{ return mAppVersion; }
+	std::string & getScreenName()		{ return mScreenName; }
 	std::string getFilePath( const std::string & _f );
 	Vec2f &		getMousePos()			{ return mMousePos; }
 	// Render
-	float		getFrameRate()			{ return mConfig->getInt(QBCFG_TARGET_FRAMERATE); }
+	float		getRenderFrameRate()	{ return mConfig->getInt(QBCFG_RENDER_FRAMERATE); }
 	int			getRenderWidth()		{ return mRenderWidth; }
 	int			getRenderHeight()		{ return mRenderHeight; }
-	int			getRenderAspect()		{ return mAspectRender; }
+	int			getRenderAspect()		{ return mRenderAspect; }
 	Vec2i &		getRenderSize()			{ return mRenderSize; }
 	Rectf &		getRenderBounds()		{ return mRenderBounds; }
 	int			getWindowWidth()		{ return mWindowWidth; }
@@ -119,8 +137,10 @@ public:
 	Vec3f &		getMetricCenter()		{ return mMetricCenter; }
 	Vec2f &		getMetricSize()			{ return mMetricSize; }
 	Rectf &		getMetricBounds()		{ return mMetricBounds; }
+	float		getAlpha()				{ return ( mConfig->getBool(QBCFG_PRESERVE_ALPHA) ? 0.0f : 1.0f ); }
 	// Camera
 	Camera*		getCamera()				{ return mCameraActive; }
+	Vec3f		getCameraEye()			{ return mCameraActive->getEyePoint(); }
 	float		getCameraNear()			{ return mCameraNear; }
 	float		getCameraFar()			{ return mCameraFar; }
 	Vec3f		getCameraOffset()		{ return mCameraOffset; }
@@ -134,38 +154,22 @@ public:
 	
 	//
 	// Playhead Control
-	void		play( bool p=true );
+	void		play( bool _p=true );
 	void		stop();
 	void		playSwitch();
-	void		rewind();
+	void		rewind()				{ mPlayhead.scheduleRewind(); };
+	void		rewindSources();
 	// Playhead Getters
 	double		getTime()				{ return mPlayhead.getSeconds(); }
-	double		getSeconds()			{ return mPlayhead.getSeconds(); }
 	int			getCurrentFrame()		{ return mPlayhead.getCurrentFrame(); }
 	bool		isPlaying()				{ return mPlayhead.isPlaying(); }
-	bool		isPlayingBackwards()	{ return mConfig->getBool(QBCFG_PLAY_BACKWARDS); }
-	bool		isPreviewRealtime()		{ return (mConfig->getBool(QBCFG_REALTIME_PREVIEW) && ! this->isRendering()); }
+	bool		isPreviewRealtime()		{ return (mConfig->getBool(QBCFG_REALTIME_PREVIEW) && ! mRenderer.isRendering()); }
 	
 	//
 	// Renderer Control
-	void		renderSetFolder( const std::string & _path );
-	void		setFileMovie( const std::string & _folder );
-	void		setFileImage( const std::string & _folder );
-	
-	void		renderSwitch();
-	void		renderStart( const std::string & _f="" );
-	void		renderStop();
-	void		renderFinish();
-	void		takeScreenshot()		{ mRenderer.takeScreenshot( mFboRender.getTexture() ); }
-	// Renderer Getters
-	bool		isRendering()			{ return mRenderer.isRendering(); }
-	std::string & getRenderStatus()		{ return mRenderer.getStatus(); }
-	std::string & getRenderProgress()	{ return mRenderer.getProgressString(); }
-	std::string & getRenderTime()		{ return mRenderer.getTimeString(); }
-	int			getRenderSeconds()		{ return mConfig->getInt(QBCFG_RENDER_SECONDS); }
-	int			getRenderFrames()		{ return (int)(mConfig->get(QBCFG_RENDER_SECONDS) * mConfig->get(QBCFG_TARGET_FRAMERATE)); }
+	float		getRenderSeconds()		{ return mConfig->get(QBCFG_RENDER_SECONDS); }
+	int			getRenderFrames()		{ return (int)(mConfig->get(QBCFG_RENDER_SECONDS) * mConfig->get(QBCFG_RENDER_FRAMERATE)); }
 	int			getRenderStillSeconds()	{ return mConfig->getInt(QBCFG_RENDER_STILL_SECONDS); }
-	bool		shouldRenderRewind()	{ return mConfig->getBool(QBCFG_RENDER_REWIND); }
 	bool		shouldRenderFitSources(){ return mConfig->getBool(QBCFG_FIT_SOURCES_TO_RENDER); }
 	
 	//
@@ -175,10 +179,18 @@ public:
 	void	placeCameraLeft();					// Place STEREO Camera
 	void	placeCameraRight();					// Place STEREO Camera
 	void	placeCameraWindow();				// Place WINDOW camera to draw FBOs
-	void	bindFbo();							// RENDER Fbo
-	void	bindFbo( ColorA c );				// RENDER Fbo
-	void	bindFboLeft()						{ if (mConfig->getInt(QBCFG_CAMERA_TYPE) == CAMERA_TYPE_STEREO) mFboLeft.bindFramebuffer(); }	// STEREO Fbo
-	void	bindFboRight()						{ if (mConfig->getInt(QBCFG_CAMERA_TYPE) == CAMERA_TYPE_STEREO) mFboRight.bindFramebuffer(); }	// STEREO Fbo
+	void	bindFbo()							{ this->bindFramebuffer( mFboRender ); }		// RENDER Fbo
+	void	bindFbo( Color8u c )				{ this->bindFramebuffer( mFboRender, c ); }		// RENDER Fbo
+	void	bindFbo( Color c )					{ this->bindFramebuffer( mFboRender, c ); }		// RENDER Fbo
+	void	bindFbo( ColorA c )					{ this->bindFramebuffer( mFboRender, c ); }		// RENDER Fbo
+	void	bindFboLeft()						{ if (this->isCameraStereo()) this->bindFramebuffer( mFboLeft ); }			// STEREO Fbo
+	void	bindFboLeft( Color8u c )			{ if (this->isCameraStereo()) this->bindFramebuffer( mFboLeft, c ); }		// STEREO Fbo
+	void	bindFboLeft( Color c )				{ if (this->isCameraStereo()) this->bindFramebuffer( mFboLeft, c ); }		// STEREO Fbo
+	void	bindFboLeft( ColorA c )				{ if (this->isCameraStereo()) this->bindFramebuffer( mFboLeft, c ); }		// STEREO Fbo
+	void	bindFboRight()						{ if (this->isCameraStereo()) this->bindFramebuffer( mFboRight ); }			// STEREO Fbo
+	void	bindFboRight( Color8u c )			{ if (this->isCameraStereo()) this->bindFramebuffer( mFboRight, c ); }		// STEREO Fbo
+	void	bindFboRight( Color c )				{ if (this->isCameraStereo()) this->bindFramebuffer( mFboRight, c ); }		// STEREO Fbo
+	void	bindFboRight( ColorA c )			{ if (this->isCameraStereo()) this->bindFramebuffer( mFboRight, c ); }		// STEREO Fbo
 	void	bindFbo( int i )					{ mFbos[i].bindFramebuffer(); }					// Additional FBOs
 	void	unbindFbo()							{ mFboRender.unbindFramebuffer(); }				// Any Fbo
 	void	bindFboTexture( int unit )			{ mFboRender.getTexture().bind(unit); }
@@ -190,25 +202,30 @@ public:
 	void	drawFbo( Rectf b, Area a )			{ gl::draw( mFboRender.getTexture(), a, b ); }
 	void	drawFbo( int i )					{ gl::draw( mFbos[i].getTexture() ); }
 	void	drawFbo( int i, Rectf b )			{ gl::draw( mFbos[i].getTexture(), b ); }
-	void	drawModul8( Rectf b, bool flip=false );
+	void	drawModul8( Rectf b );
 	void	finishAndDraw();
+	gl::Texture	getFboTexture()					{ return mFboRender.getTexture(); }
+	gl::Texture	getFboTexture(int i)			{ return mFbos[i].getTexture(); }
 
-	//
-	// UTILITIES
-	
 	//
 	// Public
 	qbConfig		*mConfig;
+	qbRenderer		mRenderer;
+	qbPlayhead		mPlayhead;
 	qbDomeMaster	mDomeMaster;
+	qbPalette		mPalette;
+	qbTouch			mTouch;
 	Font			mFontHelvetica, mFont;
-	std::string		mScreenName;
 	bool			bVerbose;
-	bool			bSyphonOutput;
 	int				mDefaultCamera;
 
 private:
 	
 	void		resizeFbos();
+	void		bindFramebuffer( gl::Fbo & fbo );
+	void		bindFramebuffer( gl::Fbo & fbo, Color8u c );
+	void		bindFramebuffer( gl::Fbo & fbo, Color c );
+	void		bindFramebuffer( gl::Fbo & fbo, ColorA c );
 	void		blendStereo();
 	void		setActiveCamera( int type=-1 );				// Select active camera
 	void		updateCamera( Vec3f off=Vec3f::zero() );
@@ -216,21 +233,22 @@ private:
 
 	// misc
 	bool						bInited;
+	bool						bAutoResizeFbos;
 	bool						bDrawGui;
+	bool						bSyphonControls;
 	bool						bRenderControls;
 	std::string					mAppName;
+	std::string					mAppVersion;
+	std::string					mScreenName;
 	std::vector<std::string>	mPathList;
 	
 	// QB
-	qbPlayhead					mPlayhead;
 	qbUpdatePool				mUpdatePool;
-	qbRenderer					mRenderer;
 	std::map<int,qbSourceSelector>	mSources;					// Active sources
 	int							mBoundSource[QB_MAX_UNITS];		// currently bound source
 	
 	// GL
 	ci::Color					mBackgroundColor;
-	gl::Fbo::Format				mFboFormat;
 	gl::Fbo						mFboRender;				// Final render FBO
 	gl::Fbo						mFboLeft, mFboRight;	// Stereo FBOs
 	std::map<int,gl::Fbo>		mFbos;					// Additional FBOs
@@ -247,7 +265,7 @@ private:
 	// Render dimensions
 	int					mRenderWidth;
 	int					mRenderHeight;
-	float				mAspectRender;
+	float				mRenderAspect;
 	Vec2i				mRenderSize;
 	Rectf				mRenderBounds;
 	// Print dimensions
@@ -264,6 +282,7 @@ private:
 	Vec2f				mMousePos;				// metric unit
 	Vec2f				mMousePan;				// metric unit
 	// Scene dimensions
+	Vec2f				mMetricBase;
 	float				mMetricWidth;
 	float				mMetricHeight;
 	float				mMetricThrow;			// camera throw

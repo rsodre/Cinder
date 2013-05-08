@@ -1,4 +1,4 @@
-//
+ //
 //  qb.h
 //
 //  Created by Roger Sodre on 01/07/2011
@@ -114,23 +114,6 @@ namespace cinder { namespace qb {
 		// Same ratio
 		else
 			return dst;
-	}
-	void transformToFit( Area src, Area dst )
-	{
-		qb::transformToFit( Vec2i(src.getWidth(), src.getHeight()), Vec2i(dst.getWidth(), dst.getHeight()) );
-	}
-	void transformToFit( Vec2i src, Vec2i dst )
-	{
-		// Scale
-		float scaleX = ( dst.x / src.x );
-		float scaleY = ( dst.y / src.y );
-		float sc = math<float>::clamp( ( scaleX < scaleY ? scaleX : scaleY ), 0.0, 1.0 );
-		// Position (scaled)
-		int gapX = floorf( (src.x * sc) < dst.x ? ( dst.x - (src.x * sc) ) / 2.0 : 0.0 ) ;
-		int gapY = floorf( (src.y * sc) < dst.y ? ( dst.y - (src.y * sc) ) / 2.0 : 0.0 ) ;
-		// Transform!!
-		glTranslatef( gapX, gapY, 0 );
-		glScalef( sc, sc, sc );
 	}
 	
 	

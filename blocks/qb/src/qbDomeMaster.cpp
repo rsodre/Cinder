@@ -16,12 +16,15 @@ namespace cinder { namespace qb {
 	
 	void qbDomeMaster::setup( int w, int h )
 	{
+		if ( w == 0 || h == 0 )
+			return;
 		mSize = Vec2i( w, h );
 		mCenter = mSize * 0.5;
 		mCenterf = Vec3f( mCenter.x, mCenter.y, 0 );
 		mDiameter = h;
 		mRadius = h * 0.5;
-		mGridStep = 10.0f;
+		mGridStep = 10;
+		mMeshStep = 5;
 
 		// Make Length of each pixel to the center
 		mLength = (float*) realloc( mLength, sizeof(float) * w * h );
@@ -37,7 +40,11 @@ namespace cinder { namespace qb {
 			while( iter.line() ) {
 				while( iter.pixel() ) {
 					int i = DXYI(iter.x(),iter.y());
+#ifdef GEO
+					mMask[i] = true;
+#else
 					mMask[i] = ( mLength[i] <= mRadius ? true : false );
+#endif
 					iter.r() = iter.g() = iter.b() = 0;
 					iter.a() = ( mMask[i] ? 255 : 0 );
 				}
@@ -57,10 +64,16 @@ namespace cinder { namespace qb {
 					int i = DXYI(iter.x(),iter.y());
 					if ( mMask[i] )
 					{
+#ifdef GEO
+						mVectors[i] = qbDomeMaster::geoToDome( Vec2f(iter.x(),iter.y()) / mVectorSurface.getSize() );
+						//mVectors[i] *= Vec3f( mVectorSurface.getSize(), mVectorSurface.getHeight() );
+#else
+						
 						float d = mCenter.distance( Vec2i( iter.x(), iter.y() ) );
 						mVectors[i].x = iter.x() - mCenter.x;
 						mVectors[i].y = iter.y() - mCenter.y;
 						mVectors[i].z = sqrt( mRadius * mRadius - d * d );
+#endif
 						mProjection[i] = mVectors[i];
 						mVectors[i].normalize();
 						mNormals[i].x = mVectors[i].x;
@@ -98,13 +111,12 @@ namespace cinder { namespace qb {
 		Vec3f p = p0.lerp( fact, p1 );
 		return this->project2D( p );
 	}
-	void qbDomeMaster::drawLineSegmented2D( const Vec3f & p0, const Vec3f & p1, float segmentSize )
+	void qbDomeMaster::drawLineSegmented2D( const Vec3f & p0, const Vec3f & p1, int segments )
 	{
 		glBegin( GL_LINE_STRIP );
-		int segments = (int)( p0.distance( p1 ) / segmentSize ) + 1;
 		for (int i = 0 ; i <= segments ; i++)
 		{
-			float prog = (1.0f / segments) * i;
+			float prog = (i / (float)segments);
 			Vec3f mid = this->lerp2D( prog, p0, p1 );
 			//glNormal3f( this->getNormal( Vec2i(mid.x, mid.y) ) );
 			glVertex3f( mid );
@@ -117,13 +129,12 @@ namespace cinder { namespace qb {
 	//
 	// Draw segmented line in 3D space with minimum segment size
 	// p0/p1 = ( 0..w, 0..h)
-	void qbDomeMaster::drawLineSegmented( const Vec3f & p0, const Vec3f & p1, float segmentSize )
+	void qbDomeMaster::drawLineSegmented( const Vec3f & p0, const Vec3f & p1, int segments )
 	{
 		glBegin( GL_LINE_STRIP );
-		int segments = (int)( p0.distance( p1 ) / segmentSize ) + 1;
 		for (int i = 0 ; i <= segments ; i++)
 		{
-			float prog = (1.0f / segments) * i;
+			float prog = (i / (float)segments);
 			Vec3f mid = p0.lerp( prog, p1 ).normalized();
 			//glNormal3f( this->getNormal( Vec2i(mid.x, mid.y) ) );
 			glVertex3f( mid );
@@ -137,7 +148,7 @@ namespace cinder { namespace qb {
 	// Intersection of a line startint from p0 to p1 into the dome
 	// http://knol.google.com/k/koen-samyn/line-sphere-intersection-c/2lijysgth48w1/118#
 	// http://en.wikipedia.org/wiki/Line%E2%80%93sphere_intersection
-	Vec3f qbDomeMaster::getIntersectionFrom( const Vec3f & lp1, const Vec3f & lp2 )
+	Vec3f qbDomeMaster::getIntersectionFrom( const Vec3f & lp1, const Vec3f & lp2, bool closest )
 	{
 		Vec3f res = Vec3f::zero();
 		float R = 1.0f;					// Radius
@@ -148,31 +159,62 @@ namespace cinder { namespace qb {
 		float b = 2 * ldir.dot(d);
 		float c = d.lengthSquared() - R*R;
 		float D = b*b - 4*a*c;
-		if ( D < 0 )
+		if ( D < 0 ) {
 			res = Vec3f::zero();
-		if ( D < FLT_EPSILON ){
+		} else if ( D < FLT_EPSILON ){
 			float t = (-b)/(2*a);
 			Vec3f p1 = lp1 + t*ldir;
 			res = p1;
-		}else{
+		} else {
 			float sq_D = sqrt(D);
 			float t1 = (-b+sq_D)/(2*a);
 			Vec3f p1 = lp1 + t1 * ldir;
 			float t2 = (-b-sq_D)/(2*a);
 			Vec3f p2 = lp1 + t2 * ldir;
-			res = ( (p1 - lp1).length() > (p2 - lp1).length() ? p1 : p2 );	// return farthest
+			if ( closest )
+				res = ( (p1 - lp1).length() < (p2 - lp1).length() ? p1 : p2 );	// return closest
+			else
+				res = ( (p1 - lp1).length() > (p2 - lp1).length() ? p1 : p2 );	// return farthest
 		}
 		return res;
 	}
-	void qbDomeMaster::drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, float segmentSize )
+	void qbDomeMaster::drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest )
 	{
 		glBegin( GL_LINE_STRIP );
-		int segments = (int)( p0.distance( p1 ) / segmentSize ) + 1;
 		for (int i = 0 ; i <= segments ; i++)
 		{
-			float prog = (1.0f / segments) * i;
-			Vec3f mid = this->getIntersectionFrom( from, p0.lerp( prog, p1 ) );
-			glVertex3f( mid );
+			float prog = (i / (float)segments);
+			Vec3f mid = this->getIntersectionFrom( from, p0.lerp( prog, p1 ), closest );
+			if ( mid != Vec3f::zero() )
+				glVertex3f( mid );
+		}
+		glEnd();
+	}
+	void qbDomeMaster::drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, const Vec3f & op0, const Vec3f & op1, int segments, bool closest )
+	{
+		glBegin( GL_LINE_STRIP );
+		for (int i = 0 ; i <= segments ; i++)
+		{
+			float prog = (i / (float)segments);
+			Vec3f pp = p0.lerp( prog, p1 );
+			Vec3f mid = this->getIntersectionFrom( from, pp, closest );
+			/*if ( mid == Vec3f::zero() )
+			{
+				Vec3f opp = op0.lerp( prog, op1 );
+				for (int ii = 0 ; ii <= points ; ii++)
+				{
+					prog = (1.0f / points) * ii;
+					Vec3f ppp = pp.lerp( prog, opp );
+					Vec3f mid = this->getIntersectionFrom( from, ppp, true );
+					if ( mid != Vec3f::zero() )
+					{
+						glVertex3f( mid );
+						break;
+					}
+				}
+			}*/
+			if ( mid != Vec3f::zero() )
+				glVertex3f( mid );
 		}
 		glEnd();
 	}
@@ -202,57 +244,90 @@ namespace cinder { namespace qb {
 		gl::draw( mMaskTexture, QB_BOUNDS );
 		gl::disableAlphaBlending();
 	}
-	void qbDomeMaster::drawGrid()
+	void qbDomeMaster::drawGrid( bool esfera )
 	{
+		glPushMatrix();
 		glLineWidth( 1 );
-		
-		//glPushMatrix();
-		//glTranslatef( QB_CENTER );
-		float seg = 1.0f / 90.0f;
-		// verticais (Longitude)
-		for ( float lng = 0.0f ; lng < 360.0f ; lng += mGridStep )
+		if ( ! mMeshGrid[esfera] )
 		{
-			gl::color( ((int)lng % 30) == 0 ? Color::yellow()*0.9f : Color::white()*0.5f );
-			Vec3f p0 = XYZ_LATLNG( 0.0f, lng );
-			Vec3f p1 = XYZ_LATLNG( 90.0f, lng+mGridStep );
-			this->drawLineSegmented( p0, p1, seg );
-		}
-		// horizontais (Latutude)
-		gl::color( Color::white()*0.75 );
-		for ( float lat = 0.0f ; lat < 90.0f ; lat += mGridStep )
-		{
-			for ( float lng = 0.0f ; lng < 360.0 ; lng += mGridStep )
+			mMeshGrid[esfera] = gl::DisplayList( GL_COMPILE );
+			mMeshGrid[esfera].newList();
 			{
-				Vec3f p0 = XYZ_LATLNG( lat, lng );
-				Vec3f p1 = XYZ_LATLNG( lat, lng+mGridStep );
-				this->drawLineSegmented( p0, p1, seg );
+				// verticais (Longitude)
+				for ( int lng = 0 ; lng <= 360 ; lng += mMeshStep )
+				{
+					if ( lng % mGridStep != 0 )
+						continue;
+					bool yellow = (lng % 30 == 0);
+					gl::color( yellow ? Color::yellow()*0.9f : Color::white()*0.5f );
+					glBegin( GL_LINE_STRIP );
+					for ( int lat = ( esfera ? -90 : 0 ) ; lat <= 90 ; lat += mMeshStep )
+					{
+						Vec3f p = LATLNG_TO_XYZ( lat, lng );
+						glVertex3f( p );
+					}
+					glEnd();
+					
+				}
+				// horizontais (Latitude)
+				gl::color( Color::white()*0.75 );
+				for ( int lat = (esfera ? -80 : 0) ; lat < 90 ; lat += mMeshStep )
+				{
+					if ( lat % mGridStep != 0 )
+						continue;
+					bool yellow = (lat % 30 == 0);
+					gl::color( yellow ? Color::yellow()*0.9f : Color::white()*0.5f );
+					glBegin( GL_LINE_STRIP );
+					for ( int lng = 0 ; lng <= 360 ; lng += mMeshStep )
+					{
+						Vec3f p = LATLNG_TO_XYZ( lat, lng );
+						glVertex3f( p );
+					}
+					glEnd();
+				}
 			}
+			mMeshGrid[esfera].endList();
 		}
-		//glPopMatrix();
+		else
+			mMeshGrid[esfera].draw();
+		
+		glPopMatrix();
 	}
-	void qbDomeMaster::drawMesh( Vec2f uv )
+	void qbDomeMaster::drawMesh( Vec2f uv, bool esfera )
 	{
 		//glPushMatrix();
 		//glTranslatef( QB_CENTER );
-		// horizontais (Latutude)
-		for ( float lat = 0.0f ; lat < 90.0f ; lat += mGridStep )
+		if ( ! mMeshDome[esfera] )
 		{
-			glBegin( GL_TRIANGLE_STRIP );
-			for ( float lng = 0.0f ; lng <= 360.0 ; lng += mGridStep )
+			mMeshDome[esfera] = gl::DisplayList( GL_COMPILE );
+			mMeshDome[esfera].newList();
+			// horizontais (Latitude)
+			for ( float lat = ( esfera ? -90.0 : 0.0f ) ; lat < 90.0f ; lat += mMeshStep )
 			{
-				Vec3f p0 = XYZ_LATLNG( lat, lng );
-				Vec3f p1 = XYZ_LATLNG( lat+mGridStep, lng );
-				Vec2f t0 = ( p0.xy() + Vec2f::one() ) * 0.5f * uv;
-				Vec2f t1 = ( p1.xy() + Vec2f::one() ) * 0.5f * uv;
-				glTexCoord2f( t0 );
-				glNormal3f( p0 );
-				glVertex3f( p0 );
-				glTexCoord2f( t1 );
-				glNormal3f( p1 );
-				glVertex3f( p1 );
+				glBegin( GL_TRIANGLE_STRIP );
+				for ( float lng = 0.0f ; lng <= 360.0 ; lng += mMeshStep )
+				{
+					Vec3f p0 = LATLNG_TO_XYZ( lat, lng );
+					Vec3f p1 = LATLNG_TO_XYZ( lat+mMeshStep, lng );
+					// TODO:: TESTAR SEM SHADER !!! - vai dar problema no displaylist
+					//Vec2f t0 = ( esfera ? domeToGeo( p0 ) : domeToTexel( p0 ) );
+					//Vec2f t1 = ( esfera ? domeToGeo( p1 ) : domeToTexel( p1 ) );
+					//t0 *= uv;
+					//t1 *= uv;
+					//glTexCoord2f( t0 );
+					glNormal3f( p0 );
+					glVertex3f( p0 );
+					//glTexCoord2f( t1 );
+					glNormal3f( p1 );
+					glVertex3f( p1 );
+				}
+				glEnd();
 			}
-			glEnd();
+			mMeshDome[esfera].endList();
 		}
+		else
+			mMeshDome[esfera].draw();
+
 		//glPopMatrix();
 	}
 	
@@ -262,12 +337,17 @@ namespace cinder { namespace qb {
 	//
 	// lat = horizontal = -90  .. +90
 	// lng = vertical   = -180 .. +180
+	// Returns -1.0 .. 1.0
 	Vec3f qbDomeMaster::getPosFromLatLng( float lat, float lng )
 	{
-		float r = cos( toRadians(lat) );
-		float x = cos(toRadians(lng)) * r;
-		float y = sin(toRadians(lng)) * r;
-		float z = sin( toRadians(lat) );
+		return qbDomeMaster::getPosFromLatLngRad( toRadians(lat), toRadians(lng) );
+	}
+	Vec3f qbDomeMaster::getPosFromLatLngRad( float lat, float lng )
+	{
+		float r = cos( lat );
+		float x = cos( lng ) * r;
+		float y = sin( lng ) * r;
+		float z = sin( lat );
 		return Vec3f( x, y, z );
 	}
 	//
@@ -284,6 +364,49 @@ namespace cinder { namespace qb {
 	{
 		return Vec2f( (st.x + 1.0f) * 0.5f, 1.0f - ((st.y + 1.0f) * 0.5f) );
 	}
+	// pbourke bangalore.pdf pg 14
+	// http://paulbourke.net/miscellaneous/domefisheye/fisheye/
+	// From:	Dome 3D coordinates (-1.0 .. 1.0, -1.0 .. 1.0, 0.0 .. 1.0)
+	// To:		Texel (0.0 .. 1.0)
+	Vec2f qbDomeMaster::domeToTexel( Vec3f pos )
+	{
+		float theta = atan2f( sqrt( pos.x * pos.x + pos.y * pos.y ), pos.z);
+		float phi = atan2f(pos.y, pos.x);
+		float r = theta / M_HALF_PI;
+		Vec2f dc = Vec2f( r * cos(phi), r * sin(phi) );
+		return qbDomeMaster::domeToTexel( dc );
+	}
+	
+	// Equirectangular projection
+	// https://github.com/Flightphase/ofxPuffersphere
+	// https://github.com/Flightphase/ofxPuffersphere/blob/master/spinningSquareExample/bin/data/shaders/offaxis.frag
+	// From:	Dome 3D coordinates (-1.0 .. 1.0, -1.0 .. 1.0, 0.0 .. 1.0)
+	// To:		Texel (0.0 .. 1.0)
+	Vec2f qbDomeMaster::domeToGeo( Vec3f p )
+	{
+		float u = 0.5 + atan2f(p.x,p.y) / M_TWO_PI;		// atan with 2 parameters; range: -PI to +PI
+		float v = 1.0 - ( cos(p.z) / M_PI );			// tig: changed from 0.5 + atan...
+		return Vec2f(u, v);
+	}
+	// From:	Texel (0.0 .. 1.0)
+	// To:		Dome 3D coordinates (-1.0 .. 1.0, -1.0 .. 1.0, -1.0 .. 1.0)
+	Vec3f qbDomeMaster::geoToDome( Vec2f st )
+	{
+		float x = sin(st.y * M_PI) * cos(st.x * M_TWO_PI);
+		float y = -sin(st.y * M_PI) * sin(st.x * M_TWO_PI);			// tig: changed to -sin
+		float z = cos(st.y * M_PI);
+		return Vec3f(x, y, z);
+		
+		// ROGER
+		/*
+		float x = sin(st.x * M_TWO_PI);
+		float y = cos(st.x * M_TWO_PI);
+		float z = cos(st.y * M_PI);
+		return Vec3f(x, y, z);
+		 */
+	}
+	
+	//
 	float qbDomeMaster::domeRadius( Vec2f dc )
 	{
 		return sqrt( dc.x * dc.x + dc.y * dc.y );
@@ -297,7 +420,6 @@ namespace cinder { namespace qb {
 	}
 	
 
-	
 } } // cinder::qb
 
 

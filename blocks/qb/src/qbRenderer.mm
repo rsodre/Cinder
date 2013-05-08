@@ -14,51 +14,7 @@ using namespace ci;
 using namespace ci::gl;
 using namespace ci::qtime;
 
-//#define EXPORT_FRAMES_AS_PNG
-
 namespace cinder { namespace qb {
-	
-	
-	//////////////////////////////////////////////////////////////////
-	//
-	// QB MANAGER WRAPPERS
-	//
-	// Play / Pause
-	void qbMain::renderSetFolder( const std::string & _folder )
-	{
-		mRenderer.setFolder( _folder );
-	}
-	void qbMain::setFileMovie( const std::string & _folder )
-	{
-		mRenderer.setFileMovie( _folder );
-	}
-	void qbMain::setFileImage( const std::string & _folder )
-	{
-		mRenderer.setFileImage( _folder );
-	}
-	void qbMain::renderSwitch()
-	{
-		if ( ! mRenderer.isRendering() )
-			this->renderStart();
-		else 
-			this->renderStop();
-	}
-	void qbMain::renderStart( const std::string & _f )
-	{
-		mRenderer.start( _f );
-		this->play();
-		if ( _qb.shouldRenderRewind() )
-			this->rewind();
-	}
-	void qbMain::renderStop()
-	{
-		mRenderer.stop();
-	}
-	void qbMain::renderFinish()
-	{
-		mRenderer.finish();
-	}
-	
 	
 	
 	//////////////////////////////////////////////////////////////////
@@ -71,14 +27,12 @@ namespace cinder { namespace qb {
 		//mAudioFinish = audio::load( loadResource( "audio_render_finished.mp3" ) );
 		//mAudioScreenshot = audio::load( loadResource( "audio_screenshot.mp3" ) );
 		// make file name base
-		this->setFileMovie( "__render.mov" );
-		this->setFileImage( "__screenshot.png" );
+		this->setFileNameBase( "__qb_render" );
 		// Reset !
 		this->reset();
-		mStatus = "Renderer Ready";
-		mProgressString = "Frames: 0";
-		mTimeString = "Time: 0:00";
-		mFolder = QB_CAPTURE_FOLDER;
+		mStatus = "READY";
+		mFramesString = "0";
+		mAppFramerate = 60.0f;
 	}
 	qbRenderer::~qbRenderer()
 	{
@@ -89,13 +43,9 @@ namespace cinder { namespace qb {
 	{
 		mFolder = _folder;
 	}
-	void qbRenderer::setFileMovie( const std::string & _f )
+	void qbRenderer::setFileNameBase( const std::string & _f )
 	{
-		mFileBaseMovie = _f;
-	}
-	void qbRenderer::setFileImage( const std::string & _f )
-	{
-		mFileBaseImage = _f;
+		mFileNameBase = _f;
 	}
 	void qbRenderer::reset()
 	{
@@ -114,31 +64,14 @@ namespace cinder { namespace qb {
 	}
 	
 	//
-	// Make name with serial number: mFolder_XX.mov
-	std::string qbRenderer::makeFileNameSerial( std::string _p, std::string _f )
+	// Make name with current date and time
+	std::string qbRenderer::makeFileNameTime( std::string _p, std::string _f, std::string _ext )
 	{
-		//std::string name = _f.substr(0,_f.rfind("."));
 		std::string name = getPathFileName( _f );
-		std::string ext = getPathExtension( _f );
-		std::ostringstream os;
-		bool found = true;
-		for (int count = 0 ; found ; count++)
-		{
-			os.str("");
-			os << _p << "/" << name << "_" << count << "." << ext;
-			fs::path p( os.str() );
-			found = exists( p );
-		}
-		return os.str();
-	}
-	std::string qbRenderer::makeFileNameTime( std::string _p, std::string _f )
-	{
+		std::string ext = ( _ext.length() ? _ext : getPathExtension( _f ) );
 		time_t now;
 		time ( &now );
 		struct tm * t = localtime( &now );
-		//std::string name = _f.substr(0,_f.rfind("."));
-		std::string name = getPathFileName( _f );
-		std::string ext = getPathExtension( _f );
 		std::ostringstream os;
 		os << _p << "/" << name << "_"
 			<< (t->tm_year + 1900)
@@ -146,55 +79,81 @@ namespace cinder { namespace qb {
 			<< "." << std::setfill('0') << std::setw(2) << (t->tm_mday)
 			<< "-" << std::setfill('0') << std::setw(2) << (t->tm_hour) 
 			<< "." << std::setfill('0') << std::setw(2) << (t->tm_min) 
-			<< "." << std::setfill('0') << std::setw(2) << (t->tm_sec)
-			<< "." << ext;
+			<< "." << std::setfill('0') << std::setw(2) << (t->tm_sec) ;
+		if ( _ext.length() > 0 )
+			os << "." << ext;
 		return os.str();
 	}
 	// Make framename for PNG export
-	std::string qbRenderer::makeFrameNameSerial()
+	// mFileName is a Folder
+	std::string qbRenderer::makeFileNameSerial()
 	{
 		char num[6];
 		sprintf(num,"%05d",mFramesAdded);
 		std::ostringstream os;
-		os << mFile << "_" << num << ".png";
+		os << mFileName << "/" << num << ".png";
 		return os.str();
 	}
 	//
 	// Open export file
 	void qbRenderer::open()
 	{
-		if ( mFolder.length() == 0 )
-			this->setFolder( app::getAppPath().string() + "/.." );
-		
-		// Make file name
-		mFile = makeFileNameTime( mFolder, mFileBaseMovie );
-		
 		// Open target file
-		MovieWriter::Format format = MovieWriter::Format();
-		format.setDefaultDuration( QB_FRAME_DURATION );
-		format.setCodec('jpeg');
-		mMovieWriter = qtime::MovieWriter( mFile, QB_RENDER_WIDTH, QB_RENDER_HEIGHT, format );
+		if ( ! _cfg.get(QBCFG_RENDER_PNG_SEQUENCE) )
+		{
+			MovieWriter::Format format = MovieWriter::Format();
+			format.setDefaultDuration( QB_FRAME_DURATION );
+			format.setCodec('jpeg');
+			format.setQuality( _cfg.get(QBCFG_RENDER_QUALITY) );
+			mMovieWriter = qtime::MovieWriter( mFileName, QB_RENDER_WIDTH, QB_RENDER_HEIGHT, format );
+			// new status
+			std::ostringstream os;
+			os << "RENDER OPEN [" << mFileName << "] "<<mMovieWriter.getWidth()<<" x "<<mMovieWriter.getHeight();
+			printf("%s\n",os.str().c_str());
+		}
+		else
+		{
+			// Create output folder
+			if( ! fs::exists( mFileName ) ) {
+				NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:mFileName.c_str()]];
+				[[NSFileManager defaultManager] createDirectoryAtURL:url withIntermediateDirectories:YES attributes: nil error:nil];
+				printf("RENDER OPEN Folder [%s]\n",mFileName.c_str());
+			}
+		}
 		
 		// New render
 		mFramesAdded = 0;
 		bOpened = true;
-
-		// new status
-		std::ostringstream os;
-		os << "RENDER OPEN [" << mFile << "] "<<mMovieWriter.getWidth()<<" x "<<mMovieWriter.getHeight();
-		printf("%s\n",os.str().c_str());
 	}
 
 	//
 	// REC-HEAD
+	void qbRenderer::startstop()
+	{
+		if ( ! bIsRendering )
+			this->start();
+		else 
+			this->stop();
+	}
 	void qbRenderer::start( const std::string & _f )
 	{
-		if ( _f.length() )
-			mFileBaseMovie = _f;
-		
-		// open file
+		// defaule folder name is beside app
+		if ( mFolder.length() == 0 )
+			this->setFolder( app::getAppPath().string() + "/.." );
+
+		// Open new file
 		if ( ! bOpened )
+		{
+			// Make file name
+			if ( _f.c_str()[0] == '/' )
+				mFileName = _f;
+			else if ( ! _cfg.get(QBCFG_RENDER_PNG_SEQUENCE) )
+				mFileName = makeFileNameTime( mFolder, mFileNameBase, "mov" );
+			else
+				mFileName = makeFileNameTime( mFolder, mFileNameBase, "" );
+			// open file
 			this->open();
+		}
 		
 		// Start!
 		mFramesStarted = mFramesAdded;
@@ -203,19 +162,26 @@ namespace cinder { namespace qb {
 		mTimeStart = app::getElapsedSeconds();
 
 		// Start!
+		mAppFramerate = App::get()->getFrameRate();
 		App::get()->setFrameRate( 1000.0 );
 		bIsRendering = true;
 		
-		mStatus = "Rendering...";
+		// Play QB
+		_qb.rewind();
+		_qb.play();
+		
+		mStatus = "RENDERING...";
 		printf("RENDER START max %d  still %d\n",mFramesMax,mFramesStill);
 	}
 	void qbRenderer::stop()
 	{
 		if ( bIsRendering )
 		{
-			App::get()->setFrameRate( _qb.getFrameRate() );
+			App::get()->setFrameRate( mAppFramerate );
 			bIsRendering = false;
-			mStatus = "Stopped (must finish)";
+			mStatus = "OK, SAVE IT!!!";
+			if (mFramesMax == 0)
+				mProgString = "";
 			//audio::Output::play( mAudioStop );
 			printf("RENDER STOPPED!\n");
 		}
@@ -228,16 +194,23 @@ namespace cinder { namespace qb {
 	{
 		if ( mFramesAdded == 0 || ! bOpened )
 		{
-			mStatus = "Nothing to Finish!";
+			mStatus = "Nothing to save!";
+			mProgString = "";
 			printf("NO FRAMES TO FINISH!!!\n");
 			return;
 		}
-		mMovieWriter.finish();
-		mStatus = "Finished!";
+		if ( ! _cfg.get(QBCFG_RENDER_PNG_SEQUENCE) )
+			mMovieWriter.finish();
+		mStatus = "SAVED!";
+		mProgString = "";
+		mFramesString = "";
+		mTimeEstimated = 0;
+		mTimeElapsed = 0;
+		mTimeRemaining = 0;
 		this->reset();
-		_cfg.clearRenderTexture( Color::green() );
+		_cfg.setRenderTexture( NULL );
 		//audio::Output::play( mAudioFinish );
-		printf("RENDER FINISHED!!! [%s]\n",mFile.c_str());
+		printf("RENDER FINISHED!!! [%s]\n",mFileName.c_str());
 	}
 	
 	//
@@ -265,7 +238,6 @@ namespace cinder { namespace qb {
 			printf("%s\n",os.str().c_str());
 			this->commit( _aframe );
 			mFramesAdded++;
-			mTimeElapsed = app::getElapsedSeconds() - mTimeStart;
 			// Reached the end
 			if ( mFramesAdded == mFramesMax )
 			{
@@ -281,72 +253,76 @@ namespace cinder { namespace qb {
 					os << "RENDER still "<<mFramesStill<<" frames";
 					printf("%s\n",os.str().c_str());
 				}
-				// HACK!! Losing last frame, add again!
-				else
+				// HACK!! MovieWriter not saving last frame, add again!
+				else if ( ! _cfg.get(QBCFG_RENDER_PNG_SEQUENCE) )
 					this->commit( _aframe );
 				// Stop!!
 				this->stop();
 			}
 		}
+		mTimeElapsed = app::getElapsedSeconds() - mTimeStart;
 		this->updateStatus();
 	}
 	void qbRenderer::commit( const ImageSourceRef & _aframe )
 	{
-#ifdef EXPORT_FRAMES_AS_PNG
-		this->takeScreenshot( _aframe, this->makeFrameNameSerial() );
-#else
-		mMovieWriter.addFrame( _aframe, QB_FRAME_DURATION );
-#endif
+		if ( _cfg.get(QBCFG_RENDER_PNG_SEQUENCE) )
+			this->takeScreenshot( _aframe, this->makeFileNameSerial() );
+		else
+			mMovieWriter.addFrame( _aframe, QB_FRAME_DURATION );
 	}
 	
 	void qbRenderer::updateStatus()
 	{
-		std::ostringstream os;
-		if ( mFramesMax == 0)
-			os << "Rendering... (unlimited)";
-		else
-			os << "Rendering... "<<(int)(this->getProg()*100)<<"%";
-		mStatus = os.str();
+		if ( bIsRendering )
+		{
+			mStatus = "RENDERING...";
+			if ( mFramesMax == 0)
+				mProgString = "unlimited";
+			else
+			{
+				std::ostringstream os;
+				os << (int)(this->getProg()*100)<<"%";
+				mProgString = os.str();
+			}
+		}
 		
 		// Frame count
-		os.str("");
+		std::ostringstream os;
 		if ( bIsRendering )
 		{
 			// Progress
-			os << "Frames: " << mFramesAdded << " / " << ( mFramesMax == 0 ? std::string("?") : toString(mFramesMax) );
-			mProgressString = os.str();
+			os << mFramesAdded << " / " << ( mFramesMax == 0 ? std::string("?") : toString(mFramesMax) );
+			mFramesString = os.str();
 			// Time
-			double mTimeEstimated = ( mTimeElapsed / this->getProg() );
-			double mTimeRemaining = mTimeEstimated - mTimeElapsed;
-			os.str("");
-			os << "Time: " 
-				<< (int)(mTimeEstimated/60.0) << ":" << std::setfill('0') << std::setw(2) << (int)(mTimeEstimated-(int)(mTimeEstimated/60.0)) << " - "
-				<< (int)(mTimeElapsed/60.0) << ":" << std::setfill('0') << std::setw(2) << (int)(mTimeElapsed-(int)(mTimeEstimated/60.0)) << " = "
-				<< (int)(mTimeRemaining/60.0) << ":" << std::setfill('0') << std::setw(2) << (int)(mTimeRemaining-(int)(mTimeRemaining/60.0)) << " s";
-			mTimeString = os.str();
+			mTimeEstimated = ( mFramesMax == 0 ? 0 : mTimeElapsed / this->getProg() );
+			mTimeRemaining = ( mFramesMax == 0 ? 0 : mTimeEstimated - mTimeElapsed );
 		}
 		else
 		{
 			os.setf(std::ios::fixed);
 			os.precision(1);
-			os << "Frames: " << mFramesAdded;
-			mProgressString = os.str();
+			os << mFramesAdded;
+			mFramesString = os.str();
 			// Time
-			os.str("");
-			os << "Time: " << (int)mTimeElapsed << ":" << (int)((mTimeElapsed-(int)mTimeElapsed)*60) << " s";
-			mTimeString = os.str();
+			mTimeEstimated = 0;
+			mTimeRemaining = 0;
 		}
 	}
 
 	//
 	// Save Screenshot
+	void qbRenderer::takeScreenshot()
+	{
+		this->takeScreenshot( _qb.getFboTexture() );
+	}
 	void qbRenderer::takeScreenshot( const ImageSourceRef & _aframe)
 	{
-		std::string filename = this->makeFileNameTime( mFolder, mFileBaseImage );
+		std::string filename = this->makeFileNameTime( mFolder, mFileNameBase, "png" );
 		this->takeScreenshot( _aframe, filename );
 	}
 	void qbRenderer::takeScreenshot( const ImageSourceRef & _aframe, const std::string _filename )
 	{
+		//printf("RENDER SCREENSHOT...\n");
 		writeImage( _filename, _aframe );
 		//audio::Output::play( mAudioScreenshot );
 		printf("RENDER SCREENSHOT [%s]\n",_filename.c_str());
