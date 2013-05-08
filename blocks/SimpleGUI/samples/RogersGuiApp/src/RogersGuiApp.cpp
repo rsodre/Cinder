@@ -37,6 +37,7 @@ private:
 	bool autoRotation;	
 	bool fill;
 	bool stroke;
+	bool fxInvert;
 	float thickness;
 	
 	// ROGER:: NEW
@@ -58,6 +59,15 @@ private:
 	unsigned char byteValue2;
 	unsigned char byteValue3;
 	unsigned char flagValue;
+	Vec4f vec2Value;
+	Vec4f vec3Value;
+	Vec4f vec4Value;
+	Vec2f xyValue;
+	float floatVal1;
+	float floatVal2;
+	float floatVal3;
+	float floatValAxis;
+	bool tabFX;
 	
 public:
 	void prepareSettings( Settings *settings );
@@ -81,32 +91,41 @@ void RogersGuiApp::prepareSettings( Settings *settings )
 void RogersGuiApp::setup() {
     rotation = 0;
     screenshot = gl::Texture(getWindowWidth(), getWindowHeight()); //uninitialized texture with random pixels from GPU memory
+	FloatVarControl *fc;
 	IntVarControl *ic;
 	BoolVarControl *bc;
-	PanelControl *pc;
 	ByteVarControl *btc;
-	FlagVarControl *fc;
+	FlagVarControl *fgc;
+	TabControl *tc;
 	aString = "whatever";
 	
     gui = new SimpleGUI(this);
 	gui->lightColor = ColorA(1, 1, 0, 1);
+	
+	// Optional TABS
+	// For each tab added, all subsequent columns will only appear if this tab is enabled
+	gui->setName("> MY APP");	// !NEW display app name first of all
+	//gui->displayFps(false);		// !NEW display fps at bottom of tabs (ON BY DEFAULT)
+	gui->addTab("MAIN TAB");	// !NEW tabbed spaces
+	
 	gui->addColumn();
-	gui->addLabel("> READ ONLY");
+	gui->addLabel("> LABELS");
+	gui->addLabel("simple label");
+	gui->addLabel("this label does not fit in one line, so it is wrapping over multiple lines", true);
     gui->addSeparator();
-	gui->addLabel("READONLY");
-	gui->addParam("String", &aString);						// !NEW! Update aString will update label 
+	gui->addLabel("> READ ONLY");
+	gui->addParam("String", &aString, aString);						// !NEW! Update aString will update label
 	gui->addParam("Window Width", &windowWidth, 0, 1920, getWindowWidth())->setReadOnly();		// !NEW! No slider, just value
 	gui->addParam("Window Height", &windowHeight, 0, 1080, getWindowHeight())->setReadOnly();	// !NEW! No slider, just value
 	gui->addParam("FPS", &FPS, 0, 60, 0)->setReadOnly();	// !NEW! No slider, just value
-    gui->addSeparator();
     
 	// Textures
-	gui->addLabel("> TEXTURES");
     gui->addSeparator();
+	gui->addLabel("> TEXTURES");
     takeScreenshotButton = gui->addButton("Take screenshot");    
 	takeScreenshotButton->registerClick(this, &RogersGuiApp::takeScreenshotButtonClick);    
     screenshotTextureControl = gui->addParam("Screenshot", &screenshot);
-	screenshotTextureControl->refreshRate = 0.0;		// !NEW! let's refresh manually
+	screenshotTextureControl->setRefreshRate( 0.0 );		// !NEW! let's refresh manually
 	//screenshotTextureControl->refreshRate = 0.1;		// !NEW! use this for movies or syphon
     //takeScreenshotButton->unregisterClick(cbTakeScreenshotButtonClick);
     gui->addSeparator();
@@ -116,46 +135,45 @@ void RogersGuiApp::setup() {
 	// ROGER:: From Grouping example
 	gui->addColumn();
 	gui->addLabel("> CONTROLS");
-    gui->addSeparator();
     gui->addButton("Restart Animation")->registerClick(this, &RogersGuiApp::restartButtonClick);
 	bc = gui->addParam("Auto Rotation ON", &autoRotation, true);
 	bc->nameOff = "Auto Rotation OFF";	// !NEW! Alternative label when OFF
 	gui->addParam("Rotation", &rotation, 0, 360, 0)->setDisplayValue();
 	gui->addParam("Size", &size, 100, 600, 200)->setDisplayValue();
 	gui->addParam("Background", &colorBack, Color(0.1, 0.1, 0.5), SimpleGUI::RGB); //use R,G,B,A sliders
-	gui->addParam("Color", &color, ColorA(1, 0.2, 0.2, 0.1), SimpleGUI::RGB); //use R,G,B,A sliders
+	gui->addParam("Color", &color, ColorA(1, 0.2, 0.2, 0.1), SimpleGUI::RGB)->setDisplayValue(); //use R,G,B,A sliders
 	gui->addParam("HSV", &colorBackHSV, Color(0.1, 0.1, 0.5), SimpleGUI::HSV);
 	gui->addParam("HSV+A", &colorHSV, ColorA(1, 0.2, 0.2, 0.1), SimpleGUI::HSV);
-    gui->addSeparator();
+	gui->addSeparator();
 	gui->addLabel("RENDER TYPE");
 	gui->addParam("Fill", &fill, true, RENDER_TYPE_GROUP); //if we specify group id, we create radio button set
 	bc = gui->addParam("Stroke", &stroke, false, RENDER_TYPE_GROUP); //i.e. only one of the buttons can be active at any time	
-	pc = gui->addPanel();
-	bc->switchPanel( pc );		// !NEW! Automatically open/close a panel
+	bc->addSwitchPanel("Stroke");
 	gui->addParam("Thickness", &thickness, 1, 10);
 	
-	//
-	// LIST CONTROL
-	gui->addColumn();
-	gui->addLabel("> LISTS");
-    gui->addSeparator();
-    gui->addButton("Increase List")->registerClick(this, &RogersGuiApp::addToList);
-    gui->addButton("Decrease List")->registerClick(this, &RogersGuiApp::removeFromList);
-	valueLabels[0] = "val 0";
-	valueLabels[1] = "val 1";
-	valueLabels[2] = "val 2";
-    gui->addSeparator();
-	theDropDownControl = gui->addParamDropDown("Drop-Down List", &listVal, valueLabels);	// !NEW! Drop-Down control
-    gui->addSeparator();
-	theListControl = gui->addParamList("Explicit List", &listVal, valueLabels);				// !NEW! List control
-    gui->addSeparator();
-    gui->addLabel("just a label");
 	
 	//
 	// INTS CONTROL
 	gui->addColumn();
+	gui->addLabel("> FLOATS");
+	fc = gui->addParam("Float prec 1", &floatVal1, 0, 1, 0.5);		// !NEW! float with precision 1
+	fc->setDisplayValue();
+	fc->setPrecision(1);
+	fc = gui->addParam("Float prec 2", &floatVal2, 0, 1, 0.5);		// !NEW! float with precision 2
+	fc->setDisplayValue();
+	fc->setPrecision(2);
+	fc = gui->addParam("Float prec 3", &floatVal3, 0, 1, 0.5);		// !NEW! float with precision 3
+	fc->setDisplayValue();
+	fc->setPrecision(3);
+	fc = gui->addParam("Float axis default", &floatValAxis, 0, 1, 0.5);		// !NEW! float with precision 3
+	fc->setDisplayValue();
+	fc->axisOnDefault = true;
+
+
+	//
+	// INTS CONTROL
+	gui->addColumn();
 	gui->addLabel("> INTS");
-    gui->addSeparator();
 	gui->addParam("Int Radio (<=10)", &intValue1, 1, 3, 0)->setDisplayValue();		// !NEW! small int range will be displayed as radios
 	gui->addParam("Int Radio (<=10)", &intValue2, 1, 10, 0)->setDisplayValue();		// !NEW! small int range will be displayed as radios
 	gui->addParam("Int slider (>10)", &intValue3, 1, 11, 0)->setDisplayValue();		// !NEW! Display the value beside labels
@@ -175,7 +193,6 @@ void RogersGuiApp::setup() {
 	// BYTE CONTROL
 	gui->addColumn();
 	gui->addLabel("> BYTES");
-    gui->addSeparator();
 	gui->addParam("Byte", &byteValue1, 0)->setDisplayValue();			// !NEW! ranges from 0-255
 	btc = gui->addParam("Byte as char", &byteValue2, 0);				// !NEW! display as char
 	btc->setDisplayValue();
@@ -185,12 +202,60 @@ void RogersGuiApp::setup() {
 	btc->displayHex = true;
 	// FLAGS
     gui->addSeparator();
-	fc = gui->addParamFlag("Byte Flag", &flagValue, 8, 0x55);			// !NEW! Byte Flag
-	fc->setDisplayValue();
-	fc->displayHex = true;
+	fgc = gui->addParamFlag("Byte Flag", &flagValue, 8, 0x55);			// !NEW! Byte Flag
+	fgc->setDisplayValue();
+	fgc->displayHex = true;
+	
+	//
+	// BYTE CONTROL
+	gui->addColumn();
+	gui->addLabel("> VECTORS");
+	gui->addParam("Vec2", &vec2Value, 2);			// !NEW! Vec2f
+	gui->addParam("Vec3", &vec3Value, 3);			// !NEW! Vec2f
+	gui->addParam("Vec4", &vec4Value, 4);			// !NEW! Vec2f
+	gui->addSeparator();
+	gui->addParamXY("XY Canvas", &xyValue, -1.0, 1.0, Vec2f::zero() );
+	
+	//
+	// TAB 2
+	//
+	gui->addTab("DYNAMIC LISTS");
+	gui->addColumn();
+	gui->addLabel("> MANAGE LIST");
+    gui->addSeparator();
+    gui->addButton("Increase List")->registerClick(this, &RogersGuiApp::addToList);
+    gui->addButton("Decrease List")->registerClick(this, &RogersGuiApp::removeFromList);
+	valueLabels[0] = "val 0";
+	valueLabels[1] = "val 1";
+	valueLabels[2] = "val 2";
+	// Drop-Down
+	gui->addColumn();
+	gui->addLabel("> DROP-DOWN");
+    gui->addSeparator();
+	theDropDownControl = gui->addParamDropDown("Drop-Down List", &listVal, valueLabels);	// !NEW! Drop-Down control
+    gui->addSeparator();
+    gui->addLabel("just a label");
+	// Explicit
+	gui->addColumn();
+	gui->addLabel("> EXPLICIT");
+    gui->addSeparator();
+	theListControl = gui->addParamList("Explicit List", &listVal, valueLabels);				// !NEW! List control
+    gui->addSeparator();
+    gui->addLabel("just a label");
 	
 	
-	gui->load(CONFIG_FILE); //we load settings after specifying all the 
+	//
+	// TAB 3
+	//
+	tc = (TabControl*) gui->addTab("FX ON", &tabFX, false);
+	tc->nameOff = "FX OFF";
+	gui->addColumn();
+	gui->addLabel("> FX");
+    gui->addSeparator();
+	gui->addParam("Invert", &fxInvert, true);
+	
+	
+	//gui->load(CONFIG_FILE); //we load settings after specifying all the
     //params because we need to know their name and type
 	
 	timer.start();
@@ -253,7 +318,9 @@ void RogersGuiApp::draw(){
     
 	if (autoRotation)
 		rotation += deltaTime/2;
-    
+	//while (rotation > 360.0)
+	//	rotation -= 360.0;
+	
     gl::clear( colorBack );
     gl::enableAdditiveBlending();
     gl::disableDepthRead();    
@@ -276,8 +343,26 @@ void RogersGuiApp::draw(){
     gl::disableAlphaBlending();
     gl::popMatrices();	
 	
+	if (tabFX)
+	{
+		if (fxInvert)
+		{
+			glEnable( GL_BLEND );
+			glBlendFunc( GL_ONE_MINUS_DST_COLOR, GL_ZERO );
+			gl::color( Color::white() );
+			gl::drawSolidRect( getWindowBounds() );
+			glDisable( GL_BLEND );
+		}
+	}
+
 	FPS = getAverageFps();
 	gui->draw();
+	
+}
+
+void disableAlphaBlending()
+{
+
 	
 	//std::cout << "LIST = " << listVal << std::endl;
 }
