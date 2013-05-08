@@ -1,75 +1,148 @@
 //
-//  ciConfigGuiSimple.cpp
+//  ciConfigGui.cpp
 //
-//  Created by Roger Sodre on 08/04/2010
-//  Copyright 2011 Studio Avante. All rights reserved.
+//  Created by Roger Sodre on 01/01/2013
+//  Copyright 2013 Studio Avante. All rights reserved.
 //
 
-#include "ciConfigGuiSimple.h"
+#include "ciConfigGui.h"
 #include <sys/time.h>
 
 #ifdef QB
 #include "qbSource.h"
 #endif
 
-
-using namespace cinder;
-using namespace cinder::app;
-using namespace std;
-
 namespace cinder {
 	
 	//
 	// CUSTOM CONFIG CLASS
-	ciConfigGuiSimple::ciConfigGuiSimple() : ciConfigGuiBase()
+	ciConfigGui::ciConfigGui() : ciConfig()
 	{
+		mTabCount = 0;
+		mGroupCount = 0;
+
 		mGui = new SimpleGUI( App::get() );
-		mGui->lightColor = ColorA(0, 1, 1, 1);
-		// Use FBO by default
-		//this->guiSetUseFbo();
+		//mGui->setName(mAppName+" "+mAppVersion);
+		
+		//mGui->lightColor = ColorA(0, 1, 1, 1);		// cyan
+		mGui->lightColor = ColorA(0, 1, 0.8, 1);		// green
+		//mGui->lightColor = ColorA(1, 0.7, 0.7, 1);	// redish
 	}
-	ciConfigGuiSimple::~ciConfigGuiSimple()
+	ciConfigGui::~ciConfigGui()
 	{
+		for (std::vector<ciConfigGuiBlock*>::iterator it = mBlocks.begin() ; it != mBlocks.end() ; it++)
+			delete *it;
 		delete mGui;
 	}
 
+	void ciConfigGui::draw()
+	{
+		if ( !this->guiIsVisible() )
+			return;
+		
+		// Update Blocks
+		for (std::vector<ciConfigGuiBlock*>::iterator it = mBlocks.begin() ; it != mBlocks.end() ; it++)
+		{
+			ciConfigGuiBlock* block = *it;
+			block->update();
+		}
+		
+		// Draw GUI
+		mGui->draw();
+	}
+	
+	void ciConfigGui::guiSetName( int id, std::string name )
+	{
+		if (params[id])
+			this->guiGetControl(id)->setName( name );
+	}
+	
+	void ciConfigGui::guiUpdateValueLabels( int id )
+	{
+		if (params[id])
+		{
+			ListVarControl *c = (ListVarControl*) (params[id]->guiControl);
+			if (c)
+				c->update( params[id]->valueLabels );
+		}
+	}
+	
+	
+	//////////////////////////////
+	//
+	// VARIABLE PARAMS
+	//
+	LabelControl* ciConfigGui::guiAddParam( const std::string & label, std::string * var, bool wrap )
+	{
+		return mGui->addParam(label, var)->setWrap(wrap);
+	}
+	BoolVarControl* ciConfigGui::guiAddParam( const std::string & label, bool * var, bool readOnly )
+	{
+		return (BoolVarControl*) mGui->addParam(label, var, *var)->setReadOnly(readOnly);
+	}
+	IntVarControl* ciConfigGui::guiAddParam( const std::string & label, int * var, bool readOnly )
+	{
+		return (IntVarControl*) mGui->addParam(label, var, *var, 1, 0)->setReadOnly(readOnly);
+	}
+	FloatVarControl* ciConfigGui::guiAddParam( const std::string & label, float * var, int precision, bool readOnly )
+	{
+		return (FloatVarControl*) mGui->addParam(label, var, *var, 1, 0)->setPrecision(precision)->setReadOnly(readOnly);
+	}
+	ListVarControl* ciConfigGui::guiAddParamList( const std::string & label, int * var, const std::map<int,std::string> &valueLabels )
+	{
+		return mGui->addParamList(label, var, valueLabels);
+	}
+	ListVarControl* ciConfigGui::guiAddParamDropDown( const std::string & label, int * var, const std::map<int,std::string> &valueLabels )
+	{
+		return mGui->addParamDropDown(label, var, valueLabels);
+	}
+	TextureVarControl* ciConfigGui::guiAddTexture( const std::string & label, gl::Texture* tex, float refreshRate )
+	{
+		return mGui->addParam( label, tex, refreshRate );
+	}
+	
+	
+
 	////////////////////////////////////////////////////////
 	//
-	// SETTERS
+	// STRUCTURE CONTROLS
 	//
-	// Virtual
-	void ciConfigGuiSimple::guiAddGroup( const std::string & _name )
-	{
-		mGui->addColumn();
-		if ( _name.length() )
-			mGui->addLabel(_name);
-		mGroupCount++;
-	}
-	// Virtual
-	void* ciConfigGuiSimple::guiAddPanel( const std::string & _name )
-	{
-		return (void*) mGui->addPanel(_name);
-	}
-	// Virtual
-	void ciConfigGuiSimple::guiAddSeparator()
+	void ciConfigGui::guiAddSeparator()
 	{
 		mGui->addSeparator();
 	}
-	// Virtual
-	void* ciConfigGuiSimple::guiAddText( std::string text )
+	LabelControl* ciConfigGui::guiAddText( const std::string & label, bool wrap )
 	{
-		return mGui->addLabel( text );
+		return mGui->addLabel(label)->setWrap(wrap);
 	}
-	// Virtual
-	ButtonControl* ciConfigGuiSimple::guiAddButton(const std::string &label, ciConfigGuiBase *obj, bool (ciConfigGuiBase::*callback)(ci::app::MouseEvent) )
-	//template<typename T> CallbackId ciConfigGuiSimple::guiAddButton(const std::string &label, T *obj, bool (T::*callback)(MouseEvent) )
+	TabControl* ciConfigGui::guiAddTab( const std::string & _name, int id )
 	{
-		ButtonControl *c = mGui->addButton(label);
-		c->registerClick( obj, callback );
+		TabControl * c;
+		if ( id >= 0 )
+			c = mGui->addTab( _name, this->getPointerBool(id), this->getBool(id));
+		else
+			c = mGui->addTab( _name );
+		mTabCount++;
 		return c;
 	}
-	// Private
-	void* ciConfigGuiSimple::guiAddParamPrivate( int id, int i, const std::string &label, int precision )
+	ColumnControl* ciConfigGui::guiAddGroup( const std::string & _name )
+	{
+		ColumnControl * c = mGui->addColumn();
+		if ( _name.length() )
+			mGui->addLabel(_name);
+		mGroupCount++;
+		return c;
+	}
+	PanelControl* ciConfigGui::guiAddPanel( const std::string & _name )
+	{
+		return mGui->addPanel(_name);
+	}
+	
+	//////////////////////////////
+	//
+	// ciConfig PARAMS
+	//
+	Control* ciConfigGui::guiAddParamPrivate( int id, int i, const std::string & label, int precision )
 	{
 		if ( params[id] == NULL )
 			return NULL;
@@ -93,11 +166,22 @@ namespace cinder {
 		else if (this->isColor(id))
 			c = mGui->addParam(label, this->getPointerColor(id), Color( this->getColor(id) ));
 		else if (this->isVector(id))
-			c = mGui->addParam(label, this->getPointerVector(id), this->getVector(id) );
+		{
+			if ( this->isVector4(id) && ( params[id]->quater || this->testFlag(id,CFG_FLAG_ARCBALL)) )
+				c = mGui->addParam(label, this->getPointerVector(id), 4, this->getMin(id), this->getMax(id), this->getVector4(id) );
+			else if ( this->isVector2(id) && this->testFlag(id,CFG_FLAG_XY) )
+				c = mGui->addParamXY(label, this->getPointerVector2(id), this->getMin(id), this->getMax(id), this->getVector2(id) );
+			else
+			{
+				c = mGui->addParam(label, this->getPointerVector(id), this->getVectorCount(id), this->getMin(id), this->getMax(id), this->getVector4(id) );
+				if (precision >= 0)
+					((VectorVarControl*)c)->setPrecision( precision );
+			}
+		}
 		else if (this->isBool(id))
 			c = mGui->addParam(label, this->getPointerBool(id), this->getBool(id));
 		else if (this->isString(id))
-			c = mGui->addParam(label, this->getPointerString(id));
+			c = mGui->addParam(label, this->getPointerString(id), this->getString(id));
 		else if (this->isByte(id))
 		{
 			c = mGui->addParamFlag(label, this->getPointerByte(id), 8, this->getByte(id));
@@ -127,67 +211,21 @@ namespace cinder {
 		// Save reference
 		params[id]->guiControl = (void*) c;
 		
-		return (void*) c;
+		return c;
 	}
-
 	
-	// Virtual
-	void* ciConfigGuiSimple::guiAddParam( int *val, const std::string &label, bool readOnly )
-	{
-		IntVarControl *c = mGui->addParam(label, val, 0, 1, 0);
-		c->setReadOnly( readOnly );
-		return (void*) c;
-	}
-	// Virtual
-	void* ciConfigGuiSimple::guiAddParam( float *val, const std::string &label, int precision, bool readOnly )
-	{
-		FloatVarControl *c = mGui->addParam(label, val, 0, 1, 0);
-		c->setPrecision( precision );
-		c->setReadOnly( readOnly );
-		return (void*) c;
-	}
-	// Virtual
-	void ciConfigGuiSimple::guiSetLabel( int id, int i, const std::string &label )
-	{
-		// TODO...
-	}
-	// Virtual
-	void ciConfigGuiSimple::guiUpdateValueLabels( int id )
-	{
-		ListVarControl *c = (ListVarControl*) (params[id]->guiControl);
-		if (c)
-			c->update( params[id]->valueLabels );
-	}
-
-#ifdef QB
-	void ciConfigGuiSimple::guiAddParam( qb::qbSourceSelector * src, const std::string &label, int cfgIdSelector, int cfgIdTrigger )
-	{
-		mGui->addParam(label, this->getPointerInt(cfgIdSelector), (int)this->getMin(cfgIdSelector), (int)this->getMax(cfgIdSelector), this->getInt(cfgIdSelector));
-		
-		TextureVarControl* tc = (TextureVarControl*) mGui->addParam("", src->getTexturePointer());
-		tc->refreshRate = 0.1;
-		
-		mGui->addParam( "", src->getNamePointer() );
-		mGui->addParam( "", src->getDescPointer() );
-
-		// Triggers
-		src->useConfigSelector( cfgIdSelector, this );
-		if ( cfgIdTrigger >= 0 )
-			src->useConfigTrigger( cfgIdTrigger, this );
-	}
-#endif
-
 	
-	////////////////////////////////////////////////////////
+	//////////////////////////////
 	//
-	// DRAW
+	// GUI Blocks
 	//
-	// Virtual
-	void ciConfigGuiSimple::drawGui()
+	PanelControl* ciConfigGui::guiAddBlock( ciConfigGuiBlock *block )
 	{
-		mGui->draw();
+		mBlocks.push_back(block);
+		return block->getPanel();
 	}
-	
-} // cinder::
+
+} // namespace cinder
+
 
 

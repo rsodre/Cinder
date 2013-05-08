@@ -30,22 +30,31 @@
 // - send string types on sendOsc()
 //
 
-#include "ciConfig.h"
+#include <boost/algorithm/string.hpp>
 #include <exception>
 #include <errno.h>
+#include "ciConfig.h"
+#include "cinder/app/AppBasic.h"
+#include "cinder/Utilities.h"
+#include "cinder/Xml.h"
 
-#ifdef CINDER
+// comment to disable versosity
+#ifndef RELEASE
+//#define VERBOSE
+//#define OSC_VERBOSE
+#endif
+
+#define IS_IN_DEFAULTS(f)		( mFolderDefault.length() > 0 && f.find(mFolderDefault) != std::string::npos )
+
+
+
 using namespace cinder;
 using namespace ci::app;
-#endif
 
 using namespace std;
 
 namespace cinder {
 	
-	// comment to disable versosity
-#define VERBOSE
-	//#define OSC_VERBOSE
 	
 	ciConfig::ciConfig(ciConfig *_parent)
 	{
@@ -55,19 +64,38 @@ namespace cinder {
 		inPostSetCallback = false;
 		postSetCallback_fn = NULL;
 		bStarted = false;
+		mAppName = AppBasic::get()->getAppName();
+		mAppVersion = AppBasic::get()->getAppVersion();
+		mFolderApp = getPathDirectory( app::getAppPath().string() );
+		mFolderBundle = getPathDirectory( App::get()->getResourcePath().string() ) + "Resources/";
+		mFolderSave = mFolderApp;
+		mFolderAppSupport = AppBasic::get()->getApplicationSupportFolder().string();
+
+		// Save path preference....
+#ifdef CINDER_COCOA_TOUCH
+		mFolderApp = mFolderBundle = mFolderAppSupport = mFolderSave = getHomeDirectory();
+		mFolderList.push_back( mFolderApp );
+#else
+		mFolderList.push_back( mFolderBundle );
+		mFolderList.push_back( mFolderAppSupport );
+		mFolderList.push_back( mFolderApp );
+#endif
 		
-		// make default filename based on app name
+#ifdef STANDALONE
+		mFolderDefault = mFolderBundle;
+#else
+		mFolderDefault = mFolderAppSupport;
+#endif
+		
+		// temporary extension, this will be replaced if added extionsions
 		fileExt = "cfg";
-		std::string mAppName = [[[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleNameKey] UTF8String];
-		currentFileName = this->getFullFilename(mAppName + "." + fileExt);
+		this->setFile( mAppName + "." + fileExt );
 		
 		// Register key events
-#ifdef CINDER
 #ifdef CFG_CATCH_LOOP_EVENTS
 		// not for presets
 		if (parent == NULL)
 			App::get()->registerKeyDown( this, &ciConfig::onKeyDown );
-#endif
 #endif
 		
 		// init MIDI
@@ -78,20 +106,14 @@ namespace cinder {
 		if (parent == NULL)
 		{
 #ifdef CFG_USE_MIDI
-#ifdef CINDER
 			midiHub = new midi::Hub();
-#else
-			midiHub = new ofxMidiHub(this);
-#endif
 #endif
 			
 			// init OSC
 #ifdef CFG_USE_OSC
 			this->setOscSend(false);
 			this->setOscReceive(false);
-#ifdef CINDER
 			this->setOscReceive(true);	// CINDER always receive OSC because have no MIDI
-#endif
 #ifdef CFG_CATCH_LOOP_EVENTS
 			ofAddListener(ofEvents.update, this, &ciConfig::oscCallback);
 #endif
@@ -112,12 +134,6 @@ namespace cinder {
 			params.pop_back();
 		}
 		
-		// free presets
-		std::map<char,ciConfig*>::const_iterator it;
-		for ( it = presets.begin() ; it != presets.end(); it++ )
-			if (it->second)
-				free (it->second);
-
 #ifdef CFG_USE_MIDI
 		if (midiHub)
 			delete midiHub;
@@ -144,17 +160,12 @@ namespace cinder {
 #endif
 	
 	//
-	// Update state
+	// Update loop
 	//
 	void ciConfig::update()
 	{
 		bStarted = true;
 		
-		// not for children (presets)
-		if (parent)
-			return;
-		
-#ifdef CINDER
 		// Watch if Params updated var pointers
 		for (int id = 0 ; id < params.size() ; id++)
 		{
@@ -172,13 +183,17 @@ namespace cinder {
 					}
 				}
 			}
+			else if (p->isVector2() && this->testFlag(id,CFG_FLAG_XY))
+			{
+				for (int i = 0 ; i < 2 ; i++)
+					if (p->watchVector2[i] != this->get(id, i))
+						this->set( id, i, p->watchVector2[i] );
+			}
 			else if (p->isVector())
 			{
-				for (int i = 0 ; i < 3 ; i++)
-				{
+				for (int i = 0 ; i < 4 ; i++)
 					if (p->watchVector[i] != this->get(id, i))
 						this->set( id, i, p->watchVector[i] );
-				}
 			}
 			else if (p->isBool())
 			{
@@ -217,7 +232,6 @@ namespace cinder {
 			this->parseMidiMessage(channel, note, val);
 		}
 #endif
-#endif	// CINDER
 		
 #ifdef CFG_USE_OSC
 #ifndef CFG_CATCH_LOOP_EVENTS
@@ -227,22 +241,51 @@ namespace cinder {
 	}
 	//
 	// Keyboard / Presets
-#ifdef CINDER
 	bool ciConfig::onKeyDown( app::KeyEvent event )
 	{
 		char c = event.getChar();
 		//printf("EVENT>> ciConfig::keyDown [%d] [%c]\n",c,c);
 		switch( c ) {
-			case 's':
-			case 'S':
+				/*
+			case 'r':
+			case 'R':
 				if (event.isMetaDown()) // COMMAND
-					this->save();
-				break;
+				{
+					this->reset();
+					return false;
+				}
+				 */
 			case 'l':
 			case 'L':
 				if (event.isMetaDown()) // COMMAND
+				{
 					this->load();
-				break;
+					return false;
+				}
+			case 's':
+			case 'S':
+				if (event.isMetaDown()) // COMMAND
+				{
+					//if (event.isShiftDown())
+					//	this->exportas();
+					//else
+					this->save();
+					return false;
+				}
+			case 'i':
+			case 'I':
+				if (event.isMetaDown()) // COMMAND
+				{
+					this->import();
+					return false;
+				}
+			case 'e':
+			case 'E':
+				if (event.isMetaDown()) // COMMAND
+				{
+					this->exportas();
+					return false;
+				}
 			case '1' :
 			case '2' :
 			case '3' :
@@ -254,21 +297,23 @@ namespace cinder {
 			case '9' :
 			case '0' :
 				{
-					if ( presets.find(c) != presets.end() )
+					// Save : CONTROL + COMMAND + NUMBER
+					if (event.isControlDown() && event.isMetaDown())
 					{
-						// Save : COMMAND + SHIFT + NUMBER
-						if (event.isMetaDown() && event.isControlDown())
-							this->savePreset(c);
-						// Load : CONTROL + NUMBER
-						else if (event.isMetaDown())
-							this->loadPreset(c);
+						this->save(c);
+						return true;
 					}
+					// Load : COMMAND + NUMBER
+					else if (event.isMetaDown())
+					{
+						this->load(c);
+						return true;
+					}
+					break;
 				}
-				break;
 		}
 		return false;
 	}
-#endif
 	
 	
 	/////////////////////////////////////////////////////////////////////////
@@ -300,7 +345,7 @@ namespace cinder {
 	//
 	void ciConfig::resetKeys(int id)
 	{
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 		{
 			strcpy( params[id]->vec[n].keySwitch, "" );
 			strcpy( params[id]->vec[n].keyInc, "" );
@@ -309,46 +354,49 @@ namespace cinder {
 	}
 	void ciConfig::swapKeys(int id1, int id2)
 	{
-		char keys[3][3][20];
-		for (int n = 0 ; n < 3 ; n++)
+		char keys[4][3][20];
+		for (int n = 0 ; n < 4 ; n++)
 		{
 			strcpy( keys[n][0], params[id1]->vec[n].keySwitch );
 			strcpy( keys[n][1], params[id1]->vec[n].keyInc );
 			strcpy( keys[n][2], params[id1]->vec[n].keyDec );
 		}
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 		{
 			strcpy( params[id1]->vec[n].keySwitch, params[id2]->vec[n].keySwitch );
 			strcpy( params[id1]->vec[n].keyInc, params[id2]->vec[n].keyInc );
 			strcpy( params[id1]->vec[n].keyDec, params[id2]->vec[n].keyDec );
 		}
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 		{
 			strcpy( params[id2]->vec[n].keySwitch, keys[n][0] );
 			strcpy( params[id2]->vec[n].keyInc, keys[n][1] );
 			strcpy( params[id2]->vec[n].keyDec, keys[n][2] );
 		}
 	}
-	void ciConfig::setKey(int id, string key)
-	{
-		for (int n = 0 ; n < 3 ; n++)
-			strcpy( params[id]->vec[n].keySwitch, key.c_str() );
-	}
-	void ciConfig::setKey(int id, string key0, string key1, string key2)
+	void ciConfig::setKey(int id, string key0, string key1, string key2, string key3)
 	{
 		strcpy( params[id]->vec[0].keySwitch, key0.c_str() );
 		strcpy( params[id]->vec[1].keySwitch, key1.c_str() );
 		strcpy( params[id]->vec[2].keySwitch, key2.c_str() );
+		strcpy( params[id]->vec[3].keySwitch, key2.c_str() );
 	}
 	void ciConfig::setKeyUpDown(int id, string up, string down)
 	{
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 		{
 			strcpy( params[id]->vec[n].keyInc, up.c_str() );
 			strcpy( params[id]->vec[n].keyDec, down.c_str() );
 		}
 	}
-	void ciConfig::setKeyRGBUpDown(int id, string up0, string down0, string up1, string down1, string up2, string down2)
+	void ciConfig::setKeyVectorUpDown(int id, string up0, string down0, string up1, string down1)
+	{
+		strcpy( params[id]->vec[0].keyInc, up0.c_str() );
+		strcpy( params[id]->vec[0].keyDec, down0.c_str() );
+		strcpy( params[id]->vec[1].keyInc, up1.c_str() );
+		strcpy( params[id]->vec[1].keyDec, down1.c_str() );
+	}
+	void ciConfig::setKeyVectorUpDown(int id, string up0, string down0, string up1, string down1, string up2, string down2)
 	{
 		strcpy( params[id]->vec[0].keyInc, up0.c_str() );
 		strcpy( params[id]->vec[0].keyDec, down0.c_str() );
@@ -356,6 +404,21 @@ namespace cinder {
 		strcpy( params[id]->vec[1].keyDec, down1.c_str() );
 		strcpy( params[id]->vec[2].keyInc, up2.c_str() );
 		strcpy( params[id]->vec[2].keyDec, down2.c_str() );
+	}
+	void ciConfig::setKeyVectorUpDown(int id, string up0, string down0, string up1, string down1, string up2, string down2, string up3, string down3)
+	{
+		strcpy( params[id]->vec[0].keyInc, up0.c_str() );
+		strcpy( params[id]->vec[0].keyDec, down0.c_str() );
+		strcpy( params[id]->vec[1].keyInc, up1.c_str() );
+		strcpy( params[id]->vec[1].keyDec, down1.c_str() );
+		strcpy( params[id]->vec[2].keyInc, up2.c_str() );
+		strcpy( params[id]->vec[2].keyDec, down2.c_str() );
+		strcpy( params[id]->vec[3].keyInc, up3.c_str() );
+		strcpy( params[id]->vec[3].keyDec, down3.c_str() );
+	}
+	void ciConfig::setKeyRGBUpDown(int id, std::string up0, std::string down0, std::string up1, std::string down1, std::string up2, std::string down2)
+	{
+		this->setKeyVectorUpDown(id,up0,down0,up1,down1,up2,down2);
 	}
 	
 	
@@ -365,7 +428,7 @@ namespace cinder {
 	//
 	void ciConfig::resetMidi(int id)
 	{
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 		{
 			params[id]->vec[n].midiNote = MIDI_NONE;
 			params[id]->vec[n].midiInc = MIDI_NONE;
@@ -375,8 +438,8 @@ namespace cinder {
 	}
 	void ciConfig::swapMidi(int id1, int id2)
 	{
-		int notes[3][5];
-		for (int n = 0 ; n < 3 ; n++)
+		int notes[4][5];
+		for (int n = 0 ; n < 4 ; n++)
 		{
 			notes[n][0] = params[id1]->vec[n].midiChannel;
 			notes[n][1] = params[id1]->vec[n].midiNote;
@@ -384,7 +447,7 @@ namespace cinder {
 			notes[n][3] = params[id1]->vec[n].midiDec;
 			notes[n][4] = params[id1]->vec[n].midiSwitch;
 		}
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 		{
 			params[id1]->vec[n].midiChannel	= params[id2]->vec[n].midiChannel;
 			params[id1]->vec[n].midiNote	= params[id2]->vec[n].midiNote;
@@ -392,7 +455,7 @@ namespace cinder {
 			params[id1]->vec[n].midiDec	= params[id2]->vec[n].midiDec;
 			params[id1]->vec[n].midiSwitch	= params[id2]->vec[n].midiSwitch;
 		}
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 		{
 			params[id2]->vec[n].midiChannel	= notes[n][0];
 			params[id2]->vec[n].midiNote	= notes[n][1];
@@ -403,41 +466,63 @@ namespace cinder {
 	}
 	void ciConfig::setMidiChannel(int id, int ch)
 	{
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 			params[id]->vec[n].midiChannel = ch;
 	}
 	void ciConfig::setMidiChannelTrigger(int id, int ch)
 	{
 		this->setMidiChannel(id, ch);
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 			params[id]->vec[n].midiNote = MIDI_TRIGGER;
 	}
 	void ciConfig::setMidi(int id, short note, int ch)
 	{
 		this->setMidiChannel(id, ch);
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 			params[id]->vec[n].midiNote = note;
 		// Can I push a value to MIDI device? I don't think so...
 		//midiOut->stimulate(midiChannel, note);
 		//midiOut->sendControlChange(midiChannel, note, 0);
 	}
-	void ciConfig::setMidi(int id, short note0, short note1, short note2, int ch)
+	void ciConfig::setMidi2(int id, short note0, short note1, int ch)
+	{
+		this->setMidiChannel(id, ch);
+		params[id]->vec[0].midiNote = note0;
+		params[id]->vec[1].midiNote = note1;
+	}
+	void ciConfig::setMidi3(int id, short note0, short note1, short note2, int ch)
 	{
 		this->setMidiChannel(id, ch);
 		params[id]->vec[0].midiNote = note0;
 		params[id]->vec[1].midiNote = note1;
 		params[id]->vec[2].midiNote = note2;
 	}
+	void ciConfig::setMidi4(int id, short note0, short note1, short note2, short note3, int ch)
+	{
+		this->setMidiChannel(id, ch);
+		params[id]->vec[0].midiNote = note0;
+		params[id]->vec[1].midiNote = note1;
+		params[id]->vec[2].midiNote = note2;
+		params[id]->vec[3].midiNote = note3;
+	}
 	void ciConfig::setMidiUpDown(int id, short up, short down, int ch)
 	{
 		this->setMidiChannel(id, ch);
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 		{
 			params[id]->vec[n].midiInc = up;
 			params[id]->vec[n].midiDec = down;
 		}
 	}
-	void ciConfig::setMidiRGBUpDown(int id, short up0, short down0, short up1, short down1, short up2, short down2, int ch)
+	void ciConfig::setMidiUpDown2(int id, short up0, short down0, short up1, short down1, int ch)
+	{
+		this->setMidiChannel(id, ch);
+		params[id]->vec[0].midiInc = up0;
+		params[id]->vec[0].midiDec = down0;
+		params[id]->vec[1].midiInc = up1;
+		params[id]->vec[1].midiDec = down1;
+	}
+	void ciConfig::setMidiUpDown3(int id, short up0, short down0, short up1, short down1, short up2, short down2, int ch)
 	{
 		this->setMidiChannel(id, ch);
 		params[id]->vec[0].midiInc = up0;
@@ -447,25 +532,28 @@ namespace cinder {
 		params[id]->vec[2].midiInc = up2;
 		params[id]->vec[2].midiDec = down2;
 	}
+	void ciConfig::setMidiUpDown4(int id, short up0, short down0, short up1, short down1, short up2, short down2, short up3, short down3, int ch)
+	{
+		this->setMidiChannel(id, ch);
+		params[id]->vec[0].midiInc = up0;
+		params[id]->vec[0].midiDec = down0;
+		params[id]->vec[1].midiInc = up1;
+		params[id]->vec[1].midiDec = down1;
+		params[id]->vec[2].midiInc = up2;
+		params[id]->vec[2].midiDec = down2;
+		params[id]->vec[3].midiInc = up3;
+		params[id]->vec[3].midiDec = down3;
+	}
+	void ciConfig::setMidiRGBUpDown(int id, short up0, short down0, short up1, short down1, short up2, short down2, int ch)
+	{
+		this->setMidiUpDown3(id,up0,down0,up1,down1,up2,down2,ch);
+	}
 	void ciConfig::setMidiSwitch(int id, short note, int ch)
 	{
 		this->setMidiChannel(id, ch);
-		for (int n = 0 ; n < 3 ; n++)
+		for (int n = 0 ; n < 4 ; n++)
 			params[id]->vec[n].midiSwitch = note;
 	}
-	//
-	// ofxMidi virtual callback
-#ifdef CFG_USE_MIDI
-#ifdef OPENFRAMEWORKS
-	void ciConfig::newMidiMessage(ofxMidiEventArgs& eventArgs)
-	{
-		int channel = eventArgs.channel;
-		int note = eventArgs.byteOne;
-		int val = eventArgs.byteTwo;
-		this->parseMidiMessage(channel, note, val);
-	}
-#endif
-#endif
 	//
 	// PARSE MIDI message
 	// used by OSC as well
@@ -488,7 +576,7 @@ namespace cinder {
 			if (params[id] == NULL)
 				continue;
 			ciConfigParam *p = params.at(id);
-			for (int i = 0 ; i < 3 ; i++)
+			for (int i = 0 ; i < 4 ; i++)
 			{
 				if (p->vec[i].midiChannel != channel)
 					continue;
@@ -587,18 +675,12 @@ namespace cinder {
 		try {
 			if (bOscReceive)
 			{
-#ifndef CINDER
-				oscSender.shutdown();
-#endif
 				oscReceiver.setup( port );
 				sprintf(errmsg, "OSC RECEIVING PORT %d...",port);
 			}
 			else if (bOscSend)
 			{
-#ifndef CINDER
-				oscReceiver.shutdown();
-#endif
-				oscSender.setup( DEFAULT_OSC_HOST, port );
+				oscSender.setup( CICFG_OSC_HOST, port );
 				sprintf(errmsg, "OSC SENDING...");
 			}
 		} catch (exception &error) {
@@ -617,7 +699,7 @@ namespace cinder {
 		if (params[id]->type == CFG_TYPE_STRING)
 			return;
 		// Send OSC
-		string addr = "/";
+		std::string addr = "/";
 		addr += this->getName(id);
 		ofxOscMessage m;
 		m.setAddress( addr );
@@ -645,7 +727,7 @@ namespace cinder {
 		{
 			if (params[id] == NULL)
 				continue;
-			for (int i = 0 ; i < 3 ; i++)
+			for (int i = 0 ; i < 4 ; i++)
 				sendOsc(id, i);
 		}
 	}
@@ -706,7 +788,7 @@ namespace cinder {
 					if (name == p->name)
 					{
 						int i		= 0;
-						string pv	= "P";
+						std::string pv	= "P";
 						float val;
 						// iPad / ToushOSC
 						if (m.getNumArgs() == 1)
@@ -764,7 +846,9 @@ namespace cinder {
 			case CFG_TYPE_LONG:
 			case CFG_TYPE_BYTE:
 			case CFG_TYPE_COLOR:
-			case CFG_TYPE_VECTOR:
+			case CFG_TYPE_VECTOR2:
+			case CFG_TYPE_VECTOR3:
+			case CFG_TYPE_VECTOR4:
 				return true;
 				break;
 		}
@@ -776,7 +860,9 @@ namespace cinder {
 		switch (params[id]->type)
 		{
 			case CFG_TYPE_COLOR:
-			case CFG_TYPE_VECTOR:
+			case CFG_TYPE_VECTOR2:
+			case CFG_TYPE_VECTOR3:
+			case CFG_TYPE_VECTOR4:
 				return true;
 				break;
 		}
@@ -842,12 +928,6 @@ namespace cinder {
 		this->set(id, val);
 		this->init(id);
 	}
-#ifndef CINDER
-	void ciConfig::addColor(short id, const string name, int hex)
-	{
-		this->addColor(id, name, Color8u(hex));
-	}
-#endif
 	void ciConfig::addColor(short id, const string name, Color8u c)
 	{
 		this->addColor(id, name, c.r, c.g, c.b);
@@ -861,27 +941,43 @@ namespace cinder {
 		this->set(id, r, g, b);
 		this->init(id);
 	}
-	void ciConfig::addVector(short id, const string name, Vec3f p, float vmin, float vmax)
+	void ciConfig::addVector2(short id, const string name, Vec2f p, float vmin, float vmax)
 	{
-		this->addVector(id, name, p.x, p.y, p.z, vmin, vmax);
+		this->addVector2(id, name, p.x, p.y, vmin, vmax);
+	}
+	void ciConfig::addVector2(short id, const string name, float x, float y, float vmin, float vmax)
+	{
+		this->pushParam(id, new ciConfigParam(id, CFG_TYPE_VECTOR2, name));
+		this->setLimitsX(id, vmin, vmax);
+		this->setLimitsY(id, vmin, vmax);
+		this->set(id, x, y);
 		this->init(id);
 	}
-	void ciConfig::addVector(short id, const string name, float x, float y, float z, float vmin, float vmax)
+	void ciConfig::addVector3(short id, const string name, Vec3f p, float vmin, float vmax)
 	{
-		this->pushParam(id, new ciConfigParam(id, CFG_TYPE_VECTOR, name));
+		this->addVector3(id, name, p.x, p.y, p.z, vmin, vmax);
+	}
+	void ciConfig::addVector3(short id, const string name, float x, float y, float z, float vmin, float vmax)
+	{
+		this->pushParam(id, new ciConfigParam(id, CFG_TYPE_VECTOR3, name));
 		this->setLimitsX(id, vmin, vmax);
 		this->setLimitsY(id, vmin, vmax);
 		this->setLimitsZ(id, vmin, vmax);
-		/*
-		 #ifdef CINDER
-		 this->setLimitsX(id, 0.0f, getWindowWidth());
-		 this->setLimitsY(id, 0.0f, getWindowHeight());
-		 #else
-		 this->setLimitsX(id, 0.0f, ofGetWidth());
-		 this->setLimitsY(id, 0.0f, ofGetHeight());
-		 #endif
-		 */
 		this->set(id, x, y, z);
+		this->init(id);
+	}
+	void ciConfig::addVector4(short id, const string name, Vec4f p, float vmin, float vmax)
+	{
+		this->addVector4(id, name, p.x, p.y, p.z, p.w, vmin, vmax);
+	}
+	void ciConfig::addVector4(short id, const string name, float x, float y, float z, float w, float vmin, float vmax)
+	{
+		this->pushParam(id, new ciConfigParam(id, CFG_TYPE_VECTOR4, name));
+		this->setLimitsX(id, vmin, vmax);
+		this->setLimitsY(id, vmin, vmax);
+		this->setLimitsZ(id, vmin, vmax);
+		this->setLimitsW(id, vmin, vmax);
+		this->set(id, x, y, z, w);
 		this->init(id);
 	}
 	// reset to initial values
@@ -893,117 +989,23 @@ namespace cinder {
 	void ciConfig::reset()
 	{
 		for ( short id = 0 ; id < params.size() ; id++ )
-		{
-			ciConfigParam *p = params[id];
-			if (p != NULL)
-				for (int i = 0 ; i < 3 ; i++)
-					this->set( id, i, p->vec[i].getInitialValue() );
-		}
+			this->reset(id);
+		mDisplayFileName = "< reset >";
 	}
-	
-	//
-	// PRESETS
-	//
-	// Copy param from another cfg
-	void ciConfig::makePresets(int presetCount, bool _auto )
+	void ciConfig::reset(int id)
 	{
-		char file[1024];
-		for (int n = 0 ; ( n < presetCount && n < 10 ) ; n++)
+		ciConfigParam *p = params[id];
+		if (p != NULL)
 		{
-			char key = PRESET_KEY(n);
-			ciConfig *pr = new ciConfig(this);
-			presets[key] = pr;
-			// set file
-			int extsz = ( fileExt.length() + 1);
-			string fmt = currentFileName;
-			fmt.replace( fmt.size()-extsz, extsz, "_preset_%c."+fileExt );
-			sprintf( file, fmt.c_str(), key );
-			pr->setFile( file );
-			//printf("made preset [%s]\n",file);
-		}
-		// copy params
-		if (_auto)
-			for ( short i = 0 ; i < params.size() ; i++ )
-				if (params[i] != NULL)
-					this->addParamToPreset(i);
-	}
-	void ciConfig::addParamToPreset(int id)
-	{
-		std::map<char,ciConfig*>::const_iterator it;
-		for ( it = presets.begin() ; it != presets.end(); it++ )
-		{
-			//char key = (it->first);
-			ciConfig* pr = (it->second);
-			int t = this->getType(id);
-			switch (t)
+			for (int i = 0 ; i < 4 ; i++)
 			{
-				case CFG_TYPE_FLOAT:
-					pr->addFloat(id, this->getName(id).c_str(), this->get(id), this->getMin(id), this->getMax(id));
-					break;
-				case CFG_TYPE_DOUBLE:
-					pr->addDouble(id, this->getName(id).c_str(), this->getDouble(id), (double)this->getMin(id), (double)this->getMax(id));
-					break;
-				case CFG_TYPE_INTEGER:
-					pr->addInt(id, this->getName(id).c_str(), this->getInt(id), (int)this->getMin(id), (int)this->getMax(id));
-					break;
-				case CFG_TYPE_LONG:
-					pr->addLong(id, this->getName(id).c_str(), this->getLong(id), (long)this->getMin(id), (long)this->getMax(id));
-					break;
-				case CFG_TYPE_BOOLEAN:
-					pr->addBool(id, this->getName(id).c_str(), this->getBool(id));
-					break;
-				case CFG_TYPE_BYTE:
-					pr->addByte(id, this->getName(id).c_str(), this->getByte(id), (char)this->getMin(id), (char)this->getMax(id));
-					break;
-				case CFG_TYPE_COLOR:
-					pr->addColor(id, this->getName(id).c_str(), this->getColor(id));
-					break;
-				case CFG_TYPE_VECTOR:
-					pr->addVector(id, this->getName(id).c_str(), this->getVector(id), (char)this->getMin(id), (char)this->getMax(id));
-					break;
-				case CFG_TYPE_STRING:
-					pr->addString(id, this->getName(id).c_str(), this->getString(id));
-					break;
-				default:
-					printf("Config::presetAddParamFrom() ERROR invalid id[%d] type[%d]\n",id,t);
-					break;
-			};
+				if (this->isString(id))
+					p->strval = p->strvalInitial;
+				else
+					this->set( id, i, p->vec[i].getInitialValue() );
+				
+			}
 		}
-	}
-	//
-	// Save / load
-	// i : preset number (1,2,...)
-	int ciConfig::savePreset(char c)
-	{
-		std::map<char,ciConfig*>::const_iterator it = presets.find(c);
-		if ( it != presets.end() )
-		{
-			ciConfig* pr = (it->second);
-			// copy from source
-			for (int id = 0 ; id < pr->params.size() ; id++ )
-				if (pr->params[id])
-					pr->set( id, this->get(id) );
-			// save!
-			return pr->save();
-		}
-		return 0;
-	}
-	int ciConfig::loadPreset(char c)
-	{
-		int r = 0;
-		std::map<char,ciConfig*>::const_iterator it = presets.find(c);
-		if ( it != presets.end() )
-		{
-			ciConfig* pr = (it->second);
-			// load!
-			r = pr->load();
-			// copy back to source
-			if (r > 0)
-				for (int id = 0 ; id < pr->params.size() ; id++ )
-					if (pr->params[id])
-						this->set( id, pr->get(id) );
-		}
-		return r;
 	}
 	
 	
@@ -1011,46 +1013,58 @@ namespace cinder {
 	//
 	// SETTERS
 	//
+	void ciConfig::setLimits(int id, Vec2f vmin, Vec2f vmax)
+	{
+		this->setLimitsX(id, vmin.x, vmax.x);
+		this->setLimitsY(id, vmin.y, vmax.y);
+	}
 	void ciConfig::setLimits(int id, Vec3f vmin, Vec3f vmax)
 	{
 		this->setLimitsX(id, vmin.x, vmax.x);
 		this->setLimitsY(id, vmin.y, vmax.y);
 		this->setLimitsZ(id, vmin.z, vmax.z);
 	}
+	void ciConfig::setLimits(int id, Vec4f vmin, Vec4f vmax)
+	{
+		this->setLimitsX(id, vmin.x, vmax.x);
+		this->setLimitsY(id, vmin.y, vmax.y);
+		this->setLimitsZ(id, vmin.z, vmax.z);
+		this->setLimitsW(id, vmin.w, vmax.w);
+	}
 	void ciConfig::setLimitsDegrees(int id)
 	{
 		this->setLimitsX(id, 0, 360);
 		this->setLimitsY(id, 0, 360);
 		this->setLimitsZ(id, 0, 360);
+		this->setLimitsW(id, 0, 360);
 	}
 	void ciConfig::setLimitsRadians(int id)
 	{
 		this->setLimitsX(id, 0, TWO_PI);
 		this->setLimitsY(id, 0, TWO_PI);
 		this->setLimitsZ(id, 0, TWO_PI);
+		this->setLimitsW(id, 0, TWO_PI);
 	}
 	void ciConfig::setLimitsScreen(int id)
 	{
-#ifdef CINDER
 		this->setLimitsX(id, 0, getWindowWidth());
 		this->setLimitsY(id, 0, getWindowHeight());
 		this->setLimitsZ(id, 0, 0);
-#else
-		this->setLimitsX(id, 0, ofGetWidth());
-		this->setLimitsY(id, 0, ofGetHeight());
-		this->setLimitsZ(id, 0, 0);
-#endif
-		
-		
+		this->setLimitsW(id, 0, 0);
 	}
 	//
 	// Called after any set
-	void ciConfig::post_set(int id, int i)
+	void ciConfig::post_set(int id)
 	{
-#ifdef CINDER
+		this->post_set( id, 0, false);
+		this->post_set( id, 1, false);
+		this->post_set( id, 2, true);
+		this->post_set( id, 3, true);
+	}
+	void ciConfig::post_set(int id, int i, bool doCB)
+	{
 		// update Param pointers
 		params[id]->updatePointers(i);
-#endif
 		// Set freshness
 		bool f = false;
 		switch (params[id]->type)
@@ -1058,7 +1072,9 @@ namespace cinder {
 			case CFG_TYPE_FLOAT:
 			case CFG_TYPE_DOUBLE:
 			case CFG_TYPE_COLOR:
-			case CFG_TYPE_VECTOR:
+			case CFG_TYPE_VECTOR2:
+			case CFG_TYPE_VECTOR3:
+			case CFG_TYPE_VECTOR4:
 				if ( this->get(id, i) != this->getLastValue(id, i) )
 					f = true;
 				break;
@@ -1069,20 +1085,30 @@ namespace cinder {
 				if ( (int) this->get(id, i) != (int) this->getLastValue(id, i) )
 					f = true;
 				break;
+			case CFG_TYPE_STRING:
+				if ( this->getLastValueString(id).compare( this->getString(id) ) != 0 )
+					f = true;
+				break;
 			default:
 				f = true;
 				break;
-		};
+		}
 		// If fresh...
 		if (f)
 		{
+			// Mark file as read
+			if (mDisplayFileName[0] != '*')
+				mDisplayFileName.insert(0, "*");
 			// set as fresh
 			freshness = true;
 			params[id]->vec[i].freshness = true;
 			// save current value
-			this->updateLastValue(id, i);
+			if (params[id]->isString())
+				this->updateLastValueString(id);
+			else
+				this->updateLastValue(id, i);
 			// Virtual callback
-			if ( bStarted && !inPostSetCallback )
+			if ( bStarted && !inPostSetCallback && doCB )
 			{
 				inPostSetCallback = true;
 				if ( postSetCallback_fn )
@@ -1107,6 +1133,7 @@ namespace cinder {
 		params[id]->vec[0].preserveProg = b;
 		params[id]->vec[1].preserveProg = b;
 		params[id]->vec[2].preserveProg = b;
+		params[id]->vec[3].preserveProg = b;
 	}
 	// Set Prog
 	void ciConfig::setProg(int id, int i, float p)		// Private
@@ -1114,14 +1141,29 @@ namespace cinder {
 		params[id]->vec[i].setProg(p);
 		this->post_set(id, i);
 	}
+	void ciConfig::setProg(int id, float val0, float val1)
+	{
+		params[id]->vec[0].setProg(val0);
+		params[id]->vec[1].setProg(val1);
+		this->post_set(id);
+	}
 	void ciConfig::setProg(int id, float val0, float val1, float val2)
 	{
-		this->setProgX(id,val0);
-		this->setProgY(id,val1);
-		this->setProgZ(id,val2);
+		params[id]->vec[0].setProg(val0);
+		params[id]->vec[1].setProg(val1);
+		params[id]->vec[2].setProg(val2);
+		this->post_set(id);
+	}
+	void ciConfig::setProg(int id, float val0, float val1, float val2, float val3)
+	{
+		params[id]->vec[0].setProg(val0);
+		params[id]->vec[1].setProg(val1);
+		params[id]->vec[2].setProg(val2);
+		params[id]->vec[3].setProg(val3);
+		this->post_set(id);
 	}
 	// generic (float)
-	// val1, val2 will be used only on CFG_TYPE_VECTOR and CFG_TYPE_COLOR
+	// val1, val2 will be used only on CFG_TYPE_VECTORX and CFG_TYPE_COLOR
 	void ciConfig::set(int id, int i, float val)		// Private
 	{
 		ciConfigParam *p = params[id];
@@ -1134,7 +1176,9 @@ namespace cinder {
 			case CFG_TYPE_BOOLEAN:
 			case CFG_TYPE_BYTE:
 			case CFG_TYPE_COLOR:
-			case CFG_TYPE_VECTOR:
+			case CFG_TYPE_VECTOR2:
+			case CFG_TYPE_VECTOR3:
+			case CFG_TYPE_VECTOR4:
 				p->vec[i].set(val);
 				break;
 			case CFG_TYPE_STRING:
@@ -1148,7 +1192,7 @@ namespace cinder {
 				printf("Config.set(int) ERROR invalid id[%d] type[%d] val[%d]\n",id,p->type,(int)val);
 				return;
 				break;
-		};
+		}
 		this->post_set(id, i);
 	}
 	// If CFG_TYPE_STRING, just set
@@ -1157,34 +1201,25 @@ namespace cinder {
 	void ciConfig::set(int id, const char *val, bool pp)
 	{
 		// Set string!
-		if (params[id]->type == CFG_TYPE_STRING)
+		if (this->isString(id))
 		{
 			params[id]->strval = string( val );
 			params[id]->updatePointers(0);
-			//this->post_set(id, 0);
+			this->post_set(id, 0);
 		}
 		// Set vector values
 		// val = "number,number,number"
 		else if (this->isVector(id))
 		{
-			char *p1, *p2;
-			char vals[3][16];
-			memset(vals,0,sizeof(vals));
-			// val1
-			if ((p1 = strchr(val,',')) != NULL)
-			{
-				strncpy(vals[0],val,(p1-val));
-				if ((p2 = strchr(p1+1,',')) != NULL)
-				{
-					strncpy(vals[1],p1+1,(p2-p1));
-					strcpy(vals[2],p2+1);
-				}
-			}
-			// set!
+			std::vector<std::string> splits;
+			boost::split(splits, val, boost::is_any_of(","));
+			std::string vals[4];
+			for (int n = 0 ; n < splits.size() ; n++)
+				vals[n] = splits[n];
 			if (pp)
-				this->setProg(id, atof(vals[0]), atof(vals[1]), atof(vals[2]));
+				this->setProg(id, atof(vals[0].c_str()), atof(vals[1].c_str()), atof(vals[2].c_str()), atof(vals[3].c_str()));
 			else
-				this->set(id, atof(vals[0]), atof(vals[1]), atof(vals[2]));
+				this->set(id, atof(vals[0].c_str()), atof(vals[1].c_str()), atof(vals[2].c_str()), atof(vals[3].c_str()));
 		}
 		// defualt: float
 		else if (pp)
@@ -1192,11 +1227,29 @@ namespace cinder {
 		else
 			this->set(id, 0, val);
 	}
+	void ciConfig::set(int id, float val0, float val1)
+	{
+		ciConfigParam *p = params[id];
+		p->vec[0].set(val0);
+		p->vec[1].set(val1);
+		this->post_set(id);
+	}
 	void ciConfig::set(int id, float val0, float val1, float val2)
 	{
-		this->set(id,0,val0);
-		this->set(id,1,val1);
-		this->set(id,2,val2);
+		ciConfigParam *p = params[id];
+		p->vec[0].set(val0);
+		p->vec[1].set(val1);
+		p->vec[2].set(val2);
+		this->post_set(id);
+	}
+	void ciConfig::set(int id, float val0, float val1, float val2, float val3)
+	{
+		ciConfigParam *p = params[id];
+		p->vec[0].set(val0);
+		p->vec[1].set(val1);
+		p->vec[2].set(val2);
+		p->vec[3].set(val3);
+		this->post_set(id);
 	}
 	//
 	// Vaule labels for radio buttons
@@ -1285,10 +1338,10 @@ namespace cinder {
 		// virtual
 		this->guiUpdateValueLabels(id);
 	}
-	string ciConfig::getValueLabel(short id, int key)
+	std::string ciConfig::getValueLabel(short id, int key)
 	{
 		ciConfigParam *param = params[id];
-		string str = param->valueLabels[key];
+		std::string str = param->valueLabels[key];
 		if (str.length())
 			return str;
 		else
@@ -1313,6 +1366,7 @@ namespace cinder {
 			this->invert(id, 0);
 			this->invert(id, 1);
 			this->invert(id, 2);
+			this->invert(id, 3);
 		}
 		else
 			this->invert(id, 0);
@@ -1331,6 +1385,7 @@ namespace cinder {
 			this->sub(id, 0, val, clamp);
 			this->sub(id, 1, val, clamp);
 			this->sub(id, 2, val, clamp);
+			this->sub(id, 3, val, clamp);
 		}
 		else
 			this->sub(id, 0, val, clamp);
@@ -1349,6 +1404,7 @@ namespace cinder {
 			this->add(id, 0, val, clamp);
 			this->add(id, 1, val, clamp);
 			this->add(id, 2, val, clamp);
+			this->add(id, 3, val, clamp);
 		}
 		else
 			this->add(id, 0, val, clamp);
@@ -1380,7 +1436,9 @@ namespace cinder {
 			case CFG_TYPE_BOOLEAN:
 			case CFG_TYPE_BYTE:
 			case CFG_TYPE_COLOR:
-			case CFG_TYPE_VECTOR:
+			case CFG_TYPE_VECTOR2:
+			case CFG_TYPE_VECTOR3:
+			case CFG_TYPE_VECTOR4:
 				return p->vec[i].get();
 				break;
 			case CFG_TYPE_STRING:
@@ -1390,7 +1448,7 @@ namespace cinder {
 				printf("Config.get(int) ERROR invalid id[%d] type[%d]\n",id,p->type);
 				return 0.0f;
 				break;
-		};
+		}
 	}
 	const char* ciConfig::getString(int id, bool raw)
 	{
@@ -1399,10 +1457,10 @@ namespace cinder {
 		if (param->type == CFG_TYPE_STRING)
 			return (param->strval).c_str();
 		// Init string
-		bool pp = param->vec[0].preserveProg;
-		param->strval = (pp ? "P" : "");
+		param->strval = "";
 		// Convert to string...
-		for (int i = 0 ; i < (this->isVector(id)?3:1) ; i++)
+		bool pp = param->vec[0].preserveProg;
+		for (int i = 0 ; i < this->getVectorCount(id) ; i++)
 		{
 			char val[16];
 			if (i > 0)
@@ -1422,7 +1480,7 @@ namespace cinder {
 						else
 						{
 							//int v = (int)this->get(id,i) - (int)this->getMin(id,i);
-							string l = param->valueLabels[this->getInt(id)];
+							std::string l = param->valueLabels[this->getInt(id)];
 							if (l.length())
 								return l.c_str();
 							else
@@ -1479,68 +1537,104 @@ namespace cinder {
 	}
 	
 	
+	
+	
 	/////////////////////////////////////////////////////////////////////////
 	//
-	// SAVE / READ utils
+	// NEW SAVE / READ
 	//
 	// Set the default file extension
 	void ciConfig::setFileExtension(const std::string e)
 	{
 		// Change current filename extension
-		if ( currentFileName.length() )
-			currentFileName.replace( currentFileName.size()-fileExt.length(), fileExt.length(), e );
-		// Set new extension
+		if ( mCurrentFileName.length() )
+			mCurrentFileName.replace( mCurrentFileName.size()-fileExt.length(), fileExt.length(), e );
+		// set current file extension
 		fileExt = e;
 	}
 	//
 	// Sets default file and load it
-	void ciConfig::setFile(const std::string & f, const std::string & path)
+	// OBS: Nao faz mais muito sentido ter isso...
+	void ciConfig::setFile(const std::string & f)
 	{
 		if (f[0] == '/')
-			currentFileName = f;
+			mCurrentFileName = f;
 		else
-			currentFileName = this->getFullFilename(f, path);
+			mCurrentFileName = mFolderSave + "/" + f;
 	}
 	int ciConfig::useFile(const std::string & f, const std::string & path)
 	{
-		this->setFile(f, path);
-		return this->load();
+		if ( path.length() )
+			this->setFile( path + "/" + f );
+		else
+			this->setFile( f );
+		return this->readFile( f );
 	}
 	//
-	// Get file name
-	string ciConfig::getFullFilename(const std::string & f, const std::string & path)
+	// Open / Save from picking a file
+	bool ciConfig::import()
 	{
-		// Use current
-		if ( f.length() == 0 )
-			return currentFileName;
-		
-		// file has path
-		if ( strchr(f.c_str(), '/') != NULL )
-			return f;
-		
-		// Make filename
-		std::ostringstream os;
-		// Cinder file
-#ifdef CINDER_COCOA_TOUCH
-		os << getHomeDirectory() << f;
-#else
-		if ( path.length() == 0 )
+		std::vector<std::string> extensions;
+		extensions.push_back( fileExt );
+		std::string path = app::getOpenFilePath( mFolderSave, extensions ).string();
+		if ( path.length() )
 		{
-			//os << "../../../" << f;
-			//os << "./" << f;
-
-			// Save besides your ".app"
-			std::string appPath = getPathDirectory( app::getAppPath().string() );
-			os << appPath << f;
+			mFolderSave = path;
+			if ( this->readFile( path.c_str() ) > 0 )
+				this->setFile( path.c_str() );
+			return true;
 		}
-		else
-			os << path << f;
-#endif
-		return os.str();
+		return false;
 	}
-	
-	
-	
+	bool ciConfig::exportas()
+	{
+		std::vector<std::string> extensions;
+		extensions.push_back( fileExt );
+		std::string path = app::getSaveFilePath( mFolderSave, extensions ).string();
+		if ( path.length() )
+		{
+			mFolderSave = path;
+			if ( this->saveFile( path.c_str() ) > 0 )
+				this->setFile( path.c_str() );
+			return true;
+		}
+		return false;
+	}
+	//
+	// Load default file
+	int ciConfig::load(char preset)
+	{
+		for ( int n = 0 ; n < mFolderList.size() ; n++ )
+		{
+			std::string f = this->makeFileName( mFolderList[n], preset );
+			if( fs::exists( f ) )
+				if ( int ps = this->readFile( f, preset ) > 0 )
+					return ps;
+		}
+		return 0;
+	}
+	//
+	// Save default file
+	int ciConfig::save(char preset)
+	{
+		std::string f = this->makeFileName( mFolderDefault, preset );
+		return this->saveFile( f, preset );
+	}
+	//
+	// Make names
+	std::string ciConfig::makeFileName(const std::string & path, char preset)
+	{
+		std::string f = path + "/" + mAppName;
+		if ( preset )
+			f += std::string("_preset_") + preset;
+		f += "." + fileExt;
+		return f;
+	}
+	std::string ciConfig::makeXmlNodeName(char preset)
+	{
+		return ( preset ? std::string("preset_") + preset : "default" );
+	}
+
 	
 	/////////////////////////////////////////////////////////////////////////
 	//
@@ -1548,25 +1642,239 @@ namespace cinder {
 	//
 	// SAVE to file on data folder
 	// Return saved params
-	int ciConfig::readFile(const std::string & f)
+	int ciConfig::readFile(const std::string & f, char preset)
 	{
-		// Open file
-		string fullFilename = this->getFullFilename(f);
-		FILE *fp = fopen (fullFilename.c_str(),"r");
-		if (fp == NULL)
+		XmlTree doc;
+		try {
+			if ( fs::exists( f ) )
+				doc = XmlTree( loadFile( f ) );
+		} catch (std::exception e) {
+			// Not XML! try old format...
+			return readFile_old( f, preset );
+		}
+		//
+		// Get nodes
+
+		//
+		// Read node "config"
+		XmlTree node;
+		std::string nodeName = "config/" + this->makeXmlNodeName( preset );
+		if ( ! doc.hasChild( nodeName ) )
 		{
-			printf("ERROR reading config file [%s] errno [%d/%s]\n",fullFilename.c_str(),errno,strerror(errno));
-			sprintf(errmsg, "READ ERROR! [%s]", fullFilename.c_str());
+			printf("-------------- READ XML ERROR! node not found [%s]\n",nodeName.c_str());
 			return 0;
 		}
+		node = doc.getChild( nodeName );
+		
+		for( XmlTree::Iter child = node.begin(); child != node.end(); ++child )
+		{
+			std::string name = child->getTag();
+			//std::string value = child->getValue();
+			std::string value = child->getAttribute("value");
+			bool pp = ( child->hasAttribute("prog") ? (child->getAttribute("prog").getValue() == "true") : false );
+			
+			//
+			// Find param
+			// Read params
+			for (int pid = 0 ; pid < params.size() ; pid++ )
+			{
+				ciConfigParam *param = params[pid];
+				if (param == NULL)
+					continue;
+				if ( name == param->name )
+				{
+#ifdef VERBOSE
+					printf ("READ XML param %d: %s = %s",pid,name.c_str(),value.c_str());
+#endif
+					this->preserveProg( pid, pp );
+					this->set(pid, value.c_str(), pp);
+					break;
+				}
+			}
+			
+		}
+		
+		
+#ifdef VERBOSE
+		console() << doc << std::endl;
+#endif
+
+		//
+		// SAVE!!!
+		doc.write( writeFile( f ) );
+		printf("-------------- READ OK! %d params\n",(int)params.size());
+		sprintf(errmsg, "READ [%s]", f.c_str());
+		
+		// remember file
+		this->setDisplayFilename( f, preset );
+
+		// return param count
+		return params.size();
+	}
+	//
+	// SAVE to file on data folder
+	// Return saved params
+	int ciConfig::saveFile(const std::string & f, char preset)
+	{
+		XmlTree doc;
+		try {
+			if ( fs::exists( f ) )
+				doc = XmlTree( loadFile( f ) );
+		} catch (std::exception e) {
+			printf("-------------- SAVE XML ERROR! NOT XML!\n");
+		}
+		
+		// TODO:: TEST IF LOADED A XML!!!
+		
+		if ( doc.getNodeType() != XmlTree::NODE_DOCUMENT )
+			doc = XmlTree::createDoc();
+
+		// Get Nodes
+		XmlTree rootNode_new, node_new;
+		XmlTree * rootNode, * node;		// must be pointer necause of getChild()
+		std::string nodeName = this->makeXmlNodeName( preset );
+		if ( doc.hasChild( "config" ) )
+			rootNode = &doc.getChild( "config");
+		else
+		{
+			rootNode_new = XmlTree( "config", "" );
+			rootNode = &rootNode_new;
+		}
+		if ( rootNode->hasChild( nodeName ) )
+			node = &rootNode->getChild( nodeName );
+		else
+		{
+			node_new = XmlTree( nodeName, "" );
+			node = &node_new;
+		}
+
+		// Save date
+		time_t now;
+		time ( &now );
+		std::string date = string( ctime(&now) );
+		date[date.length()-1] = '\0';	// removes '\n'
+		node->setAttribute( "SAVE_TIME", date );
+		
+		// Save params
+		for ( int id = 0 ; id < params.size() ; id++ )
+		{
+			ciConfigParam *param = params[id];
+			if ( param == NULL )
+				continue;
+			if ( param->dummy )
+				continue;
+			std::string name = this->getName(id);
+			std::string value = this->getString(id, true);
+			// Update ttribute
+			XmlTree p_new;
+			XmlTree * p;		// must be pointer necause of getChild()
+			if ( node->hasChild( name ) )
+				p = &node->getChild( name );
+			else
+			{
+				p_new = XmlTree( name, "" );
+				p = &p_new;
+			}
+			p->setAttribute( "value", value );
+			// prog?
+			if ( param->vec[0].preserveProg )
+				p->setAttribute( "prog", "true" );
+			// New?
+			if ( ! p->hasParent() )
+				node->push_back( *p );
+		}
+
+		// New Xml?
+		if ( ! node->hasParent() )
+			rootNode->push_back( *node );
+		if ( ! rootNode->hasParent() )
+			doc.push_back( *rootNode );
+
+#ifdef VERBOSE
+		console() << doc << std::endl;
+#endif
+
+		//
+		// SAVE FILE!!
+		doc.write( writeFile( f ) );
+		printf("-------------- SAVE OK! %d params\n",(int)params.size());
+		sprintf(errmsg, "SAVED [%s]", f.c_str());
+		
+		// remember file
+		this->setDisplayFilename( f, preset );
+		
+		// return param count
+		return params.size();
+ 
+	}
+	//
+	// Set the display filename from a saved/loaded file
+	void ciConfig::setDisplayFilename(const std::string & f, char preset)
+	{
+		if ( IS_IN_DEFAULTS(f) )
+		{
+			if (preset)
+				mDisplayFileName = std::string("< preset ") + preset + " >";
+			else
+				mDisplayFileName = "< default >";
+		}
+		else
+		{
+			std::string ext = getPathExtension( f );
+			std::string ff = getPathFileName(f);
+			ff = ff.substr(0,ff.length()-ext.length()-1);
+			mDisplayFileName = "[ " + ff + " ]";
+		}
+	}
+
+
+
+	
+	
+	/////////////////////////////////////////////////////////////////////
+	//
+	// OLD FILE FORMAT!!!
+	//
+	// Save comments
+	//fputs("#\n",fp);
+	//fputs("# ciConfig file\n",fp);
+	//fputs("#\n",fp);
+	//fputs("# Format:\n",fp);
+	//fputs("#\tPARAM_NAME[.channel]:[P]value\n",fp);
+	//fputs("# Examples:\n",fp);
+	//fputs("#\tPARAM_VALUE:10.0\t(parameter with value)\n",fp);
+	//fputs("#\tPARAM_PROG:P1.0\t\t(parameter with prog: from 0.0(vmin) to 1.0(vmax))\n",fp);
+	//fputs("#\tPARAM_VECTOR2:150.0,150.0\t(vector: x,y)\n",fp);
+	//fputs("#\tPARAM_VECTOR2:P0.5,0.5\t\t(vector with prog: x,y)\n",fp);
+	//fputs("#\tPARAM_VECTOR3:150.0,150.0,0.0\t(vector: x,y,z)\n",fp);
+	//fputs("#\tPARAM_VECTOR3:P0.5,0.5,0.0\t\t(vector with prog: x,y,z)\n",fp);
+	//fputs("#\tPARAM_VECTOR4:150.0,150.0,0.0\t(vector: x,y,z,w)\n",fp);
+	//fputs("#\tPARAM_VECTOR4:P0.5,0.5,0.0,0.0\t\t(vector with prog: x,y,z,w)\n",fp);
+	//fputs("#\tPARAM_COLOR:255,255,255\t\t\t(color: r,g,b)\n",fp);
+	//fputs("#\tPARAM_COLOR:P0.0,0.5,1.0\t\t(color with prog: r,g,b)\n",fp);
+	//fputs("#\n",fp);
+	int ciConfig::readFile_old(const std::string & f, char preset)
+	{
+		// Open file
+		FILE *fp = fopen (f.c_str(),"r");
+		if (fp == NULL)
+		{
+			printf("ERROR reading config file [%s] errno [%d/%s]\n",f.c_str(),errno,strerror(errno));
+			sprintf(errmsg, "READ ERROR! [%s]", f.c_str());
+			return 0;
+		}
+		printf("-------------- READ config [%s]...\n",f.c_str());
+		
+		// Here we go!
+		bStarted = true;
 		
 		// Read file
 		int pid;
 		bool pp;						// is prog?
 		char *p;						// aux pointer
 		char data[CFG_MAX_DATA_LEN];	// full line
-		string key;						// param key
-		string val;						// param value
+		std::string key;				// param key
+		std::string val;				// param value
 		for (int n = 0 ; fgets(data, sizeof(data) ,fp) != NULL ; n++)
 		{
 			// Comment?
@@ -1586,9 +1894,6 @@ namespace cinder {
 			// get key
 			*p = '\0';
 			key = data;
-#ifdef VERBOSE
-			printf ("READ CFG: %s = %s",key.c_str(),val.c_str());
-#endif
 			
 			// Read params
 			for (pid = 0 ; pid < params.size() ; pid++ )
@@ -1598,6 +1903,9 @@ namespace cinder {
 					continue;
 				if ( key == param->name )
 				{
+#ifdef VERBOSE
+					printf ("READ CFG param %d: %s = %s",pid,key.c_str(),val.c_str());
+#endif
 					this->preserveProg(pid, pp);
 					this->set(pid, val.c_str(), pp);
 					break;
@@ -1621,174 +1929,18 @@ namespace cinder {
 		
 		// Close file
 		fclose (fp);
-		printf("READ config [%s] OK! %d params\n",fullFilename.c_str(),(int)params.size());
-		sprintf(errmsg, "READ [%s]", fullFilename.c_str());
+		printf("-------------- READ OK! %d params\n",(int)params.size());
+		sprintf(errmsg, "READ [%s]", f.c_str());
+		
+		// remember file
+		this->setDisplayFilename( f, preset );
 		
 		// return param count
 		return params.size();
 	}
-	//
-	// SAVE to file on data folder
-	// Return saved params
-	int ciConfig::saveFile(const std::string & f)
-	{
-		// Open file
-		string fullFilename = this->getFullFilename(f);
-		FILE *fp = fopen (fullFilename.c_str(),"w");
-		if (fp == NULL)
-		{
-			printf("ERROR saving config [%s] errno [%d/%s]\n",fullFilename.c_str(),errno,strerror(errno));
-			sprintf(errmsg, "SAVE ERROR!!! [%s]", fullFilename.c_str());
-			return 0;
-		}
-		
-		// Virtual Callback
-		this->preSaveCallback();
-		
-		// Save comments
-		fputs("#\n",fp);
-		fputs("# ciConfig file\n",fp);
-		fputs("#\n",fp);
-		fputs("# Format:\n",fp);
-		fputs("#\tPARAM_NAME[.channel]:[P]value\n",fp);
-		fputs("# Examples:\n",fp);
-		fputs("#\tPARAM_VALUE:10.0\t(parameter with value)\n",fp);
-		fputs("#\tPARAM_PROG:P1.0\t\t(parameter with prog: from 0.0(vmin) to 1.0(vmax))\n",fp);
-		fputs("#\tPARAM_VECTOR:150.0,150.0,0.0\t(vector: x,y,z)\n",fp);
-		fputs("#\tPARAM_VECTOR:P0.5,0.5,0.0\t\t(vector with prog: x,y,z)\n",fp);
-		fputs("#\tPARAM_COLOR:255,255,255\t\t\t(color: r,g,b)\n",fp);
-		fputs("#\tPARAM_COLOR:P0.0,0.5,1.0\t\t(color with prog: r,g,b)\n",fp);
-		fputs("#\n",fp);
-		
-		// generate save time
-		char data[CFG_MAX_DATA_LEN];
-		time_t now;
-		time ( &now );
-		saveTime = string(&(ctime(&now)[4]));
-		sprintf(data,"SAVE_TIME:%s",saveTime.c_str());
-		fputs(data,fp);
-		
-		// Save params
-		for (int id = 0 ; id < params.size() ; id++ )
-		{
-			ciConfigParam *param = params[id];
-			if ( param == NULL )
-				continue;
-			if ( param->dummy )
-				continue;
-			// make line (name+value)
-			sprintf(data,"%s:%s\n",this->getName(id).c_str(),this->getString(id, true));
-			// save line
-			fputs  (data,fp);
-		}
-		
-		// Close file
-		fclose (fp);
-		
-		// Ok!
-		printf("SAVE config [%s] OK!\n",fullFilename.c_str());
-		sprintf(errmsg, "SAVED [%s]", fullFilename.c_str());
-		
-		// return param count
-		return params.size();
-	}
+
 	
 	
 	
 	
-	
-	
-	///////////////////////////////////////////////
-	//
-	// COCOA INTEGRATION
-	//
-	// Cocoa Slider
-	void ciConfig::cocoaSetupSlider(int id, NSSlider *slider)
-	{
-		[slider setMinValue:this->getMin(id)];
-		[slider setMaxValue:this->getMax(id)];
-		switch (params[id]->type)
-		{
-			case CFG_TYPE_FLOAT:
-			case CFG_TYPE_DOUBLE:
-				[slider setFloatValue:this->get(id)];
-				break;
-			case CFG_TYPE_INTEGER:
-			case CFG_TYPE_LONG:
-			case CFG_TYPE_BYTE:
-				[slider setIntValue:this->getInt(id)];
-				break;
-		}
-		
-	}
-	void ciConfig::cocoaReadSlider(int id, NSSlider *slider)
-	{
-		this->set(id, [slider floatValue]);
-	}
-	//
-	// Cocoa button
-	void ciConfig::cocoaSetupButton(int id, NSButton *button)
-	{
-		[button setState: ( this->getBool(id) ? NSOnState : NSOffState )];
-	}
-	void ciConfig::cocoaReadButton(int id, NSButton *button)
-	{
-		this->set(id, (bool)( [button state] == NSOnState ? true : false ));
-	}
-	//
-	// Cocoa Popup (combo box)
-	void ciConfig::cocoaSetupPopup(int id, NSPopUpButton *pop)
-	{
-		int v = this->getInt(id);
-		int min = (int)this->getMin(id);
-		int max = (int)this->getMax(id);
-		[pop removeAllItems];
-		for (int n = min ; n <= max ; n++)
-		{
-			int ix = (n - min);
-			if ( ix < params[id]->valueLabels.size())
-				[pop addItemWithTitle:STR2NSS(params[id]->valueLabels[ix].c_str())];
-			else
-				[pop addItemWithTitle:[NSString stringWithFormat:@"%d",n]];
-			if (v == n)
-				[pop selectItemAtIndex:ix];
-			//printf("GUI POP id(%d) ix %d = %d, current %d\n",id,ix,n,v);
-		}
-	}
-	void ciConfig::cocoaReadPopup(int id, NSPopUpButton *pop)
-	{
-		int v = (int)[pop indexOfSelectedItem] + (int)this->getMin(id);
-		this->set(id, v);
-	}
-	//
-	// Cocoa Segmented
-	void ciConfig::cocoaSetupSeg(int id, NSSegmentedControl *seg)
-	{
-		int v = this->getInt(id);
-		int min = (int)this->getMin(id);
-		int max = (int)this->getMax(id);
-		int count = (max-min+1);
-		[seg setSegmentCount:count];
-		float w = ( ([seg frame].size.width-10) / count );
-		for (int n = min ; n <= max ; n++)
-		{
-			int ix = (n - min);
-			[seg setWidth:w forSegment:ix];
-			if ( ix < params[id]->valueLabels.size())
-				[seg setLabel:STR2NSS(params[id]->valueLabels[ix].c_str()) forSegment:ix];
-			else
-				[seg setLabel:[NSString stringWithFormat:@"%d",n] forSegment:ix];
-			if (v == n)
-				[seg setSelectedSegment:ix];
-			//printf("GUI SEG id(%d) ix %d = %d, current %d\n",id,ix,n,v);
-		}
-	}
-	void ciConfig::cocoaReadSeg(int id, NSSegmentedControl *seg)
-	{
-		int v = (int)[seg selectedSegment] + (int)this->getMin(id);
-		this->set(id, v);
-	}
-	
-	
-	
-} // cinder::
+} // namespace cinder
