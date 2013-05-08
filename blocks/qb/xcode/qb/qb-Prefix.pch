@@ -1,7 +1,0 @@
-//
-// Prefix header for all source files of the 'qb' target in the 'qb' project
-//
-
-#ifdef __OBJC__
-	#import <Cocoa/Cocoa.h>
-#endif
