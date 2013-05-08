@@ -137,6 +137,11 @@ void OscSender::appendMessage(Message& message, ::osc::OutboundPacketStream& p){
 		oscSender->setup(hostname, port);
 	}
 	
+	// ROGER
+	void Sender::shutdown(){
+		oscSender->shutdown();
+	}
+	
 	void Sender::sendMessage(Message& message){
 		oscSender->sendMessage(message);
 	}

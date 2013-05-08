@@ -41,6 +41,9 @@ namespace cinder  { namespace osc {
 		void sendMessage(Message& message);
 		void sendBundle(Bundle& bundle);
 		
+		// ROGER
+		void shutdown();
+		
 	private:
 		
 		 std::shared_ptr<class OscSender>   oscSender;
