@@ -38,8 +38,13 @@ class syphonServer {
 	public:
 	syphonServer();
 	~syphonServer();
+	
+	bool isRunning()	{return (bool)mSyphon; }
+	void shutdown();
+	
 	void setName (std::string n);
 	std::string getName();
+	
 	void publishScreen();
     void publishTexture(ci::gl::Texture & inputTexture);
 	

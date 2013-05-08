@@ -107,13 +107,12 @@ void syphonClient::setServerName(std::string serverName)
 // ... or else the client will remain locked
 void syphonClient::bind(int unit)
 {
-    NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-	
     if(bSetup)
     {
+		NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
      	[(SyphonNameboundClient*)mClient lockClient];
-		
 		this->refresh();
+		[pool drain];
 
 		if (mTex)
 		{
@@ -125,14 +124,10 @@ void syphonClient::bind(int unit)
     }
     else
 		std::cout<<"syphonClient is not setup, or is not properly connected to server.  Cannot bind.\n";
-    
-    [pool drain];
 }
 
 void syphonClient::unbind(int unit)
 {
-    NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-    
     if(bSetup)
     {
 		if (mTex)
@@ -145,12 +140,12 @@ void syphonClient::unbind(int unit)
 				glDisable( GL_TEXTURE_RECTANGLE_ARB );
 		}
 		
+		NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
         [(SyphonNameboundClient*)mClient unlockClient];
+		[pool drain];
     }
     else
 		std::cout<<"syphonClient is not setup, or is not properly connected to server.  Cannot unbind.\n";
-	
-	[pool drain];
 }
 
 //
@@ -250,11 +245,7 @@ bool syphonClient::hasNewFrame()
 {
     if(bSetup)
     {
-        NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-		[(SyphonNameboundClient*)mClient lockClient];
-		this->refresh();
-		[(SyphonNameboundClient*)mClient unlockClient];
-		[pool drain];
+		this->update();
 		return bHasNewFrame;
     }
 	else 
@@ -267,11 +258,7 @@ unsigned int syphonClient::getCurrentFrame()
 {
     if(bSetup)
     {
-        NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-		[(SyphonNameboundClient*)mClient lockClient];
-		this->refresh();
-		[(SyphonNameboundClient*)mClient unlockClient];
-		[pool drain];
+		this->update();
 		return mCurrentFrame;
     }
 	else 

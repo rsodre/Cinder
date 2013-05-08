@@ -55,7 +55,6 @@
 
 - (id)init
 {
-	NSLog(@">>> INIT localServerDirectory");
     self = [super init];
 	if (self)
 	{
@@ -136,6 +135,9 @@ void syphonServerDirectory::setup()
 // Update server vector
 void syphonServerDirectory::update()
 {
+	if (!bSetup)
+		return;
+	
 	// empty current list
 	this->clear();
 	
@@ -159,6 +161,9 @@ void syphonServerDirectory::update()
 // Clear server vector
 void syphonServerDirectory::clear()
 {
+	if (!bSetup)
+		return;
+	
 	for (int i = 0 ; i < servers.size() ; i++)
 		delete servers[i];
 	servers.clear();
@@ -169,6 +174,9 @@ void syphonServerDirectory::clear()
 // !!! WORKS ONLY ONCE !!!
 bool syphonServerDirectory::hasChanged()
 {
+	if (!bSetup)
+		return false;
+	
 	if ( ((localServerDirectory*)mLocalDirectory).bChanged )
 	{
 		this->update();
@@ -183,6 +191,9 @@ bool syphonServerDirectory::hasChanged()
 // Returns -1 if not found
 int syphonServerDirectory::getServerIndexByName( std::string _name )
 {
+	if (!bSetup)
+		return -1;
+	
 	for (int i = 0 ; i < servers.size() ; i++)
 		if ( ! servers[i]->getName().compare(_name) )
 			return i;

@@ -41,11 +41,18 @@ syphonServer::syphonServer()
 syphonServer::~syphonServer()
 {
     NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-	
+
+	this->shutdown();
+
+	[pool drain];
+}
+
+
+void syphonServer::shutdown()
+{
     [(SyphonServer *)mSyphon stop];
     [(SyphonServer *)mSyphon release];
-    
-    [pool drain];
+	mSyphon = nil;
 }
 
 
@@ -103,7 +110,7 @@ void syphonServer::publishTexture( ci::gl::Texture & inputTexture )
 			mSyphon = [[SyphonServer alloc] initWithName:@"Untitled" context:CGLGetCurrentContext() options:nil];
 		}
 		[(SyphonServer *)mSyphon publishFrameTexture:texID 
-									   textureTarget:GL_TEXTURE_2D 
+									   textureTarget:inputTexture.getTarget()
 										 imageRegion:NSMakeRect(0, 0, inputTexture.getWidth(), inputTexture.getHeight())
 								   textureDimensions:NSMakeSize(inputTexture.getWidth(), inputTexture.getHeight()) 
 											 flipped:!inputTexture.isFlipped()];
