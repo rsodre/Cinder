@@ -418,6 +418,33 @@ void rotate( const Quatf &quat )
 	if( math<float>::abs( angle ) > EPSILON_VALUE )
 		glRotatef( toDegrees( angle ), axis.x, axis.y, axis.z );
 }
+	
+	// ROGER
+	void transformToFit( Area src, Area dst, bool upscale )
+	{
+		glTranslatef( dst.x1, dst.y1, 0 );
+		transformToFit( Vec2i(src.getWidth(), src.getHeight()), Vec2i(dst.getWidth(), dst.getHeight()) );
+	}
+	void transformToFit( Rectf src, Rectf dst, bool upscale )
+	{
+		glTranslatef( dst.x1, dst.y1, 0 );
+		transformToFit( Vec2i(src.getWidth(), src.getHeight()), Vec2i(dst.getWidth(), dst.getHeight()) );
+	}
+	void transformToFit( Vec2f src, Vec2f dst, bool upscale )
+	{
+		// Scale
+		float scaleX = ( dst.x / src.x );
+		float scaleY = ( dst.y / src.y );
+		float sc = ( scaleX < scaleY ? scaleX : scaleY );
+		if ( ! upscale )
+			sc = math<float>::clamp( sc, 0.0, 1.0 );
+		// Position (scaled)
+		float gapX = floorf( (src.x * sc) < dst.x ? ( dst.x - (src.x * sc) ) * 0.5f : 0.0 ) ;
+		float gapY = floorf( (src.y * sc) < dst.y ? ( dst.y - (src.y * sc) ) * 0.5f : 0.0 ) ;
+		// Transform!!
+		glTranslatef( gapX, gapY, 0 );
+		glScalef( sc, sc, sc );
+	}
 
 void enableAlphaBlending( bool premultiplied )
 {
@@ -1460,7 +1487,7 @@ void drawStringHelper( const std::string &str, const Vec2f &pos, const ColorA &c
 	if( justification == -1 ) // left
 		draw( tex, pos - Vec2f( 0, baselineOffset ) );
 	else if( justification == 0 ) // center
-		draw( tex, pos - Vec2f( tex.getWidth() * 0.5f, baselineOffset ) );	
+		draw( tex, pos - Vec2f( round(tex.getWidth() * 0.5f), baselineOffset ) );
 	else // right
 		draw( tex, pos - Vec2f( (float)tex.getWidth(), baselineOffset ) );
 }

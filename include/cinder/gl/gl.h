@@ -146,6 +146,12 @@ void rotate( const Quatf &quat );
 //! Produces a 2D rotation, the equivalent of a rotation around the Z axis by \a degrees.
 inline void rotate( float degrees ) { rotate( Vec3f( 0, 0, degrees ) ); }
 
+	// ROGER
+	// !Translate to fit src into dst. Don't forget to push/pop matrix before/after
+	void transformToFit( Area src, Area dst, bool upscale=true );
+	void transformToFit( Rectf src, Rectf dst, bool upscale=true );
+	void transformToFit( Vec2f src, Vec2f dst, bool upscale=true );
+
 #if ! defined( CINDER_GLES )
 //! Equivalent to glBegin() in immediate mode
 inline void begin( GLenum mode ) { glBegin( mode ); }
