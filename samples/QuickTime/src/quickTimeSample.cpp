@@ -104,6 +104,7 @@ void QuickTimeSampleApp::draw()
 		gl::draw( mInfoTexture, Vec2f( 20, getWindowHeight() - 20 - mInfoTexture.getHeight() ) );
 	}
 	
+	// ROGER -- Surface( mMovie.getTexture() ) nao funciona!!
 	gl::color(Color(1,0,0));
 	gl::drawSolidRect( Rectf(0,0,320,240) );
 	gl::color(Color(1,1,1));
