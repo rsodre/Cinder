@@ -147,6 +147,10 @@ class MovieBase {
 	//! Sets a function which is called whenever the movie has rendered a new frame during playback. Generally only necessary for advanced users.
 	void	setNewFrameCallback( void(*aNewFrameCallback)( long, void * ), void *aNewFrameCallbackRefcon );
 
+	// ROGER
+	//! Returns the movie's actual playback framerate measured as frames per second
+	float		getActualFramerate() const;
+
 	//! Returns the native QuickTime Movie data structure
 	::Movie	getMovieHandle() const { return getObj()->mMovie; }
 
@@ -259,7 +263,8 @@ class MovieGl : public MovieBase {
 	const gl::Texture	getTexture();
 
   protected:
-	void				allocateVisualContext();
+	
+	void		allocateVisualContext();
 
 	struct Obj : public MovieBase::Obj {
 		Obj();

@@ -641,6 +641,12 @@ void MovieBase::setNewFrameCallback( void(*aNewFrameCallback)( long, void * ), v
 	getObj()->mNewFrameCallbackRefcon = aNewFrameCallbackRefcon;
 }
 
+	// ROGER -- TODO
+	float MovieBase::getActualFramerate() const
+	{
+		return this->getFramerate();
+	}
+
 /////////////////////////////////////////////////////////////////////////////////
 // MovieSurface
 
