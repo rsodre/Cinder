@@ -1015,6 +1015,20 @@ namespace cinder { namespace qb {
 			gl::disableAlphaBlending();
 		}
 	}
+	
+	
+	
+	/////////////////////////////////////////////////
+	//
+	// MISC Objective-C functions
+	//
+	void qbMain::createFolder( const std::string & name )
+	{
+		NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:name.c_str()]];
+		[[NSFileManager defaultManager] createDirectoryAtURL:url withIntermediateDirectories:YES attributes: nil error:nil];
+		printf("Create Folder [%s]\n",name.c_str());
+	}
+
 } } // cinder::qb
 
 

@@ -114,11 +114,8 @@ namespace cinder { namespace qb {
 		else
 		{
 			// Create output folder
-			if( ! fs::exists( mFileName ) ) {
-				NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:mFileName.c_str()]];
-				[[NSFileManager defaultManager] createDirectoryAtURL:url withIntermediateDirectories:YES attributes: nil error:nil];
-				printf("RENDER OPEN Folder [%s]\n",mFileName.c_str());
-			}
+			if( ! fs::exists( mFileName ) )
+				_qb.createFolder(mFileName);
 		}
 		
 		// New render

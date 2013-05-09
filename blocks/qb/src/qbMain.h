@@ -6,7 +6,7 @@
 //
 #pragma once
 
-#include "cinder/Cinder.h"
+#include "cinder/Utilities.h"
 #include "cinder/app/AppBasic.h"
 #include "cinder/gl/gl.h"
 #include "cinder/gl/GlslProg.h"
@@ -16,7 +16,6 @@
 #include "cinder/gl/Material.h"
 #include "cinder/Camera.h"
 #include "cinder/ImageIo.h"
-#include "cinder/Utilities.h"
 
 #include "cinderSyphon.h"
 #include "qbUpdatePool.h"
@@ -207,6 +206,10 @@ public:
 	gl::Texture	getFboTexture()					{ return mFboRender.getTexture(); }
 	gl::Texture	getFboTexture(int i)			{ return mFbos[i].getTexture(); }
 
+	//
+	// MISC
+	void	createFolder( const std::string & name );
+	
 	//
 	// Public
 	qbConfig		*mConfig;
