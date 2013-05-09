@@ -107,6 +107,12 @@ class RectT {
 	Vec2<T>		getCenter() const { return Vec2<T>( ( x1 + x2 ) / 2, ( y1 + y2 ) / 2 ); }
 	Vec2<T>		getSize() const { return Vec2<T>( x2 - x1, y2 - y1 ); }
 
+	// ROGER
+	Vec2<T>		getUL() const { return this->getUpperLeft(); }
+	Vec2<T>		getUR() const { return this->getUpperRight(); }
+	Vec2<T>		getLL() const { return this->getLowerLeft(); }
+	Vec2<T>		getLR() const { return this->getLowerRight(); }
+
 	/** \return Scaled copy with the same aspect ratio centered relative to and scaled to fit inside \a other. If \a expand then the rectangle is expanded if it is smaller than \a other */
 	RectT		getCenteredFit( const RectT &other, bool expand ) const;
 
