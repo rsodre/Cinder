@@ -78,7 +78,7 @@ class TouchEvent : public Event {
 
 inline std::ostream& operator<<( std::ostream &out, const TouchEvent::Touch &touch )
 {
-	out << touch.getId() << ": " << touch.getPos() << " @ " << touch.getTime() << "s";
+	out << touch.getId() << ": " << touch.getPos() << " @ " << touch.getTime() << "s (" << touch.getId() << ")";
 	return out;
 }
 
