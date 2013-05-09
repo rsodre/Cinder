@@ -553,6 +553,11 @@ void TextBox::createLines() const
 		CTLineRef line = ::CTTypesetterCreateLine( typeSetter, range );
 		double lineWidth = ::CTLineGetTypographicBounds( line, &ascent, &descent, &leading );
 		
+		// ROGER un-blur lines
+		ascent = floor(ascent);
+		descent = floor(descent);
+		leading = floor(leading);
+		
 		lineOffset.x = ::CTLineGetPenOffsetForFlush( line, flush, maxWidth );
 		lineOffset.y += ascent;
 		mLines.push_back( make_pair( shared_ptr<const __CTLine>( line, ::CFRelease ), lineOffset ) );
