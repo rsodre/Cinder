@@ -57,6 +57,7 @@ void Camera::setWorldUp( const Vec3f &aWorldUp )
 	calcModelView();
 }
 
+	
 void Camera::lookAt( const Vec3f &target )
 {
 	mViewDirection = ( target - mEyePoint ).normalized();
@@ -97,15 +98,24 @@ void Camera::getFarClipCoordinates( Vec3f *topLeft, Vec3f *topRight, Vec3f *bott
 	Vec3f viewDirection( mViewDirection );
 	viewDirection.normalize();
 
+	/*
 	float frustumTop		=  mFarClip * math<float>::tan( (float)M_PI / 180.0f * mFov * 0.5f );
 	float frustumBottom	= -frustumTop;
 	float frustumRight	=  frustumTop * mAspectRatio;
 	float frustumLeft	= -frustumRight;
-
+	
 	*topLeft		= mEyePoint + (mFarClip * viewDirection) + (frustumTop * mV) + (frustumLeft * mU);
 	*topRight		= mEyePoint + (mFarClip * viewDirection) + (frustumTop * mV) + (frustumRight * mU);
 	*bottomLeft		= mEyePoint + (mFarClip * viewDirection) + (frustumBottom * mV) + (frustumLeft * mU);
 	*bottomRight	= mEyePoint + (mFarClip * viewDirection) + (frustumBottom * mV) + (frustumRight * mU);
+	*/
+	
+	// ROGER -- Lens Shift
+	float ratio = mFarClip / mNearClip;
+	*topLeft		= mEyePoint + (mFarClip * viewDirection) + (ratio * mFrustumTop * mV) + (ratio * mFrustumLeft * mU);
+	*topRight		= mEyePoint + (mFarClip * viewDirection) + (ratio * mFrustumTop * mV) + (ratio * mFrustumRight * mU);
+	*bottomLeft		= mEyePoint + (mFarClip * viewDirection) + (ratio * mFrustumBottom * mV) + (ratio * mFrustumLeft * mU);
+	*bottomRight	= mEyePoint + (mFarClip * viewDirection) + (ratio * mFrustumBottom * mV) + (ratio * mFrustumRight * mU);
 }
 
 void Camera::getFrustum( float *left, float *top, float *right, float *bottom, float *near, float *far ) const
@@ -175,7 +185,7 @@ void Camera::calcInverseModelView() const
 // CameraPersp
 
 CameraPersp::CameraPersp( int pixelWidth, int pixelHeight, float fovDegrees )
-	: Camera()
+	: Camera(), mLensShift( Vec2f::zero() )
 {
 	float eyeX 		= pixelWidth / 2.0f;
 	float eyeY 		= pixelHeight / 2.0f;
@@ -191,7 +201,7 @@ CameraPersp::CameraPersp( int pixelWidth, int pixelHeight, float fovDegrees )
 }
 
 CameraPersp::CameraPersp( int pixelWidth, int pixelHeight, float fovDegrees, float nearPlane, float farPlane )
-	: Camera()
+	: Camera(), mLensShift( Vec2f::zero() )
 {
 	float halfFov, theTan, aspect;
 
@@ -208,7 +218,7 @@ CameraPersp::CameraPersp( int pixelWidth, int pixelHeight, float fovDegrees, flo
 
 // Creates a default camera resembling Maya Persp
 CameraPersp::CameraPersp()
-	: Camera()
+	: Camera(), mLensShift( Vec2f::zero() )
 {
 	lookAt( Vec3f( 28.0f, 21.0f, 28.0f ), Vec3f::zero(), Vec3f::yAxis() );
 	setCenterOfInterest( 44.822f );
@@ -231,6 +241,18 @@ void CameraPersp::calcProjection()
 	mFrustumBottom	= -mFrustumTop;
 	mFrustumRight	=  mFrustumTop * mAspectRatio;
 	mFrustumLeft	= -mFrustumRight;
+
+	// ROGER
+	// perform lens shift
+	if( mLensShift.y != 0.0f ) {
+		mFrustumTop = ci::lerp<float, float>(0.0f, 2.0f * mFrustumTop, 0.5f + 0.5f * mLensShift.y);
+		mFrustumBottom = ci::lerp<float, float>(2.0f * mFrustumBottom, 0.0f, 0.5f + 0.5f * mLensShift.y);
+	}
+	
+	if( mLensShift.x != 0.0f ) {
+		mFrustumRight = ci::lerp<float, float>(2.0f * mFrustumRight, 0.0f, 0.5f - 0.5f * mLensShift.x);
+		mFrustumLeft = ci::lerp<float, float>(0.0f, 2.0f * mFrustumLeft, 0.5f - 0.5f * mLensShift.x);
+	}
 
 	float *m = mProjectionMatrix.m;
 	m[ 0] =  2.0f * mNearClip / ( mFrustumRight - mFrustumLeft );
@@ -274,6 +296,14 @@ void CameraPersp::calcProjection()
 	m[11] = -( mFarClip - mNearClip ) / ( 2.0f * mFarClip*mNearClip );
 	m[15] =  ( mFarClip + mNearClip ) / ( 2.0f * mFarClip*mNearClip );
 }
+
+	// ROGER -- Lens Shift
+	void CameraPersp::setLensShift(float horizontal, float vertical)
+	{
+		mLensShift.x = horizontal;
+		mLensShift.y = vertical;
+		calcProjection();
+	}
 
 	//
 	// ROGER
@@ -338,6 +368,7 @@ void CameraPersp::calcProjection()
 		m[11] = -( mFarClip - mNearClip ) / ( 2.0f * mFarClip*mNearClip );
 		m[15] =  ( mFarClip + mNearClip ) / ( 2.0f * mFarClip*mNearClip );
 	}
+	
 	
 	
 CameraPersp	CameraPersp::getFrameSphere( const Sphere &worldSpaceSphere, int maxIterations ) const
@@ -444,4 +475,5 @@ void CameraOrtho::calcProjection()
 	m[15] =  1.0f;
 }
 
+	
 } // namespace cinder

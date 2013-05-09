@@ -126,14 +126,31 @@ class CameraPersp : public Camera {
 	CameraPersp( int pixelWidth, int pixelHeight, float fov, float nearPlane, float farPlane ); // constructs screen-aligned camera
 	
 	void setPerspective( float horizFovDegrees, float aspectRatio, float nearPlane, float farPlane );
+	
 	// ROGER
 	virtual void		calcProjectionFromGroundLevel();
+	
+	// ROGER -- Lens Shift
+	// https://forum.libcinder.org/topic/asymmetric-frustum-in-camera#23286000001360073
+	// https://github.com/paulhoux/Cinder/blob/843470045144f70d78dd1fcfb38eed3554cf00fd/include/cinder/Camera.h
+	// https://github.com/paulhoux/Cinder/blob/843470045144f70d78dd1fcfb38eed3554cf00fd/src/cinder/Camera.cpp
+	void	getLensShift( float *horizontal, float *vertical ) const { *horizontal = mLensShift.x; *vertical = mLensShift.y; }
+	Vec2f	getLensShift() const { return Vec2f( mLensShift.x, mLensShift.y ); }
+	void	setLensShift( float horizontal, float vertical );
+	void	setLensShift( const Vec2f shift ) { setLensShift( shift.x, shift.y ); }
+	float	getLensShiftHorizontal() const { return mLensShift.x; }
+	void	setLensShiftHorizontal( float horizontal ) { setLensShift( horizontal, mLensShift.y ); }
+	float	getLensShiftVertical() const { return mLensShift.y; }
+	void	setLensShiftVertical( float vertical ) { setLensShift( mLensShift.x, vertical ); }
 	
 	virtual bool		isPersp() const { return true; }
 
 	CameraPersp	getFrameSphere( const class Sphere &worldSpaceSphere, int maxIterations = 20 ) const;
 
  protected:
+	// ROGER -- Lens Shift
+	Vec2f	mLensShift;
+
 	virtual void		calcProjection();
 };
 
