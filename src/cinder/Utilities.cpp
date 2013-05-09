@@ -303,7 +303,106 @@ string toUtf8( const wstring &utf16 )
 	return string( [utf16NS cStringUsingEncoding:NSUTF8StringEncoding] );	
 #endif
 }
+	
+	// ROGER
+	void isoToUtf8(unsigned char *in, unsigned char *out)
+	{
+		while (*in)
+			if (*in<128)
+				*out++=*in++;
+			else
+				*out++=0xc2+(*in>0xbf), *out++=(*in++&0x3f)+0x80;
+		*out = 0;
+	}
+	
+	// ROGER
+	std::string toString(unsigned char ch)
+	{
+		unsigned char iso[2] = { ch, 0 };
+		unsigned char utf[4];	// double size
+		isoToUtf8( iso, utf );
+		std::string str( (char*) utf );
+		return str;
+	}
+	
+	// ROGER
+	std::string toTime(const float v)
+	{
+		int h = (int)( v / 3600.0f );
+		int m = (int)( (v - (h * 3600.0f)) / 60.0f );
+		int s = (int)( v - (h * 3600.0f) - (m * 60.0f) );
+		std::ostringstream ss;
+		if (h)
+			ss << h << ":" << std::setfill('0') << std::setw(2) << m << ":" << std::setfill('0') << std::setw(2) << s;
+		else
+			ss << m << ":" << std::setfill('0') << std::setw(2) << s;
+		return ss.str();
+	}
+	std::string toTimecode(const float v, const float framerate)
+	{
+		int f = (int)roundf( (v-(int)v) * framerate );// + 1;
+		std::ostringstream ss;
+		ss << toTime(v);
+		ss << "." << std::setfill('0') << std::setw(2) << f;
+		return ss.str();
+	}
+	
+	// ROGER
+	unsigned char hex2byte(const char* hex)
+	{
+		unsigned short byte = 0;
+		std::istringstream iss((char*)hex);
+		iss >> std::hex >> byte;
+		return byte % 0x100;
+	}
+	void hex(const unsigned char * from, unsigned char * to, int bytes)
+	{
+		std::stringstream x;
+		for (int i = 0 ; i < bytes ; i++)
+			x << std::setw(2) << std::setfill('0') << std::hex << (int)from[i];
+		memcpy( to, x.str().c_str(), bytes*2 );
+	}
+	void unhex(const unsigned char * from, unsigned char * to, int bytes)
+	{
+		unsigned char c[2];
+		for (int i = 0 ; i < bytes ; i++)
+		{
+			c[0] = from[i*2+0];
+			c[1] = from[i*2+1];
+			to[i] = hex2byte( (char*)c );
+		}
+	}
+	// ROGER
+	std::string ltrim( const std::string & s ) {
+		std::string t = s;
+        t.erase(t.begin(), std::find_if(t.begin(), t.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+        return t;
+	}
+	std::string rtrim( const std::string & s ) {
+		std::string t = s;
+        t.erase(std::find_if(t.rbegin(), t.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), t.end());
+        return t;
+	}
+	std::string trim( const std::string & s ) {
+        return ltrim(rtrim(s));
+	}
+	// ROGER
+	std::string toLower( const std::string & s )
+	{
+		std::string low = s;
+		boost::algorithm::to_lower( low );
+		return low;
+	}
+	std::string toUpper( const std::string & s )
+	{
+		std::string up = s;
+		boost::algorithm::to_upper( up );
+		return up;
+	}
 
+	
+	
+	
 void sleep( float milliseconds )
 {
 #if defined( CINDER_MSW )

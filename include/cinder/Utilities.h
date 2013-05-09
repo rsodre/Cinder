@@ -27,6 +27,7 @@
 #include "cinder/Cinder.h"
 #include "cinder/Url.h"
 #include "cinder/DataSource.h"
+#undef check
 #include <boost/lexical_cast.hpp>
 
 namespace cinder {
@@ -68,6 +69,34 @@ std::string loadString( DataSourceRef dataSource );
 std::wstring toUtf16( const std::string &utf8 );
 //! Returns a utf-8 encoded std::string by converting the utf-16 encoded string \a utf16
 std::string toUtf8( const std::wstring &utf16 );
+
+	//ROGER
+	//! Converts a iso-8859-1 string to UTF-8
+	//! For safety you need to ensure that the output buffer is twice as large as the input buffer
+	// From: http://stackoverflow.com/questions/4059775/convert-iso-8859-1-strings-to-utf-8-in-c-c
+	void isoToUtf8(unsigned char *in, unsigned char *out);
+	//! Converts a single unsigned char iso-8859-1 (8-bit extended ACII) to std::string
+	std::string toString(unsigned char ch);
+	//! Converts a float containing seconds into string = [HH:]MM:SS
+	std::string toTime(const float v);
+	//! Converts a float containing seconds into string, with frames = [HH:]MM:SS.ff
+	std::string toTimecode(const float v, const float framerate=30.0f);
+	//! Converts a literal hex byte into a real . ex: "ff" returns 255.
+	unsigned char hex2byte(const char* hex);
+	//! Converts a srtring into hex. Output string size is double than input.
+	void hex(const unsigned char * from, unsigned char * to, int bytes);
+	//! Converts a srtring into hex. Input string size is double than output.
+	void unhex(const unsigned char * from, unsigned char * to, int bytes);
+	//! Trims a stringfrom start
+	std::string ltrim( const std::string & s );
+	//! Trims a string from end
+	std::string rtrim( const std::string & s );
+	//! Trims a string from both ends
+	std::string trim( const std::string & s );
+	//! Returns the string in lower case
+	std::string toLower( const std::string & s );
+	//! Returns the string in upper case
+	std::string toUpper( const std::string & s );
 
 //! Suspends the execution of the current thread until \a milliseconds have passed. Supports sub-millisecond precision only on Mac OS X.
 void sleep( float milliseconds );
