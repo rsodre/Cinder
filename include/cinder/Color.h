@@ -208,6 +208,27 @@ class ColorT
 		return ColorT<T>( CHANTRAIT<T>::max(), static_cast<T>( 0 ), CHANTRAIT<T>::max() );
 	}
 	
+	// ROGER
+	// color ordering -- does it make sense?
+	T sum()
+	{
+		return r + ( g ? (g+CHANTRAIT<T>::max()) : 0 ) + ( b ? (b+CHANTRAIT<T>::max()*2) : 0 );
+	}
+	bool operator<( ColorT<T> &rhs )
+	{
+		return ( this->sum() < rhs.sum() );
+	}
+	bool operator>( ColorT<T> &rhs )
+	{
+		return ( this->sum() > rhs.sum() );
+	}
+
+	// ROGER
+	float brightness()
+	{
+		return ( (r / (float)CHANTRAIT<T>::max()) + (g / (float)CHANTRAIT<T>::max()) + (b / (float)CHANTRAIT<T>::max()) ) / 3.0f;
+	}
+
 	//! Returns a color from a hexadecimal-encoded RGB triple. For example, red is 0xFF0000
 	static ColorT<T> hex( uint32_t hexValue )
 	{
