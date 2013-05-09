@@ -248,6 +248,14 @@ void GlslProg::uniform( const std::string &name, const Matrix44f &data, bool tra
 	GLint loc = getUniformLocation( name );
 	glUniformMatrix4fv( loc, 1, ( transpose ) ? GL_TRUE : GL_FALSE, data.m );
 }
+	
+	// ROGER
+	void GlslProg::uniformMatrix( const std::string &name, const float *data, int count, bool transpose )
+	{
+		GLint loc = getUniformLocation( name );
+		glUniformMatrix4fv( loc, count, ( transpose ) ? GL_TRUE : GL_FALSE, data );
+	}
+
 
 GLint GlslProg::getUniformLocation( const std::string &name )
 {
