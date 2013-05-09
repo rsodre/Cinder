@@ -1355,4 +1355,15 @@ typedef Vec4<int>		Vec4i;
 typedef Vec4<float>		Vec4f;
 typedef Vec4<double>	Vec4d;
 
+		// ROGER
+		// Should be in CinderMath.h, but it isn't possible
+		inline Vec2f toRadians( const Vec2f & v )
+		{
+			return Vec2f ( toRadians(v.x), toRadians(v.y) );
+		}
+		inline Vec2f toDegrees( const Vec2f & v )
+		{
+			return Vec2f ( toDegrees(v.x), toDegrees(v.y) );
+		}
+
 } // namespace cinder
