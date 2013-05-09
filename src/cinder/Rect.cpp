@@ -192,23 +192,6 @@ RectT<T> RectT<T>::scaled( T s ) const
 	return RectT<T>( x1 * s, y1 * s, x2 * s, y2 * s );
 }
 
-	// ROGER
-	template<typename T>
-	void RectT<T>::scale( const Vec2<T> &s )
-	{
-		x1 *= s.x;
-		x2 *= s.y;
-		y1 *= s.x;
-		y2 *= s.y;
-	}
-
-	// ROGER
-	template<typename T>
-	RectT<T> RectT<T>::scaled( const Vec2<T> &s ) const
-	{
-		return RectT<T>( x1 * s.x, y1 * s.y, x2 * s.x, y2 * s.y );
-	}
-	
 template<typename T>
 RectT<T> RectT<T>::scaled( const Vec2<T> &scale ) const
 {
