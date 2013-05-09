@@ -96,5 +96,10 @@
 
 	// ROGER
 	- (bool)isMinimized;
+	- (NSWindow*)getWin;
+	- (void)setAutoWindowFrameWithName:(NSString*)frameName;
+	- (std::string)getAppName;
+	- (std::string)getAppVersion;
+	- (std::string)getApplicationSupportFolder:(bool)create;
 
 @end

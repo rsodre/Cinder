@@ -370,6 +370,44 @@ void AppBasic::privateTouchesEnded__( const TouchEvent &event )
 		return false;
 #endif
 	};
+#ifdef __OBJC__
+	NSWindow* AppBasic::getWin()
+	{
+		return [mImpl getWin];
+	}
+#endif
+	void AppBasic::setAutoWindowFrame(const std::string & frameName)
+	{
+#if defined( CINDER_COCOA )
+		NSString *name = [NSString stringWithCString:frameName.c_str() encoding:[NSString defaultCStringEncoding]];
+		[mImpl setAutoWindowFrameWithName:name];
+#endif
+	}
+	std::string AppBasic::getAppName()
+	{
+#if defined( CINDER_COCOA )
+		return [mImpl getAppName];
+#else
+		return "";
+#endif
+	}
+	std::string AppBasic::getAppVersion()
+	{
+#if defined( CINDER_COCOA )
+		return [mImpl getAppVersion];
+#else
+		return "";
+#endif
+	}
+	fs::path AppBasic::getApplicationSupportFolder(bool create)
+	{
+#if defined( CINDER_COCOA )
+		return [mImpl getApplicationSupportFolder:create];
+#else
+		return "";
+#endif
+	}
+
 	
 //////////////////////////////////////////////////////////////////////////////////////////////
 // AppBasic::Settings

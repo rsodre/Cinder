@@ -35,6 +35,11 @@
 	#endif
 #endif
 
+// ROGER
+#ifdef __OBJC__
+@class NSWindow;
+#endif
+
 #include "cinder/app/TouchEvent.h"
 
 namespace cinder { namespace app {
@@ -207,7 +212,14 @@ class AppBasic : public App {
 	
 	// ROGER
 	bool isMinimized();
-	
+#ifdef __OBJC__
+	NSWindow* getWin();
+#endif
+	void setAutoWindowFrame(const std::string & frameName);
+	virtual std::string getAppName();
+	virtual std::string getAppVersion();
+	virtual fs::path getApplicationSupportFolder(bool create=true);
+
  private:
  
 	static AppBasic*	sInstance;

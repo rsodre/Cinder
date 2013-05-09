@@ -457,5 +457,60 @@
 {
 	return [win isMiniaturized];
 }
+- (NSWindow*) getWin
+{
+	return win;
+}
+- (std::string)getAppName
+{
+	NSString *resultPath = [[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleNameKey];
+	std::string result = [resultPath cStringUsingEncoding:NSUTF8StringEncoding];
+	return result;
+}
+- (std::string)getAppVersion
+{
+	NSString *resultPath = [[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey];
+	std::string result = [resultPath cStringUsingEncoding:NSUTF8StringEncoding];
+	return result;
+}
+- (void)setAutoWindowFrameWithName:(NSString*)frameName
+{
+	// Remember window pos
+	// https://developer.apple.com/library/mac/#documentation/Cocoa/Conceptual/WinPanel/Tasks/SavingWindowPosition.html#//apple_ref/doc/uid/20000229
+	[[win windowController] setShouldCascadeWindows:NO];	// Tell the controller to not cascade its windows.
+	[win setFrameAutosaveName:frameName];					// Specify the autosave name for the window.
+	[win setFrameUsingName:frameName];						// read saved pos
+}
+- (std::string)getApplicationSupportFolder:(bool)create
+{
+	std::string result;
+	// Returns the Application Support folder
+	// ~/Library/Application Support/<appname>
+	// How to access ~/Library on Finder: http://osxdaily.com/2011/07/22/access-user-library-folder-in-os-x-lion/
+	//NSArray* possibleURLs = [[NSFileManager defaultManager] URLsForDirectory:NSApplicationSupportDirectory inDomains:NSLocalDomainMask];
+	NSArray* possibleURLs = [[NSFileManager defaultManager] URLsForDirectory:NSApplicationSupportDirectory inDomains:NSUserDomainMask];
+	if ([possibleURLs count] >= 1)
+	{
+		NSURL* appSupportDir = [possibleURLs objectAtIndex:0];
+		if (appSupportDir)
+		{
+			result = std::string([[appSupportDir path] UTF8String]) + "/" + [self getAppName];
+			NSLog(@">>>> App Support Folder = [%s]\n",result.c_str());
+			// Create App Support folder
+			// http://www.techotopia.com/index.php/Working_with_Directories_in_Objective-C
+			// https://developer.apple.com/library/ios/#documentation/Cocoa/Reference/Foundation/Classes/NSFileManager_Class/Reference/Reference.html
+			// NEVER use createDirectoryAtURL on 10.6.8, causes EXC_BAD_ACCESS KERN_PROTECTION_FAILURE !!!!!!!!!!!!
+			if( ! cinder::fs::exists( result ) && create )
+			{
+				NSString *newpath = [NSString stringWithUTF8String:result.c_str()];
+				[[NSFileManager defaultManager] createDirectoryAtPath:newpath withIntermediateDirectories:YES attributes: nil error:nil];
+				NSLog(@">>>> App Support Folder CREATED!\n");
+			}
+		}
+	}
+	return result;
+}
+
+
 
 @end
