@@ -445,6 +445,9 @@ AppImplCocoaScreenSaver* getAppImpl()
 			[callee setNeedsDisplay:YES];
 		callee->mHasDrawnSinceLastUpdate = YES;
 	}
+
+	// ROGER:: Increase mFrameCount AFTER draw()
+	mApp->privateDraw__();
 }
 
 - (void)removeCinderView:(WindowImplCocoaScreenSaver*)win

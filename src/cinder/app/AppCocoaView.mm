@@ -464,6 +464,9 @@
 		[self setActiveWindow:win];
 		[win->mCinderView draw];
 	}
+
+	// ROGER:: Increase mFrameCount AFTER draw()
+	mApp->privateDraw__();
 }
 
 - (void)applicationWillTerminate:(NSNotification *)notification

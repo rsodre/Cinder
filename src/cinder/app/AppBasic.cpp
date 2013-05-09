@@ -263,12 +263,6 @@ bool AppBasic::privateShouldQuit()
 		return false;
 #endif
 	};
-#ifdef __OBJC__
-	NSWindow* AppBasic::getWin()
-	{
-		return [mImpl getWin];
-	}
-#endif
 	void AppBasic::setAutoWindowFrame(const std::string & frameName)
 	{
 #if defined( CINDER_COCOA )

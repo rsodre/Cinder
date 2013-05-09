@@ -447,6 +447,8 @@ class App {
 	// Internal handlers - these are called into by AppImpl's. If you are calling one of these, you have likely strayed far off the path.
 	virtual void	privateSetup__();
 	virtual void	privateUpdate__();
+	virtual void	privateDraw__();	// ROGER
+	
 	//! \endcond
 
 #if defined( CINDER_MSW )
