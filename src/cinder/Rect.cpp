@@ -178,6 +178,15 @@ void RectT<T>::scale( T s )
 }
 
 template<typename T>
+void RectT<T>::scale( const Vec2<T> &scale )
+{
+	x1 *= scale.x;
+	y1 *= scale.y;
+	x2 *= scale.x;
+	y2 *= scale.y;
+}
+
+template<typename T>
 RectT<T> RectT<T>::scaled( T s ) const
 {
 	return RectT<T>( x1 * s, y1 * s, x2 * s, y2 * s );
@@ -200,6 +209,12 @@ RectT<T> RectT<T>::scaled( T s ) const
 		return RectT<T>( x1 * s.x, y1 * s.y, x2 * s.x, y2 * s.y );
 	}
 	
+template<typename T>
+RectT<T> RectT<T>::scaled( const Vec2<T> &scale ) const
+{
+	return RectT<T>( x1 * scale.x, y1 * scale.y, x2 * scale.x, y2 * scale.y );
+}
+
 template<typename T>
 RectT<T> RectT<T>::transformCopy( const MatrixAffine2<T> &matrix ) const
 {

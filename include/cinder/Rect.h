@@ -68,9 +68,8 @@ class RectT {
 	void		scaleCentered( T scale );
 	RectT		scaledCentered( T scale ) const;
 	void		scale( T scale );
-	RectT		scaled( T scale ) const;
-	// ROGER
 	void		scale( const Vec2<T> &scale );
+	RectT		scaled( T scale ) const;
 	RectT		scaled( const Vec2<T> &scale ) const;
 	
 	// ROGER
