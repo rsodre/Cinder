@@ -399,6 +399,35 @@ string toUtf8( const wstring &utf16 )
 		boost::algorithm::to_upper( up );
 		return up;
 	}
+	// ROGER
+	float clampRadians( float a )
+	{
+		while (a >= M_TWO_PI)
+			a -= M_TWO_PI;
+		while (a < 0.0)
+			a += M_TWO_PI;
+		return a;
+	}
+	Vec2f clampRadians( Vec2f a )
+	{
+		a.x = clampRadians( a.x );
+		a.y = clampRadians( a.y );
+		return a;
+	}
+	float clampDegrees( float a )
+	{
+		while (a >= 360.0)
+			a -= 360.0;
+		while (a < 0.0)
+			a += 360.0;
+		return a;
+	}
+	Vec2f clampDegrees( Vec2f a )
+	{
+		a.x = clampDegrees( a.x );
+		a.y = clampDegrees( a.y );
+		return a;
+	}
 
 	
 	

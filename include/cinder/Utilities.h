@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include "cinder/Cinder.h"
+#include "cinder/Vector.h"
 #include "cinder/Url.h"
 #include "cinder/DataSource.h"
 #undef check
@@ -97,6 +98,11 @@ std::string toUtf8( const std::wstring &utf16 );
 	std::string toLower( const std::string & s );
 	//! Returns the string in upper case
 	std::string toUpper( const std::string & s );
+	//! Clamps an angle between 0.0 .. 359.9
+	float clampRadians( float a );
+	Vec2f clampRadians( Vec2f a );
+	float clampDegrees( float a );
+	Vec2f clampDegrees( Vec2f a );
 
 //! Suspends the execution of the current thread until \a milliseconds have passed. Supports sub-millisecond precision only on Mac OS X.
 void sleep( float milliseconds );
