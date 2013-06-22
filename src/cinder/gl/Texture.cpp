@@ -105,8 +105,19 @@ Texture::Texture( const unsigned char *data, int dataFormat, int aWidth, int aHe
 	mObj->mInternalFormat = format.mInternalFormat;
 	mObj->mTarget = format.mTarget;
 	init( data, 0, dataFormat, GL_UNSIGNED_BYTE, format );
-}	
-
+}
+	
+	// ROGER
+	Texture::Texture( const float *data, int dataFormat, int aWidth, int aHeight, Format format )
+	: mObj( shared_ptr<Obj>( new Obj( aWidth, aHeight ) ) )
+	{
+		if( format.mInternalFormat == -1 )
+			format.mInternalFormat = GL_RGBA;
+		mObj->mInternalFormat = format.mInternalFormat;
+		mObj->mTarget = format.mTarget;
+		init( data,  dataFormat, format );
+	}
+	
 Texture::Texture( const Surface8u &surface, Format format )
 	: mObj( shared_ptr<Obj>( new Obj( surface.getWidth(), surface.getHeight() ) ) )
 {
