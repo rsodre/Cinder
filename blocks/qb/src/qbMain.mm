@@ -67,7 +67,7 @@ namespace cinder { namespace qb {
 	
 	//
 	// ALL AUTOMATIC
-	// Auto FBO Size
+	// Auto FBO Size, fit to window
 	// Keep Metric aspect
 	void qbMain::init()
 	{
@@ -94,19 +94,20 @@ namespace cinder { namespace qb {
 		// Window Setup
 		App::get()->setFpsSampleInterval(0.5);
 		// Events setup
-		App::get()->registerResize( this, &qbMain::onResize );
-		App::get()->registerKeyDown( this, &qbMain::onKeyDown );
-		App::get()->registerFileDrop( this, &qbMain::onFileDrop );
-		
+		getWindow()->connectResize( & qbMain::onResize, this );
+		getWindow()->connectKeyDown( & qbMain::onKeyDown, this );
+		getWindow()->connectFileDrop( & qbMain::onFileDrop, this );
+		mTouch.setupEvents();
+
 		// Scale window to screen
 		if ( _autoWindowSize )
 		{
-			const Display & disp = AppBasic::get()->getDisplay();
-			if ( _w > disp.getWidth() || _h > disp.getHeight() )
+			const DisplayRef disp = Display::getMainDisplay();
+			if ( _w > disp->getWidth() || _h > disp->getHeight() )
 			{
 				int ww = _w;
 				int wh = _h;
-				for (int n = 0 ; (ww > disp.getWidth() || wh > disp.getHeight()) && winScales[n] ; n++)
+				for (int n = 0 ; (ww > disp->getWidth() || wh > disp->getHeight()) && winScales[n] ; n++)
 				{
 					ww = _w * winScales[n];
 					wh = _h * winScales[n];
@@ -182,19 +183,18 @@ namespace cinder { namespace qb {
 	// EVENTS
 	//
 	// resize event
-	bool qbMain::onResize( app::ResizeEvent event )
+	void qbMain::onResize()
 	{
-		this->resizeWindow( event.getWidth(), event.getHeight() );
+		this->resizeWindow( app::getWindowWidth(), app::getWindowHeight() );
 		if ( bAutoResizeFbos )
 		{
-			this->resizeRender( event.getWidth(), event.getHeight() );
+			this->resizeRender( app::getWindowWidth(), app::getWindowHeight() );
 			this->resizeMetric( mMetricBase.x, mMetricBase.y );
 		}
-		return false;
 	}
 	
 	// keydown event
-	bool qbMain::onKeyDown( app::KeyEvent event )
+	void qbMain::onKeyDown( app::KeyEvent & event )
 	{
 		//printf("EVENT>> qbMain::keyDown [%d] [%c]\n",event.getChar(),event.getChar());
 		// Save (COMMAND)
@@ -230,7 +230,7 @@ namespace cinder { namespace qb {
 				if (event.isMetaDown() && bSyphonControls) // COMMAND
 				{
 					mConfig->invert( QBCFG_SYPHON_OUTPUT );
-					return true;
+					event.setHandled();
 				}
 				break;
 			case 'x':
@@ -238,7 +238,7 @@ namespace cinder { namespace qb {
 				if (event.isMetaDown() && bRenderControls) // COMMAND
 				{
 					mRenderer.startstop();
-					return true;
+					event.setHandled();
 				}
 				break;
 			case 'z':
@@ -246,7 +246,7 @@ namespace cinder { namespace qb {
 				if (event.isMetaDown() && bRenderControls) // COMMAND
 				{
 					mRenderer.finish();
-					return true;
+					event.setHandled();
 				}
 				break;
 			case 'c':
@@ -254,25 +254,24 @@ namespace cinder { namespace qb {
 				if (event.isMetaDown()) // COMMAND
 				{
 					mRenderer.takeScreenshot();
-					return true;
+					event.setHandled();
 				}
 				break;
 			case 'p':
 				if (event.isMetaDown()) // COMMAND
 				{
 					mConfig->invert( QBCFG_PREVIEW_DOWNSCALE );
-					return true;
+					event.setHandled();
 				}
 				break;
 			case 'P':
 				if (event.isMetaDown()) // COMMAND
 				{
 					mConfig->invert( QBCFG_PREVIEW_UPSCALE );
-					return true;
+					event.setHandled();
 				}
 				break;
 		}
-		return false;
 	}
 	void qbMain::hideCursorOrNot()
 	{
@@ -283,7 +282,7 @@ namespace cinder { namespace qb {
 	}
 	
 	// Use file dropped on palette
-	bool qbMain::onFileDrop( FileDropEvent event )
+	void qbMain::onFileDrop( FileDropEvent & event )
 	{
 		/*
 		 stringstream ss;
@@ -297,9 +296,8 @@ namespace cinder { namespace qb {
 		{
 			mPalette.reduce( event.getFile( 0 ).string() );
 			mConfig->set( QBCFG_PALETTE_FLAG, true );
-			return true;
+			event.setHandled();
 		}
-		return false;
 	}
 
 
@@ -608,7 +606,7 @@ namespace cinder { namespace qb {
 		gl::setMatricesWindow( getWindowSize() );
 		gl::setViewport( getWindowBounds() );
 	}
-	
+
 	//////////////////////////////////////////////////////////////////
 	//
 	// FBOs
@@ -810,8 +808,14 @@ namespace cinder { namespace qb {
 		mConfig->update();
 		mConfig->set(DUMMY_CURRENT_FPS, App::get()->getAverageFps());
 		
+		// Changed tab?
+		if ( _cfg.isFresh(QBCFG_CURRENT_TAB) )
+			_cfg.guiSetTab( _cfg.getInt( QBCFG_CURRENT_TAB ) );
+		else if ( _cfg.getInt( QBCFG_CURRENT_TAB ) != _cfg.guiGetTabId() )
+			_cfg.set( QBCFG_CURRENT_TAB, _cfg.guiGetTabId() );
+
 		// Get mouse preview pan
-		Vec2f m = AppBasic::get()->getMousePos();
+		Vec2f m = AppBasic::get()->getMousePosMainWindow();
 		Vec2f mm = m / Vec2f( mWindowWidth, mWindowHeight);
 		float pmin = 0.1;
 		float pmax = 0.3;

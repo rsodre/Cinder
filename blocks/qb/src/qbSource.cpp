@@ -13,7 +13,6 @@
 #include "qb.h"
 
 using namespace ci;
-using namespace ci::app;
 using namespace ci::gl;
 using namespace ci::qtime;
 
@@ -290,7 +289,7 @@ namespace cinder { namespace qb {
 		os << "Image: " << mSize.x << " x " << mSize.y << " " << ( bHasAlpha ? "RGBA" : "RGB" );
 		mDesc = os.str();
 		mDesc2 = "";
-		mSpawnedAtFrame = getElapsedFrames();
+		mSpawnedAtFrame = app::getElapsedFrames();
 		mFullPath = _f;
 		this->play();	// Always playing
 		
@@ -362,7 +361,7 @@ namespace cinder { namespace qb {
 		os.precision(1);
 		os << "Movie: " << mSize.x << " x " << mSize.y << ", " << mDuration << "s";
 		mDesc = os.str();
-		mSpawnedAtFrame = getElapsedFrames();
+		mSpawnedAtFrame = app::getElapsedFrames();
 		
 		printf("SOURCE Movie [%s] loaded as %s!\n",theFile.c_str(),(mMovieGl?"MovieGl":"MovieSurface"));
 		return true;
@@ -396,12 +395,12 @@ namespace cinder { namespace qb {
 
 		// Always play frame by frame
 		float t = ( _qb.shouldRenderFitSources() ? QB_ANIM_PROG * mDuration : QB_TIME );
-		if (_renderer.isRendering()) printf("PLAY   t0 %.8f    duration %.8f   qt %.8f\n",t,mDuration,mDurationQT);
+		//if (_renderer.isRendering()) printf("PLAY   t0 %.8f    duration %.8f   qt %.8f\n",t,mDuration,mDurationQT);
 		t = math<float>::fmod( t, mDuration );
 		if (bBackwards)
 			t = (mDurationQT - t);
 		int fr = roundf(mFrameCount * (t/mDuration));
-		if (_renderer.isRendering()) printf("PLAY   t1 %.8f     fr %d\n",t,fr);
+		//if (_renderer.isRendering()) printf("PLAY   t1 %.8f     fr %d\n",t,fr);
 		//mMovie->seekToTime( t );
 		mMovie->seekToFrame( fr );
 		newFrame = true;
@@ -471,7 +470,7 @@ namespace cinder { namespace qb {
 			os << " - " << _tex;
 		mName = os.str();
 		mDesc2 = "";
-		mSpawnedAtFrame = getElapsedFrames();
+		mSpawnedAtFrame = app::getElapsedFrames();
 		this->play();	// Always playing
 
 		printf("SOURCE Syphon [%s] loaded!\n",_app.c_str());

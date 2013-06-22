@@ -62,11 +62,11 @@ namespace cinder { namespace sgui {
 	protected:
 		std::string mFilename;
 
-		bool cbReset( ci::app::MouseEvent event );
-		bool cbLoadDefault( ci::app::MouseEvent event );
-		bool cbSaveDefault( ci::app::MouseEvent event );
-		bool cbLoadFile( ci::app::MouseEvent event );
-		bool cbSaveFile( ci::app::MouseEvent event );
+		void cbReset( ci::app::MouseEvent & event );
+		void cbLoadDefault( ci::app::MouseEvent & event );
+		void cbSaveDefault( ci::app::MouseEvent & event );
+		void cbLoadFile( ci::app::MouseEvent & event );
+		void cbSaveFile( ci::app::MouseEvent & event );
 	};
 } } // namespace cinder::sgui
 #endif

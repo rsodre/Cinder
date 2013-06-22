@@ -379,7 +379,7 @@ public:
 	// main loop
 	virtual void update();			// Update state from OSC
 	virtual void draw() {}			// Draw GUI
-	bool onKeyDown( app::KeyEvent event );
+	void onKeyDown( app::KeyEvent & event );
 	
 	// Virtual callbacks
 	virtual void postSetCallback(int id, int i) {}		// After a set()
@@ -705,12 +705,12 @@ public:
 	int load(char preset);
 	int save(char preset);
 	
+	std::string		mAppName;				// The app name (Myapp.app)
 	
 protected:
 	// Parameter index
 	ciConfig		*parent;				// reference to parent config
 	std::vector<ciConfigParam*>	params;
-	std::string		mAppName;				// The app name (Myapp.app)
 	std::string		mAppVersion;			// The app version (plist)
 	std::string		mFolderApp;				// The app folder
 	std::string		mFolderBundle;			// File bundle

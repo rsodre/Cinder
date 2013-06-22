@@ -27,12 +27,20 @@ namespace cinder { namespace qb {
 	void qbTouch::enable( AppBasic::Settings *settings )
 	{
 		settings->enableMultiTouch( true );
-		AppBasic::get()->registerTouchesBegan( this, &qbTouch::touchesBegan );
-		AppBasic::get()->registerTouchesMoved( this, &qbTouch::touchesMoved );
-		AppBasic::get()->registerTouchesEnded( this, &qbTouch::touchesEnded );
+		// do not connect events here or crash!!!!
 	}
 	
-	bool qbTouch::touchesBegan( TouchEvent event )
+	void qbTouch::setupEvents()
+	{
+		if ( App::get()->getSettings().isMultiTouchEnabled() )
+		{
+			getWindow()->connectTouchesBegan( & qbTouch::touchesBegan, this );
+			getWindow()->connectTouchesMoved( & qbTouch::touchesMoved, this );
+			getWindow()->connectTouchesEnded( & qbTouch::touchesEnded, this );
+		}
+	}
+	
+	void qbTouch::touchesBegan( app::TouchEvent & event )
 	{
 		mPoints.clear();
 		for( std::vector<TouchEvent::Touch>::const_iterator touchIt = event.getTouches().begin(); touchIt != event.getTouches().end(); ++touchIt ) {
@@ -41,9 +49,8 @@ namespace cinder { namespace qb {
 		}
 		//console() << "Began: " << event << ", size = " << mPoints.size() << std::endl;
 		this->calcPos();
-		return false;
 	}
-	bool qbTouch::touchesMoved( TouchEvent event )
+	void qbTouch::touchesMoved( app::TouchEvent & event )
 	{
 		for( std::vector<TouchEvent::Touch>::const_iterator touchIt = event.getTouches().begin(); touchIt != event.getTouches().end(); ++touchIt )
 		{
@@ -52,16 +59,14 @@ namespace cinder { namespace qb {
 		}
 		//console() << "Moved: " << event << ", size = " << mPoints.size() << std::endl;
 		this->calcPos();
-		return false;
 	}
-	bool qbTouch::touchesEnded( TouchEvent event )
+	void qbTouch::touchesEnded( app::TouchEvent & event )
 	{
 		for( std::vector<TouchEvent::Touch>::const_iterator touchIt = event.getTouches().begin(); touchIt != event.getTouches().end(); ++touchIt ) {
 			mPoints.erase( touchIt->getId() );
 		}
 		//console() << "Ended: " << event << ", size = " << mPoints.size() << std::endl;
 		this->calcPos();
-		return false;
 	}
 	
 	void qbTouch::calcPos()

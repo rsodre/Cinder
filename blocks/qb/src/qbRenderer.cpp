@@ -101,8 +101,11 @@ namespace cinder { namespace qb {
 		// Open target file
 		if ( ! _cfg.get(QBCFG_RENDER_PNG_SEQUENCE) )
 		{
+			// codecs: https://developer.apple.com/library/mac/#documentation/QuickTime/Reference/QTRef_Constants/Reference/reference.html
 			MovieWriter::Format format = MovieWriter::Format();
 			format.setDefaultDuration( QB_FRAME_DURATION );
+			//format.setCodec('rle ');	// Animation
+			//format.setCodec('png ');
 			format.setCodec('jpeg');
 			format.setQuality( _cfg.get(QBCFG_RENDER_QUALITY) );
 			mMovieWriter = qtime::MovieWriter( mFileName, QB_RENDER_WIDTH, QB_RENDER_HEIGHT, format );
@@ -159,8 +162,8 @@ namespace cinder { namespace qb {
 		mTimeStart = app::getElapsedSeconds();
 
 		// Start!
-		mAppFramerate = App::get()->getFrameRate();
-		App::get()->setFrameRate( 1000.0 );
+		mAppFramerate = app::App::get()->getFrameRate();
+		app::App::get()->setFrameRate( 1000.0 );
 		bIsRendering = true;
 		
 		// Play QB
@@ -174,7 +177,7 @@ namespace cinder { namespace qb {
 	{
 		if ( bIsRendering )
 		{
-			App::get()->setFrameRate( mAppFramerate );
+			app::App::get()->setFrameRate( mAppFramerate );
 			bIsRendering = false;
 			mStatus = "OK, SAVE IT!!!";
 			if (mFramesMax == 0)
@@ -214,7 +217,7 @@ namespace cinder { namespace qb {
 	// Add frame to movie
 	void qbRenderer::add()
 	{
-		this->add( copyWindowSurface() );
+		this->add( app::copyWindowSurface() );
 	}
 	void qbRenderer::add( const ImageSourceRef & _aframe )
 	{

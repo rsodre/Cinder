@@ -8,7 +8,6 @@
 #include "qbCube.h"
 
 using namespace ci;
-using namespace ci::app;
 using namespace std;
 
 namespace cinder { namespace qb {
@@ -67,11 +66,11 @@ namespace cinder { namespace qb {
 	//
 	void writeFPS()
 	{
-		float currFPS = math<float>::clamp( App::get()->getAverageFps(), 0, 1000 );
+		float currFPS = math<float>::clamp( app::App::get()->getAverageFps(), 0, 1000 );
 		char str[20];
 		sprintf(str, "%.1f", currFPS);
-		int x = getWindowWidth() - strlen(str)*8;
-		int y = getWindowHeight() - 10;
+		int x = app::getWindowWidth() - strlen(str)*8;
+		int y = app::getWindowHeight() - 10;
 		qb::writeStuff(str, x, y);
 	}
 	void writeStuff(std::string text, int x, int y)

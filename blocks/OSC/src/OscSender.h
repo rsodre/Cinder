@@ -31,28 +31,6 @@ class UdpTransmitSocket;
 #include "OscBundle.h"
 #include "OscMessage.h"
 
-<<<<<<< HEAD:blocks/osc/include/OscSender.h
-namespace cinder  { namespace osc {
-	class Sender  {
-	public:
-		Sender();
-		
-		void setup(std::string hostname, int port);
-		
-		void sendMessage(Message& message);
-		void sendBundle(Bundle& bundle);
-		
-		// ROGER
-		void shutdown();
-		
-	private:
-		
-		 std::shared_ptr<class OscSender>   oscSender;
-		
-	};
-} // namespace osc
-} // namespace cinder
-=======
 namespace cinder { namespace osc {
 
 class Sender  {
@@ -63,10 +41,12 @@ class Sender  {
 	
 	void sendMessage( const Message& message );
 	void sendBundle( const Bundle& bundle );
-	
+
+	// ROGER
+	void shutdown();
+
   private:
 	 std::shared_ptr<class OscSender>   oscSender;
 };
 
 } } // namespace cinder::osc
->>>>>>> cinder/master:blocks/OSC/src/OscSender.h

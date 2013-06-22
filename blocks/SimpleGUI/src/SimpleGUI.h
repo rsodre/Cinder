@@ -45,7 +45,6 @@
 #include "cinder/Camera.h"
 
 using namespace cinder;
-using namespace ci::app;
 
 namespace cinder { namespace sgui {
 	
@@ -79,13 +78,7 @@ namespace cinder { namespace sgui {
 		Vec2f	mousePos;
 		std::vector<Control*> controls;
 		
-		CallbackId	cbMouseMove;
-		CallbackId	cbMouseDown;
-		CallbackId	cbMouseUp;
-		CallbackId  cbMouseDrag;
-		CallbackId  cbFileDrop;
-		
-		void	init(App* app);	
+		void	init(app::App* app);
 	public:
 		static ColorA darkColor;
 		static ColorA lightColor;
@@ -118,7 +111,7 @@ namespace cinder { namespace sgui {
 			REFRESH_NONE,
 		};
 		
-		SimpleGUI(App* app);
+		SimpleGUI(app::App* app);
 		~SimpleGUI();
 		void	setName(std::string name)		{ appName = name; }
 		void	displayFps(bool b=true)			{ bDisplayFps = b; }
@@ -127,11 +120,6 @@ namespace cinder { namespace sgui {
 		std::vector<Control*>& getControls()	{ return controls; }
 		
 		Control	*getMouseOverControl( Vec2i mousePos );
-		bool	onMouseMove(MouseEvent event);
-		bool	onMouseDown(MouseEvent event);
-		bool	onMouseUp(MouseEvent event);
-		bool	onMouseDrag(MouseEvent event);
-		bool	onFileDrop(FileDropEvent event);
 		
 		void	updateControls();
 		bool	shouldDrawTabs()		{ return (theTabs.size() > 1); }
@@ -193,19 +181,23 @@ namespace cinder { namespace sgui {
 	private:
 		// ROGER
 		std::string	appName;
+		bool		bBlink;				// blink controls (debug)
 		bool		bForceRedraw;
 		bool		bDisplayFps;
 		float		mCurrentFps;
 		// FBO
 		gl::Fbo		mFbo;
-		CallbackId	cbResize;
-		CallbackId	cbKeyDown;
 		bool		bUsingFbo;
 		bool		bShouldResize;
 		DropDownVarControl	*droppedList;
 
-		bool		onResize( app::ResizeEvent event );
-		bool		onKeyDown( app::KeyEvent event );
+		void		onMouseMove(app::MouseEvent & event);
+		void		onMouseDown(app::MouseEvent & event);
+		void		onMouseUp(app::MouseEvent & event);
+		void		onMouseDrag(app::MouseEvent & event);
+		void		onFileDrop(app::FileDropEvent & event);
+		void		onKeyDown(app::KeyEvent & event);
+		void		onResize();
 
 	public:
 		Control		*mouseControl;		// control with mouse over NOW
@@ -301,6 +293,8 @@ namespace cinder { namespace sgui {
 		Type	type;
 		std::string name;
 		std::string nameOff;
+		std::string lastName;
+		std::string suffix;
 		SimpleGUI *parentGui;
 		// ROGER
 		bool	visible;
@@ -321,23 +315,24 @@ namespace cinder { namespace sgui {
 		bool	mouseMoved;
 		int		channelOver;
 
-		Control(SimpleGUI *parent);	
+		Control(SimpleGUI *parent);
 		virtual ~Control() {};
 		void setBackgroundColor(ColorA color);
 		void notifyUpdateListeners();
 		virtual Vec2f draw(Vec2f pos) = 0;
 		virtual std::string toString() { return ""; };
 		virtual void fromString(std::string& strValue) {};
-		virtual void onMouseDown(MouseEvent event) {};
-		virtual void onMouseUp(MouseEvent event) {};
-		virtual void onMouseDrag(MouseEvent event) {};
-		virtual void onFileDrop(FileDropEvent event) {};
-		virtual void onResize(ResizeEvent event) {};
+		virtual void onMouseDown(app::MouseEvent & event) {};
+		virtual void onMouseUp(app::MouseEvent & event) {};
+		virtual void onMouseDrag(app::MouseEvent & event) {};
+		virtual void onFileDrop(app::FileDropEvent & event) {};
+		virtual void onResize() {};
 		// ROGER
 		void addSwitchPanel(const std::string & name)		{ panelToSwitch = parentGui->addPanel(name); invertSwitch = false; }	// Panel to switch ON/OFF with my value
 		void addSwitchPanelInv(const std::string & name)	{ panelToSwitch = parentGui->addPanel(name); invertSwitch = true; }		// Panel to switch ON/OFF with my value
-		void setName(const std::string & newName)			{ name = newName; }
-		bool hasChanged()							{ if (unitControl) if (unitControl->valueHasChanged()) mustRefresh = true; return this->valueHasChanged() || this->mustRefresh; }
+		void setName(const std::string & s)					{ name = s; }
+		void setSuffix(const std::string & s)				{ suffix = s; }
+		bool hasChanged()							{ if (unitControl) if (unitControl->valueHasChanged()) mustRefresh = true; return (this->valueHasChanged() || this->mustRefresh || name.compare(lastName)!=0); }
 		bool isHighlighted(int ch=0)				{ return (channelOver == ch && parentGui->selectedControl == NULL) || (this->isActiveChannel(ch) && parentGui->selectedControl == this); }
 		void setUnitControl(Control *c)				{ unitControl = c; }
 		Control* setReadOnly(bool b=true);			// chained setters
@@ -395,8 +390,8 @@ namespace cinder { namespace sgui {
 		Vec2f draw(Vec2f pos);
 		std::string toString();
 		void fromString(std::string& strValue);
-		void onMouseDown(MouseEvent event);	
-		void onMouseDrag(MouseEvent event);
+		void onMouseDown(app::MouseEvent & event);	
+		void onMouseDrag(app::MouseEvent & event);
 		// ROGER
 		void update();
 		void reset()							{ *var = defaultValue; }
@@ -435,8 +430,8 @@ namespace cinder { namespace sgui {
 		Vec2f draw(Vec2f pos);
 		std::string toString();	
 		void fromString(std::string& strValue);
-		void onMouseDown(MouseEvent event);	
-		void onMouseDrag(MouseEvent event);	
+		void onMouseDown(app::MouseEvent & event);	
+		void onMouseDrag(app::MouseEvent & event);	
 		// ROGER
 		void update();
 		void reset()				{ *var = defaultValue; }
@@ -466,8 +461,8 @@ namespace cinder { namespace sgui {
 		virtual Vec2f draw(Vec2f pos);
 		virtual std::string toString();
 		virtual void fromString(std::string& strValue);
-		virtual void onMouseDown(MouseEvent event);
-		virtual void onMouseDrag(MouseEvent event);
+		virtual void onMouseDown(app::MouseEvent & event);
+		virtual void onMouseDrag(app::MouseEvent & event);
 		// ROGER
 		bool displayChar;
 		bool displayHex;
@@ -494,8 +489,8 @@ namespace cinder { namespace sgui {
 
 	public:
 		FlagVarControl(SimpleGUI *parent, const std::string & name, unsigned char* var, int max=8, unsigned char defaultValue = 0);
-		void onMouseDown(MouseEvent event);
-		void onMouseDrag(MouseEvent event);
+		void onMouseDown(app::MouseEvent & event);
+		void onMouseDrag(app::MouseEvent & event);
 		void update();
 		void reset()								{ *var = defaultValue; }
 		Vec2f draw(Vec2f pos);
@@ -517,7 +512,7 @@ namespace cinder { namespace sgui {
 		Vec2f draw(Vec2f pos);	
 		std::string toString();	
 		void fromString(std::string& strValue);
-		void onMouseDown(MouseEvent event);
+		void onMouseDown(app::MouseEvent & event);
 		// ROGER
 		void update();
 		void reset()					{ *var = defaultValue; }
@@ -552,8 +547,8 @@ namespace cinder { namespace sgui {
 		Vec2f draw(Vec2f pos);
 		std::string toString();	//saved as "r g b a"
 		void fromString(std::string& strValue); //expecting "r g b a"
-		void onMouseDown(MouseEvent event);	
-		void onMouseDrag(MouseEvent event);
+		void onMouseDown(app::MouseEvent & event);
+		void onMouseDrag(app::MouseEvent & event);
 		// ROGER
 		void update();
 		void reset()					{ if (alphaControl) *varA = defaultValueA; else *var = defaultValue; }
@@ -591,8 +586,8 @@ namespace cinder { namespace sgui {
 		std::string toString();	//saved as "r g b a"
 		void setNormalizedValue(int vec, float value);
 		void fromString(std::string& strValue); //expecting "r g b a"
-		void onMouseDown(MouseEvent event);
-		void onMouseDrag(MouseEvent event);
+		void onMouseDown(app::MouseEvent & event);
+		void onMouseDrag(app::MouseEvent & event);
 		// ROGER
 		void update();
 		void reset()					{ *var = defaultValue; }
@@ -627,8 +622,8 @@ namespace cinder { namespace sgui {
 		std::string toString();	//saved as "x y"
 		void setNormalizedValue(int vec, float value);
 		void fromString(std::string& strValue); //expecting "r g b a"
-		void onMouseDown(MouseEvent event);
-		void onMouseDrag(MouseEvent event);
+		void onMouseDown(app::MouseEvent & event);
+		void onMouseDrag(app::MouseEvent & event);
 		// ROGER
 		void update();
 		void reset()					{ *var = defaultValue; }
@@ -667,10 +662,10 @@ namespace cinder { namespace sgui {
 		bool	keyboardEnabled()			{ return true; }					// used to inc/dec values
 		bool	isActiveChannel(int ch)		{ return (activeTrack == ch); }		// is this the active channel?
 		void	setCameraScale(Vec3f s)		{ cameraScale = s; }
-		void	onMouseDown(MouseEvent event);
-		void	onMouseDrag(MouseEvent event);
-		void	onMouseUp(MouseEvent event);
-		void	onResize( app::ResizeEvent event );
+		void	onMouseDown(app::MouseEvent & event);
+		void	onMouseDrag(app::MouseEvent & event);
+		void	onMouseUp(app::MouseEvent & event);
+		void	onResize();
 	private:
 		Vec2i texSize;
 	};
@@ -683,8 +678,8 @@ namespace cinder { namespace sgui {
 		bool flipVert;
 		TextureVarControl(SimpleGUI *parent, const std::string & name, gl::Texture* var, float refreshRate, bool flipVert = false);
 		Vec2f draw(Vec2f pos);
-		void onMouseMove(MouseEvent event);
-		void onFileDrop(FileDropEvent event);
+		void onMouseMove(app::MouseEvent & event);
+		void onFileDrop(app::FileDropEvent & event);
 		// ROGER
 		bool resized;
 		double refreshTime;
@@ -726,7 +721,7 @@ namespace cinder { namespace sgui {
 		
 		virtual void resize();
 		virtual Vec2f draw(Vec2f pos);
-		virtual void onMouseDown(MouseEvent event);
+		virtual void onMouseDown(app::MouseEvent & event);
 		virtual bool valueHasChanged()	{ return (*var != lastValue); }
 		virtual bool hasResized()		{ return (items.size() != lastSize); }
 		bool isOn()						{ return (*var != 0); }		// used to switch panel
@@ -737,7 +732,7 @@ namespace cinder { namespace sgui {
 		DropDownVarControl(SimpleGUI *parent, const std::string & name, int* var, const std::map<int,std::string> &valueLabels);
 		void resize();
 		Vec2f draw(Vec2f pos);
-		void onMouseDown(MouseEvent event);
+		void onMouseDown(app::MouseEvent & event);
 		bool hasResized()		{ return (this->ListVarControl::hasResized() || lastDropped!=dropped); }
 		void open()				{ dropped = true; this->resize(); }
 		void close()			{ dropped = false; this->resize(); }
@@ -752,38 +747,42 @@ namespace cinder { namespace sgui {
 	
 	class ButtonControl : public Control {
 	private:
-		bool triggerUp;
 		bool centered;
 		bool pressed;
 		bool lastPressed;
-		CallbackMgr<bool (MouseEvent)>		callbacksClick;
-		CallbackId							callbackId;
 		// ROGER
+		std::function<void(app::MouseEvent&)> cbFuncDown;
+		std::function<void(app::MouseEvent&)> cbFuncUp;
 		std::string name2;
-		std::string lastName;
 		std::string lastName2;
 	public:
 		ButtonControl(SimpleGUI *parent, const std::string & name, const std::string & name2="");
 		Vec2f draw(Vec2f pos);
 		void update();
-		void onMouseDown(MouseEvent event);
-		void onMouseUp(MouseEvent event);
-		void onMouseDrag(MouseEvent event);
+		void onMouseDown(app::MouseEvent & event);
+		void onMouseUp(app::MouseEvent & event);
+		void onMouseDrag(app::MouseEvent & event);
 		
 		//! Registers a callback for Click events. Returns a unique identifier which can be used as a parameter to unregisterClick().
-		void	registerClick( std::function<bool (MouseEvent)> callback ) { callbackId = callbacksClick.registerCb( callback ); }
+		void	registerClickDown( std::function<void(app::MouseEvent&)> callback ) {
+			cbFuncDown = callback;
+		}
+		void	registerClickUp( std::function<void(app::MouseEvent&)> callback ) {
+			cbFuncUp = callback;
+		}
 		//! Registers a callback for Click events. Returns a unique identifier which can be used as a parameter to unregisterClick().
 		template<typename T>
-		void	registerClick( T *obj, bool (T::*callback)(MouseEvent) ) { callbackId = callbacksClick.registerCb( std::bind1st( std::mem_fun( callback ), obj ) ); }
-		//! Unregisters a callback for Click events.
-		void	unregisterClick() { callbacksClick.unregisterCb( callbackId ); callbackId = 0; }
-		
-		void fireClick();
+		void	registerClickDown( T *obj, void(T::*callback)(app::MouseEvent&) ) {
+			cbFuncDown = std::bind( callback, obj, std::_1 );
+		}
+		template<typename T>
+		void	registerClickUp( T *obj, void(T::*callback)(app::MouseEvent&) ) {
+			cbFuncUp = std::bind( callback, obj, std::_1 );
+		}
 		
 		// ROGER
 		ButtonControl* setCentered(bool b=true)		{ centered = b; return this; }		// chained setters
-		ButtonControl* setTriggerUp(bool b=true)	{ triggerUp = b; return this; }		// chained setters
-		bool valueHasChanged()						{ return (pressed!=lastPressed || name.compare(lastName)!=0 || name2.compare(lastName2)!=0); };
+		bool valueHasChanged()						{ return (pressed!=lastPressed || name2.compare(lastName2)!=0); };
 		bool isOn()									{ return (pressed); }		// used to switch panel
 
 	};
@@ -800,7 +799,6 @@ namespace cinder { namespace sgui {
 		bool valueHasChanged();
 		// ROGER
 		std::string * var;
-		std::string lastName;
 		std::string lastVar;
 		gl::Texture wrapTex;
 		bool wrap;
@@ -822,8 +820,8 @@ namespace cinder { namespace sgui {
 		AreaControl(SimpleGUI *parent) : enabled(true), lastEnabled(true), locked(false), lastLocked(false), Control(parent) { name="area"; }
 		bool valueHasChanged()		{ return (enabled != lastEnabled || locked != lastLocked); }
 		bool hasResized()			{ return this->valueHasChanged(); }
-		void enable(bool b=true)	{ enabled = b; }
 		void lock(bool b=true)		{ locked = b; }
+		void enable(bool b=true)	{ enabled = b; }
 		void disable()				{ enabled = false; }
 		bool isEnabled()			{ return enabled; }
 	protected:
@@ -849,17 +847,16 @@ namespace cinder { namespace sgui {
 		Rectf boolArea;
 		Rectf boolAreaInBase;
 		Rectf boolAreaIn;
-		std::string lastName;
 	public:
 		TabControl(SimpleGUI *parent, const std::string & tabName, bool *var=NULL, bool def=false);
 		Vec2f draw(Vec2f pos);
-		void onMouseDown(MouseEvent event);
+		void onMouseDown(app::MouseEvent & event);
 		std::string toString();
 		void fromString(std::string& strValue);
 		void update();
 		void select(bool b=true)		{ selected = b; }
 		void reset()					{ selected = defaultSelected; if (var) *var = defaultValue; }
-		bool valueHasChanged()			{ return (var ? (*var != lastValue) : false ) || lastSelected != selected  || lastName != name || this->AreaControl::valueHasChanged(); }
+		bool valueHasChanged()			{ return (var ? (*var != lastValue) : false ) || lastSelected != selected  || this->AreaControl::valueHasChanged(); }
 		bool hasResized()				{ return false; };
 		float getValue()				{ return (float)*var; }
 	};

@@ -17,11 +17,15 @@
 enum enumQBCfg
 {
 	QBCFG_NONE = -1,
+	// View
+	QBCFG_CURRENT_TAB,
 	// Camera
 	QBCFG_CAMERA_TYPE,
 	QBCFG_CAMERA_GROUND,
 	QBCFG_METRIC_THROW,
 	QBCFG_OPACITY,
+	QBCFG_SCALE,
+	QBCFG_OFFSET,
 	// Animation
 	QBCFG_PLAYING,
 	QBCFG_PLAY_BACKWARDS,
@@ -67,6 +71,8 @@ enum enumQBCfg
 	//
 	// READ ONLY
 	DUMMY_GPU,
+	DUMMY_GL_VERSION,
+	DUMMY_GLSL_VERSION,
 	DUMMY_RENDER_WIDTH,
 	DUMMY_RENDER_HEIGHT,
 	DUMMY_QB_WIDTH,
@@ -146,9 +152,10 @@ public:
 	void	setup();
 	void	update();
 	
-	void	enableQBGui( bool e=true )				{ columnRender->enable(); columnPalette->enable(); }
-	
+	void	enableQBGui( bool e=true )		{ columnRender->enable(); columnPalette->enable(); }
 	void	setRenderTexture( gl::Texture * frame );
+	
+	int		getCurrentTab()					{ return this->getInt( QBCFG_CURRENT_TAB ); }
 
 	// tabs
 	sgui::TabControl			* tabQB;
@@ -172,17 +179,17 @@ public:
 	
 private:
 	
-	bool	cbLoad( ci::app::MouseEvent event );
-	bool	cbSave( ci::app::MouseEvent event );
-	bool	cbPlaySwitch( ci::app::MouseEvent event );
-	bool	cbRewind( ci::app::MouseEvent event );
-	bool	cbRenderSwitch( ci::app::MouseEvent event );
-	bool	cbRenderFinish( ci::app::MouseEvent event );
-	bool	cbScreenshot( ci::app::MouseEvent event );
-	bool	cbPalette2Switch( ci::app::MouseEvent event );
-	bool	cbPalette3Switch( ci::app::MouseEvent event );
-	bool	cbPalette4Switch( ci::app::MouseEvent event );
-	bool	cbPalette5Switch( ci::app::MouseEvent event );
+	void	cbLoad( ci::app::MouseEvent & event );
+	void	cbSave( ci::app::MouseEvent & event );
+	void	cbPlaySwitch( ci::app::MouseEvent & event );
+	void	cbRewind( ci::app::MouseEvent & event );
+	void	cbRenderSwitch( ci::app::MouseEvent & event );
+	void	cbRenderFinish( ci::app::MouseEvent & event );
+	void	cbScreenshot( ci::app::MouseEvent & event );
+	void	cbPalette2Switch( ci::app::MouseEvent & event );
+	void	cbPalette3Switch( ci::app::MouseEvent & event );
+	void	cbPalette4Switch( ci::app::MouseEvent & event );
+	void	cbPalette5Switch( ci::app::MouseEvent & event );
 	void	paletteSwitchColors( int cfg1, int cfg2 );
 
 	void	postSetCallback(int id, int i);

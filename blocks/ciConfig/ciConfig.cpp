@@ -46,11 +46,8 @@
 
 #define IS_IN_DEFAULTS(f)		( mFolderDefault.length() > 0 && f.find(mFolderDefault) != std::string::npos )
 
-
-
-using namespace cinder;
+using namespace ci;
 using namespace ci::app;
-
 using namespace std;
 
 namespace cinder {
@@ -95,7 +92,7 @@ namespace cinder {
 #ifdef CFG_CATCH_LOOP_EVENTS
 		// not for presets
 		if (parent == NULL)
-			App::get()->registerKeyDown( this, &ciConfig::onKeyDown );
+			getWindow()->connectKeyDown( & ciConfig::onKeyDown, this );
 #endif
 		
 		// init MIDI
@@ -241,7 +238,7 @@ namespace cinder {
 	}
 	//
 	// Keyboard / Presets
-	bool ciConfig::onKeyDown( app::KeyEvent event )
+	void ciConfig::onKeyDown( app::KeyEvent & event )
 	{
 		char c = event.getChar();
 		//printf("EVENT>> ciConfig::keyDown [%d] [%c]\n",c,c);
@@ -260,7 +257,7 @@ namespace cinder {
 				if (event.isMetaDown()) // COMMAND
 				{
 					this->load();
-					return false;
+					return;
 				}
 			case 's':
 			case 'S':
@@ -270,21 +267,21 @@ namespace cinder {
 					//	this->exportas();
 					//else
 					this->save();
-					return false;
+					return;
 				}
 			case 'i':
 			case 'I':
 				if (event.isMetaDown()) // COMMAND
 				{
 					this->import();
-					return false;
+					return;
 				}
 			case 'e':
 			case 'E':
 				if (event.isMetaDown()) // COMMAND
 				{
 					this->exportas();
-					return false;
+					return;
 				}
 			case '1' :
 			case '2' :
@@ -301,18 +298,19 @@ namespace cinder {
 					if (event.isControlDown() && event.isMetaDown())
 					{
 						this->save(c);
-						return true;
+						//event.setHandled();
+						return;
 					}
 					// Load : COMMAND + NUMBER
 					else if (event.isMetaDown())
 					{
 						this->load(c);
-						return true;
+						//event.setHandled();
+						return;
 					}
 					break;
 				}
 		}
-		return false;
 	}
 	
 	
@@ -1702,7 +1700,8 @@ namespace cinder {
 		//
 		// SAVE!!!
 		doc.write( writeFile( f ) );
-		printf("-------------- READ OK! %d params\n",(int)params.size());
+		printf("-------------- READ [%s]\n",f.c_str());
+		printf("-------------- READ %d params OK!\n",(int)params.size());
 		sprintf(errmsg, "READ [%s]", f.c_str());
 		
 		// remember file
@@ -1797,7 +1796,8 @@ namespace cinder {
 		//
 		// SAVE FILE!!
 		doc.write( writeFile( f ) );
-		printf("-------------- SAVE OK! %d params\n",(int)params.size());
+		printf("-------------- SAVE [%s]\n",f.c_str());
+		printf("-------------- SAVED %d params OK!\n",(int)params.size());
 		sprintf(errmsg, "SAVED [%s]", f.c_str());
 		
 		// remember file

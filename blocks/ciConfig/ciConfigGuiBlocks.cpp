@@ -79,12 +79,12 @@ namespace cinder { namespace sgui {
 		cfg->guiAddGroup("");
 		cfg->guiAddParam("", &mFilename);
 		cfg->guiAddSeparator();
-		cfg->guiAddButton("Reset",							this, &ciGuiBlockLoadSave::cbReset)->setTriggerUp()->setPostGap(false);
-		cfg->guiAddButton("Load Default",		cmd+"L",	this, &ciGuiBlockLoadSave::cbLoadDefault)->setTriggerUp()->setPostGap(false);
-		cfg->guiAddButton("Save as Default",	cmd+"S",	this, &ciGuiBlockLoadSave::cbSaveDefault)->setTriggerUp();
+		cfg->guiAddButton("Reset",							this, &ciGuiBlockLoadSave::cbReset)->setPostGap(false);
+		cfg->guiAddButton("Load Default",		cmd+"L",	this, &ciGuiBlockLoadSave::cbLoadDefault)->setPostGap(false);
+		cfg->guiAddButton("Save as Default",	cmd+"S",	this, &ciGuiBlockLoadSave::cbSaveDefault);
 		cfg->guiAddSeparator();
-		cfg->guiAddButton("Import Config...",	cmd+"I",	this, &ciGuiBlockLoadSave::cbLoadFile)->setTriggerUp()->setPostGap(false);
-		cfg->guiAddButton("Export Config...",	cmd+"E",	this, &ciGuiBlockLoadSave::cbSaveFile)->setTriggerUp();
+		cfg->guiAddButton("Import Config...",	cmd+"I",	this, &ciGuiBlockLoadSave::cbLoadFile)->setPostGap(false);
+		cfg->guiAddButton("Export Config...",	cmd+"E",	this, &ciGuiBlockLoadSave::cbSaveFile);
 	}
 	
 	void ciGuiBlockLoadSave::update()
@@ -94,23 +94,25 @@ namespace cinder { namespace sgui {
 	
 	//
 	// FILE TAB CALLBACKS
-	bool ciGuiBlockLoadSave::cbReset( ci::app::MouseEvent event ) {
+	void ciGuiBlockLoadSave::cbReset( ci::app::MouseEvent & event ) {
 		mConfig->reset();
-		return false;
+		event.setHandled();
 	}
-	bool ciGuiBlockLoadSave::cbLoadDefault( ci::app::MouseEvent event ) {
+	void ciGuiBlockLoadSave::cbLoadDefault( ci::app::MouseEvent & event ) {
 		mConfig->load();
-		return false;
+		event.setHandled();
 	}
-	bool ciGuiBlockLoadSave::cbSaveDefault( ci::app::MouseEvent event ) {
+	void ciGuiBlockLoadSave::cbSaveDefault( ci::app::MouseEvent & event ) {
 		mConfig->save();
-		return false;
+		event.setHandled();
 	}
-	bool ciGuiBlockLoadSave::cbLoadFile( ci::app::MouseEvent event ) {
-		return mConfig->import();
+	void ciGuiBlockLoadSave::cbLoadFile( ci::app::MouseEvent & event ) {
+		mConfig->import();
+		event.setHandled();
 	}
-	bool ciGuiBlockLoadSave::cbSaveFile( ci::app::MouseEvent event ) {
-		return mConfig->exportas();
+	void ciGuiBlockLoadSave::cbSaveFile( ci::app::MouseEvent & event ) {
+		mConfig->exportas();
+		event.setHandled();
 	}
 } } // namespace cinder::sgui
 #endif

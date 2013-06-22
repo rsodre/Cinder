@@ -21,7 +21,7 @@ namespace cinder {
 		mTabCount = 0;
 		mGroupCount = 0;
 
-		mGui = new SimpleGUI( App::get() );
+		mGui = new SimpleGUI( app::App::get() );
 		//mGui->setName(mAppName+" "+mAppVersion);
 		
 		//mGui->lightColor = ColorA(0, 1, 1, 1);		// cyan

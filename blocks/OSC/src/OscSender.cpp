@@ -27,9 +27,9 @@
 
 #include "OscSender.h"
 
-#include "OscOutboundPacketStream.h"
-#include "OscTypes.h"
-#include "UdpSocket.h"
+#include "osc/OscOutboundPacketStream.h"
+#include "osc/OscTypes.h"
+#include "ip/UdpSocket.h"
 
 #include <assert.h>
 namespace cinder { namespace osc {
@@ -132,28 +132,6 @@ void OscSender::appendMessage( const Message& message, ::osc::OutboundPacketStre
 }
 	
 	
-<<<<<<< HEAD:blocks/osc/src/OscSender.cpp
-	Sender::Sender(){
-		oscSender = std::shared_ptr<OscSender>( new OscSender );
-	}
-	
-	void Sender::setup(std::string hostname, int port){
-		oscSender->setup(hostname, port);
-	}
-	
-	// ROGER
-	void Sender::shutdown(){
-		oscSender->shutdown();
-	}
-	
-	void Sender::sendMessage(Message& message){
-		oscSender->sendMessage(message);
-	}
-	
-	void Sender::sendBundle(Bundle& bundle){
-		oscSender->sendBundle(bundle);
-	}
-=======
 Sender::Sender()
 {
 	oscSender = std::shared_ptr<OscSender>( new OscSender );
@@ -173,7 +151,12 @@ void Sender::sendBundle( const Bundle& bundle )
 {
 	oscSender->sendBundle( bundle );
 }
->>>>>>> cinder/master:blocks/OSC/src/OscSender.cpp
+	
+	// ROGER
+	void Sender::shutdown(){
+		oscSender->shutdown();
+	}
+
 	
 }// namespace cinder
 }// namespace osc

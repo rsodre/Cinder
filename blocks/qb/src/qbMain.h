@@ -37,14 +37,16 @@ public:
 	
 	qbMain();
 	~qbMain();
-	void	enableMultiTouch( AppBasic::Settings *settings );
+	void	enableMultiTouch( app::AppBasic::Settings *settings );
 	void	init();
 	void	init( int _w, int _h, bool _autoWindowSize=true );
 	void	initDomeMaster()						{ mDomeMaster.setup( mRenderWidth, mRenderHeight ); }
 	void	setScreenName(std::string name)			{ mScreenName = name; mConfig->guiSetName(name); };
-	bool	onResize( app::ResizeEvent event );
-	bool	onKeyDown( app::KeyEvent event );
-	bool	onFileDrop( FileDropEvent event );
+
+	// Events
+	void	onResize();
+	void	onKeyDown( app::KeyEvent & event );
+	void	onFileDrop( app::FileDropEvent & event );
 
 	// update Pool
 	void	updatePoolAdd( qbUpdateObject * o)		{ mUpdatePool.add(o); }
@@ -82,7 +84,7 @@ public:
 	void	resizeWindow( int w, int h);
 	void	resizePrint( int w, int h );
 	void	resizePreview();
-	void	setBackgroundColor( ci::Color _c )		{ mBackgroundColor = _c; }
+	void	setBackgroundColor( ci::Color c )		{ mBackgroundColor = c; }
 	void	enableRenderControls( bool e=true )		{ bRenderControls=e; mConfig->columnRender->enable(e); };
 	void	enableSyphonControls( bool e=true )		{ bSyphonControls=e; mConfig->panelSyphon->enable(e); };
 	void	enablePaletteControls( bool e=true )	{ if (mConfig->columnPalette) mConfig->columnPalette->enable(e); if(mConfig->columnPerlinSource) mConfig->columnPerlinSource->enable(e); };

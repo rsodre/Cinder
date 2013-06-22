@@ -143,8 +143,8 @@ namespace cinder { namespace qb {
 			this->rewind();
 			_qb.rewindSources();
 		}
-		if ( _renderer.isRendering() )
-			printf("PLAYHEAD  >  secs %.6f / %.6f    fr %d / %d\n",mSeconds,(_qb.getRenderSeconds()-QB_FRAME_DURATION),mCurrentFrame,_qb.getRenderFrames());
+		//if ( _renderer.isRendering() )
+		//	printf("PLAYHEAD  >  secs %.6f / %.6f    fr %d / %d\n",mSeconds,(_qb.getRenderSeconds()-QB_FRAME_DURATION),mCurrentFrame,_qb.getRenderFrames());
 		// Update GUI
 		_cfg.set(QBCFG_PLAYING, bPlaying);
 		_cfg.set(QBCFG_CURRENT_TIME, mSeconds);

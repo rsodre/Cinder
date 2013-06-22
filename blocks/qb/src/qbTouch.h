@@ -26,10 +26,11 @@ namespace cinder { namespace qb {
 		~qbTouch();
 		
 		void	enable( app::AppBasic::Settings *settings );
+		void	setupEvents();
 		
-		bool	touchesBegan( app::TouchEvent event );
-		bool	touchesMoved( app::TouchEvent event );
-		bool	touchesEnded( app::TouchEvent event );
+		void	touchesBegan( app::TouchEvent & event );
+		void	touchesMoved( app::TouchEvent & event );
+		void	touchesEnded( app::TouchEvent & event );
 		
 		int		getCount()			{ return mPoints.size(); }	// Number of touches
 		Vec2f	getPos()			{ return mPos; }			// Average pos from all touches

@@ -28,11 +28,15 @@ qbConfig::qbConfig() : ciConfigGui()
 //
 // Refresh GUI from
 void qbConfig::setup() {
+	// View
+	this->addInt(QBCFG_CURRENT_TAB, "QBCFG_CURRENT_TAB", 0, 0, 50 );
 	// Camera
 	this->addFloat(QBCFG_OPACITY, "QBCFG_OPACITY", 1.0f, 0.0f, 1.0f );
+	this->addFloat(QBCFG_SCALE, "QBCFG_SCALE", 1.0f, 0.0f, 2.0f );
+	this->addVector2(QBCFG_OFFSET, "QBCFG_OFFSET", Vec2f::zero(), -0.5f, 0.5f );
 	this->addInt(QBCFG_CAMERA_TYPE, "QBCFG_CAMERA_TYPE", _qb.mDefaultCamera, 0, CAMERA_TYPE_COUNT-1);
 	this->addBool(QBCFG_CAMERA_GROUND, "QBCFG_CAMERA_GROUND", false);
-	this->addFloat(QBCFG_METRIC_THROW, "QBCFG_METRIC_THROW", 1.0f, 0.1f, 1.0f);
+	this->addFloat(QBCFG_METRIC_THROW, "QBCFG_METRIC_THROW", 1.0f, 0.1f, 1.2f);
 	// Animation
 	this->addBool(QBCFG_PLAYING, "QBCFG_PLAYING", true);
 	this->addBool(QBCFG_PLAY_BACKWARDS, "QBCFG_PLAY_BACKWARDS", false);
@@ -79,7 +83,9 @@ void qbConfig::setup() {
 	this->setDummy( QBCFG_PALETTE_REDUCE_TIME );
 	
 	// Readonly
-	this->addString(DUMMY_GPU, "DUMMY_GPU", std::string((const char*)glGetString(GL_VERSION)));
+	this->addString(DUMMY_GPU, "DUMMY_GPU", std::string((const char*)glGetString(GL_RENDERER)));
+	this->addString(DUMMY_GL_VERSION, "DUMMY_GL_VERSION", std::string((const char*)glGetString(GL_VERSION)));
+	this->addString(DUMMY_GLSL_VERSION, "DUMMY_GLSL_VERSION", std::string((const char*)glGetString(GL_SHADING_LANGUAGE_VERSION)));
 	this->addInt(DUMMY_RENDER_WIDTH, "DUMMY_RENDER_WIDTH", 0);
 	this->addInt(DUMMY_RENDER_HEIGHT, "DUMMY_RENDER_HEIGHT", 0);
 	this->addInt(DUMMY_QB_WIDTH, "DUMMY_QB_WIDTH", 0);
@@ -97,6 +103,8 @@ void qbConfig::setup() {
 	this->addString(DUMMY_RENDER_STATUS, "DUMMY_RENDER_STATUS", "");
 	//
 	this->setDummy(DUMMY_GPU);
+	this->setDummy(DUMMY_GL_VERSION);
+	this->setDummy(DUMMY_GLSL_VERSION);
 	this->setDummy(DUMMY_RENDER_WIDTH);
 	this->setDummy(DUMMY_RENDER_HEIGHT);
 	this->setDummy(DUMMY_QB_WIDTH);
@@ -166,11 +174,14 @@ void qbConfig::setup() {
 	this->guiAddParam(DUMMY_PREVIEW_SCALE,			"Preview Scale", 2 );
 	this->guiAddParam(DUMMY_MOUSE_X,				"Mouse X", (_qb.getMetricScale() != 1.0 ? 2 : 0) );
 	this->guiAddParam(DUMMY_MOUSE_Y,				"Mouse Y", (_qb.getMetricScale() != 1.0 ? 2 : 0) );
-	this->guiAddParam(DUMMY_GPU,					"OpenGL");
+	//this->guiAddParam(DUMMY_GPU,					"GPU" );
+	this->guiAddParam(DUMMY_GL_VERSION,				"OpenGL" );
+	this->guiAddParam(DUMMY_GLSL_VERSION,			"GLSL" );
 	// Load/Save
 	this->guiAddSeparator();
-	this->guiAddButton("Load Config", cmd+"L",		(ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbLoad)->setTriggerUp();
-	this->guiAddButton("Save Config", cmd+"S",		(ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbSave)->setTriggerUp();
+	//this->guiAddButton("Load Config", cmd+"L",		(ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent&)) &qbConfig::cbLoad)->setTriggerUp();
+	this->guiAddButton("Load Config", cmd+"L",		this, &qbConfig::cbLoad);
+	this->guiAddButton("Save Config", cmd+"S",		this, &qbConfig::cbSave);
 	// view params
 	this->guiAddSeparator();
 	this->guiAddParam(QBCFG_PREVIEW_DOWNSCALE,		"Downscale Preview");
@@ -181,8 +192,10 @@ void qbConfig::setup() {
 	this->setValueLabels(QBCFG_CAMERA_TYPE, LABELS_CAMERA_TYPE);
 	//this->setFlag(QBCFG_CAMERA_TYPE, CFG_FLAG_DROP_DOWN);
 	this->guiAddParam(QBCFG_CAMERA_TYPE,			"> CAMERA" );
-	this->guiAddParam(QBCFG_METRIC_THROW,			"Camera Throw" );
+	this->guiAddParam(QBCFG_METRIC_THROW,			"Camera Throw", 2 );
 	this->guiAddParam(QBCFG_CAMERA_GROUND,			"Camera on Ground" );
+	this->guiAddParam(QBCFG_SCALE,					"Scale", 2 );
+	this->guiAddParam(QBCFG_OFFSET,					"Offset", 3 );
 	// Syphon
 	panelSyphon = this->mGui->addPanel("panelSyphon");
 	this->guiAddSeparator();
@@ -210,8 +223,8 @@ void qbConfig::setup() {
 	this->guiAddParam(DUMMY_CURRENT_FRAME,			"Current Frame" );
 	// play/pause panels
 	this->guiAddSeparator();
-	buttonPlaySwitch = this->guiAddButton("Pause", "space",	(ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbPlaySwitch);
-	this->guiAddButton("Rewind", "/",						(ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbRewind);
+	buttonPlaySwitch = this->guiAddButton("Pause", "space",	this, &qbConfig::cbPlaySwitch);
+	this->guiAddButton("Rewind", "/",						this, &qbConfig::cbRewind);
 	// info
 	this->guiAddParam(QBCFG_RENDER_SECONDS,			"Animation Seconds");
 	this->guiAddParam(QBCFG_FIT_SOURCES_TO_RENDER,	"Fit Sources Time");
@@ -225,16 +238,16 @@ void qbConfig::setup() {
 	this->guiAddParam(QBCFG_PRESERVE_ALPHA,			"Preserve Alpha");
 	this->guiAddParam(QBCFG_RENDER_PNG_SEQUENCE,	"PNG Sequence");
 	this->guiAddParam(QBCFG_RENDER_FRAMERATE,		"Render Framerate");
-	this->guiAddParam(QBCFG_RENDER_QUALITY,			"Render Quality", 2);
+	cf = (FloatVarControl*) this->guiAddParam(QBCFG_RENDER_QUALITY,			"Render Quality", 2);
+	cf->setFormatAsPercentage();
 	//
 	// Render
 	this->mGui->addPanel("renderControls");
 	this->guiAddSeparator();
 	this->guiAddText("> RENDER CONTROL");
-	this->guiAddButton("Save Screenshot",			(ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbScreenshot)->setTriggerUp();
-	buttonRenderSwitch = this->guiAddButton("Start Render", cmd+"X", (ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbRenderSwitch);
-	buttonRenderSwitch->setTriggerUp();
-	this->guiAddButton("Save Render", cmd+"Z",		(ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbRenderFinish)->setTriggerUp();
+	this->guiAddButton("Save Screenshot",			this, &qbConfig::cbScreenshot);
+	buttonRenderSwitch = this->guiAddButton("Start Render", cmd+"X", this, &qbConfig::cbRenderSwitch);
+	this->guiAddButton("Save Render", cmd+"Z",		this, &qbConfig::cbRenderFinish);
 	// Render texture
 	controlRenderTexture = (TextureVarControl*) this->guiAddTexture("", &mNullTexture, 0);
 	this->guiAddParam(DUMMY_RENDER_TIME_ESTIMATED,	"Estimated:");
@@ -297,32 +310,36 @@ void qbConfig::setup() {
 	cc = (ColorVarControl*) this->guiAddParam(QBCFG_PALETTE_1,	"Color 1");
 	cc->displayValue = true;
 	// color 2
-	this->guiAddButton("swap down", (ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbPalette2Switch)->setTriggerUp();
+	this->guiAddButton("swap down", this, &qbConfig::cbPalette2Switch);
 	cc = (ColorVarControl*) this->guiAddParam(QBCFG_PALETTE_2,	"Color 2");
 	cc->displayValue = true;
 	// color 3
 	pc3 = this->mGui->addPanel("panel_palette_3");
 	//pc3->column = true;
-	this->guiAddButton("swap down", (ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbPalette3Switch)->setTriggerUp();
+	this->guiAddButton("swap down", this, &qbConfig::cbPalette3Switch);
 	cc = (ColorVarControl*) this->guiAddParam(QBCFG_PALETTE_3,	"Color 3");
 	cc->displayValue = true;
 	// color 4
 	pc4 = this->mGui->addPanel("panel_palette_4");
 	//pc4->column = true;
-	this->guiAddButton("swap down", (ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbPalette4Switch)->setTriggerUp();
+	this->guiAddButton("swap down", this, &qbConfig::cbPalette4Switch);
 	cc = (ColorVarControl*) this->guiAddParam(QBCFG_PALETTE_4,	"Color 4");
 	cc->displayValue = true;
 	// color 5
 	pc5 = this->mGui->addPanel("panel_palette_5");
 	//pc5->column = true;
-	this->guiAddButton("swap down", (ciConfigGui*)this, (bool(ciConfigGui::*)(ci::app::MouseEvent)) &qbConfig::cbPalette5Switch)->setTriggerUp();
+	this->guiAddButton("swap down", this, &qbConfig::cbPalette5Switch);
 	cc = (ColorVarControl*) this->guiAddParam(QBCFG_PALETTE_5,	"Color 5");
 	cc->displayValue = true;
 	
 	// Read last config
+	// TODO:: fazer useFile() funcionar novamente
 	std::stringstream os;
-	os << QB_APP_NAME << "_qb.cfg";
-	this->useFile( os.str().c_str() );
+	//os << QB_APP_NAME << "_qb.cfg";
+	//this->useFile( os.str().c_str() );
+	os << QB_APP_NAME << "_qb";
+	this->mAppName = os.str();
+	this->load();
 	//this->makePresets();
 }
 
@@ -353,7 +370,7 @@ void qbConfig::update() {
 // BUTTON CALLBACKS
 //
 // Save/Load
-bool qbConfig::cbLoad( ci::app::MouseEvent event ) {
+void qbConfig::cbLoad( ci::app::MouseEvent & event ) {
 	/*
 	std::vector<std::string> extensions;
 	extensions.push_back("cfg");
@@ -362,9 +379,9 @@ bool qbConfig::cbLoad( ci::app::MouseEvent event ) {
 		this->readFile( path.c_str() );
 	*/
 	this->load();
-	return true;
+	event.setHandled();
 }
-bool qbConfig::cbSave( ci::app::MouseEvent event ) {
+void qbConfig::cbSave( ci::app::MouseEvent & event ) {
 	/*
 	std::vector<std::string> extensions;
 	extensions.push_back("cfg");
@@ -373,54 +390,54 @@ bool qbConfig::cbSave( ci::app::MouseEvent event ) {
 		this->saveFile( path.c_str() );
 	*/
 	this->save();
-	return false;
+	event.setHandled();
 }
 
 // Rewind Animation
-bool qbConfig::cbRewind( ci::app::MouseEvent event ) {
+void qbConfig::cbRewind( ci::app::MouseEvent & event ) {
 	_qb.rewind();
-	return true;
+	event.setHandled();
 }
 
 // Play/Stop
-bool qbConfig::cbPlaySwitch( ci::app::MouseEvent event ) {
+void qbConfig::cbPlaySwitch( ci::app::MouseEvent & event ) {
 	_qb.playSwitch();
-	return true;
+	event.setHandled();
 }
 
 // Render
-bool qbConfig::cbRenderSwitch( ci::app::MouseEvent event ) {
+void qbConfig::cbRenderSwitch( ci::app::MouseEvent & event ) {
 	_renderer.startstop();
-	return true;
+	event.setHandled();
 }
-bool qbConfig::cbRenderFinish( ci::app::MouseEvent event ) {
+void qbConfig::cbRenderFinish( ci::app::MouseEvent & event ) {
 	_renderer.stop();
 	_renderer.finish();
-	return true;
+	event.setHandled();
 }
 
 // Screenshot
-bool qbConfig::cbScreenshot( ci::app::MouseEvent event ) {
+void qbConfig::cbScreenshot( ci::app::MouseEvent & event ) {
 	_renderer.takeScreenshot();
-	return true;
+	event.setHandled();
 }
 
 // Palette control
-bool qbConfig::cbPalette2Switch( ci::app::MouseEvent event ) {
+void qbConfig::cbPalette2Switch( ci::app::MouseEvent & event ) {
 	this->paletteSwitchColors( QBCFG_PALETTE_1, QBCFG_PALETTE_2 );
-	return true;
+	event.setHandled();
 }
-bool qbConfig::cbPalette3Switch( ci::app::MouseEvent event ) {
+void qbConfig::cbPalette3Switch( ci::app::MouseEvent & event ) {
 	this->paletteSwitchColors( QBCFG_PALETTE_2, QBCFG_PALETTE_3 );
-	return true;
+	event.setHandled();
 }
-bool qbConfig::cbPalette4Switch( ci::app::MouseEvent event ) {
+void qbConfig::cbPalette4Switch( ci::app::MouseEvent & event ) {
 	this->paletteSwitchColors( QBCFG_PALETTE_3, QBCFG_PALETTE_4 );
-	return true;
+	event.setHandled();
 }
-bool qbConfig::cbPalette5Switch( ci::app::MouseEvent event ) {
+void qbConfig::cbPalette5Switch( ci::app::MouseEvent & event ) {
 	this->paletteSwitchColors( QBCFG_PALETTE_4, QBCFG_PALETTE_5 );
-	return true;
+	event.setHandled();
 }
 void qbConfig::paletteSwitchColors( int cfg1, int cfg2 ) {
 	Color8u c1 = this->getColor( cfg1 );

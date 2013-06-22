@@ -534,7 +534,7 @@ namespace cinder { namespace qb {
 					message.addIntArg( c.b );
 					// Send!
 					mOscSender.sendMessage(message);
-					printf(">> OSC PALETTE SEND :: frame %d :: addr [%s]  color %d  rgb %d %d %d\n",getElapsedFrames(),message.getAddress().c_str(),message.getArgAsInt32(0),message.getArgAsInt32(1),message.getArgAsInt32(2),message.getArgAsInt32(3));
+					printf(">> OSC PALETTE SEND :: frame %d :: addr [%s]  color %d  rgb %d %d %d\n",app::getElapsedFrames(),message.getAddress().c_str(),message.getArgAsInt32(0),message.getArgAsInt32(1),message.getArgAsInt32(2),message.getArgAsInt32(3));
 					return true;
 				}
 			}
@@ -557,7 +557,7 @@ namespace cinder { namespace qb {
 					int g = message.getArgAsInt32(2);
 					int b = message.getArgAsInt32(3);
 					_cfg.set( QBCFG_PALETTE_1+colorNum, Color8u(r,g,b) );
-					printf(">> OSC PALETTE RECEIVE :: frame %d :: addr [%s]  color %d  rgb %d %d %d\n",getElapsedFrames(),message.getAddress().c_str(),colorNum,r,g,b);
+					printf(">> OSC PALETTE RECEIVE :: frame %d :: addr [%s]  color %d  rgb %d %d %d\n",app::getElapsedFrames(),message.getAddress().c_str(),colorNum,r,g,b);
 					return true;
 				}
 			}

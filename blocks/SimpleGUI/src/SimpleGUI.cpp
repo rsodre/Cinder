@@ -33,23 +33,24 @@
 // "The fonts can be used free for any personal or commercial projects."
 //
 
-#include <iostream>
-#include <sstream>
-#include <fstream>
-#include <iosfwd>
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
-#include "SimpleGUI.h"
 #include "cinder/app/AppBasic.h"
 #include "cinder/Utilities.h"
 #include "cinder/Font.h"
 #include "cinder/CinderMath.h"
 #include "cinder/Rand.h"
+#include "SimpleGUI.h"
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <iosfwd>
 
 #ifndef RELEASE
-//#define BLINK_CONTROLS		// uncomment to color-blink controls when they change
 //#define DEBUG_FBO
 #endif
+
+using namespace ci::app;
 
 namespace cinder { namespace sgui {
 	
@@ -82,7 +83,7 @@ namespace cinder { namespace sgui {
 		mouseControl = NULL;
 		theTab = NULL;			// The current active tab
 		lastTab = NULL;		// The last active tab
-
+		bBlink = false;
 	}
 	// ROGER
 	SimpleGUI::~SimpleGUI() {
@@ -96,12 +97,19 @@ namespace cinder { namespace sgui {
 		//SimpleGUI::textFont = Font(loadResource("pf_tempesta_seven_ROGER.ttf"), 8);	// tuned
 		//SimpleGUI::textFont = Font("Arial", 12);
 		selectedControl = NULL;
-		cbMouseMove = app->registerMouseMove( this, &SimpleGUI::onMouseMove );
-		cbMouseDown = app->registerMouseDown( this, &SimpleGUI::onMouseDown );
-		cbMouseUp = app->registerMouseUp( this, &SimpleGUI::onMouseUp );
-		cbMouseDrag = app->registerMouseDrag( this, &SimpleGUI::onMouseDrag );
-		cbFileDrop = app->registerFileDrop( this, &SimpleGUI::onFileDrop );
+
 		app->setFpsSampleInterval( 0.5 );
+
+		// register events
+
+		// Conenct own signals because of multi window
+		getWindow()->connectResize		( & SimpleGUI::onResize, this );
+		getWindow()->connectKeyDown		( & SimpleGUI::onKeyDown, this );
+		getWindow()->connectMouseMove	( & SimpleGUI::onMouseMove, this );
+		getWindow()->connectMouseDown	( & SimpleGUI::onMouseDown, this );
+		getWindow()->connectMouseUp		( & SimpleGUI::onMouseUp, this );
+		getWindow()->connectMouseDrag	( & SimpleGUI::onMouseDrag, this );
+		getWindow()->connectFileDrop	( & SimpleGUI::onFileDrop, this );
 
 		// ROGER
 		bForceRedraw = true;
@@ -113,8 +121,6 @@ namespace cinder { namespace sgui {
 		// FBO
 		bUsingFbo = true;
 		bShouldResize = true;
-		cbResize = App::get()->registerResize( this, &SimpleGUI::onResize );
-		cbKeyDown = App::get()->registerKeyDown( this, &SimpleGUI::onKeyDown );
 	}
 	
 	FloatVarControl* SimpleGUI::addParam(const std::string& paramName, float* var, float min, float max, float defaultValue) {
@@ -392,10 +398,11 @@ namespace cinder { namespace sgui {
 			gl::enableAlphaBlending();
 			gl::color( ColorA::white() );
 			gl::draw( mFbo.getTexture(), srcFlipped, bounds );
-#ifdef BLINK_CONTROLS
-			gl::color( ColorA(1,1,1,0.5) );
-			gl::drawStrokedRect(bounds);
-#endif
+			if (bBlink)
+			{
+				gl::color( ColorA(1,1,1,0.5) );
+				gl::drawStrokedRect(bounds);
+			}
 		}
 		else
 		{
@@ -515,11 +522,10 @@ namespace cinder { namespace sgui {
 										  (position + SimpleGUI::sliderSize + SimpleGUI::padding).x,
 										  mFbo.getSize().y );
 					}
-#ifdef BLINK_CONTROLS
-					gl::color( ColorA( Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), 0.7) );
-#else
-					gl::color( ColorA::zero() );
-#endif
+					if (bBlink)
+						gl::color( ColorA( Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), 0.7) );
+					else
+						gl::color( ColorA::zero() );
 					gl::drawSolidRect(eraseArea);
 				}
 				// Draw Column to update valueHasChanged()
@@ -566,13 +572,13 @@ namespace cinder { namespace sgui {
 	}
 	
 	Vec2f SimpleGUI::drawControl(Vec2f pos, Control *control) {
-#ifdef BLINK_CONTROLS
-		SimpleGUI::bgColor = ColorA( Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), 0.7);
+		if (bBlink)
+			SimpleGUI::bgColor = ColorA( Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), 0.7);
 		//printf("DRAW CONTROL [%s]\n",control->name.c_str());
-#endif
 		Vec2f newPos = control->draw(pos);
 		control->drawOffset = (newPos - pos);
 		control->mustRefresh = false;
+		control->lastName = control->name;
 		return newPos;
 	}
 	
@@ -581,9 +587,8 @@ namespace cinder { namespace sgui {
 							   (-SimpleGUI::padding).y,
 							   (SimpleGUI::sliderSize + SimpleGUI::padding).x,
 							   (SimpleGUI::sliderSize + SimpleGUI::padding).y );
-#ifdef BLINK_CONTROLS
-		SimpleGUI::bgColor = ColorA( Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), 0.7);
-#endif
+		if (bBlink)
+			SimpleGUI::bgColor = ColorA( Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), 0.7);
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect(backArea + pos);
 		gl::enableAlphaBlending();
@@ -659,16 +664,15 @@ namespace cinder { namespace sgui {
 	//
 	// EVENTS
 	//
-	bool SimpleGUI::onResize( app::ResizeEvent event )
+	void SimpleGUI::onResize()
 	{
 		for (std::vector<Control*>::iterator it = controls.begin() ; it != controls.end() ; it++) {
 			Control* control = *it;
-			control->onResize(event);
+			control->onResize();
 		}
 		bShouldResize = true;
-		return false;
 	}
-	bool SimpleGUI::onKeyDown( app::KeyEvent event )
+	void SimpleGUI::onKeyDown( app::KeyEvent & event )
 	{
 		switch( event.getCode() ) {
 			case KeyEvent::KEY_q:
@@ -678,7 +682,8 @@ namespace cinder { namespace sgui {
 					if ( t > 0 )
 						this->setTab(t-1);
 				}
-				return true;
+				event.setHandled();
+				return;
 			case KeyEvent::KEY_a:
 				// tab down
 				{
@@ -686,7 +691,16 @@ namespace cinder { namespace sgui {
 					if ( t < theTabs.size() - 1 )
 						this->setTab(t+1);
 				}
-				return true;
+				event.setHandled();
+				return;
+			case 'k':
+			case 'K':
+				if (event.isMetaDown()) // COMMAND
+				{
+					bBlink = ! bBlink;
+					this->bForceRedraw = true;
+					return;
+				}
 		}
 		
 		// Pass to Mouse
@@ -697,27 +711,32 @@ namespace cinder { namespace sgui {
 				case KeyEvent::KEY_PLUS:
 				case KeyEvent::KEY_EQUALS:
 					mouseControl->inc( event.isShiftDown() );
-					return true;
+					event.setHandled();
+					return;
 				case KeyEvent::KEY_UP:
 					mouseControl->incY( event.isShiftDown() );
-					return true;
+					event.setHandled();
+					return;
 				case KeyEvent::KEY_LEFT:
 				case KeyEvent::KEY_MINUS:
 				case KeyEvent::KEY_UNDERSCORE:
 					mouseControl->dec( event.isShiftDown() );
-					return true;
+					event.setHandled();
+					return;
 				case KeyEvent::KEY_DOWN:
 					mouseControl->decY( event.isShiftDown() );
-					return true;
+					event.setHandled();
+					return;
 				case 'r':
 				case 'R':
 					mouseControl->reset();
-					return true;
+					event.setHandled();
+					return;
 				default:
-					return mouseControl->updateKeyboard(event.getChar());
+					event.setHandled( mouseControl->updateKeyboard(event.getChar()) );
+					return;
 			}
 		}
-		return false;
 	}
 
 	//
@@ -734,13 +753,12 @@ namespace cinder { namespace sgui {
 		}
 		return NULL;
 	}
-	bool SimpleGUI::onMouseMove(MouseEvent event) {
+	void SimpleGUI::onMouseMove(app::MouseEvent & event) {
 		// save control with mouse over
 		mouseControl = this->getMouseOverControl( event.getPos() );
-		return false;
 	}
-	bool SimpleGUI::onMouseDown(MouseEvent event) {
-		if (!enabled) return false;
+	void SimpleGUI::onMouseDown(app::MouseEvent & event) {
+		if (!enabled) return;
 		
 		// ROGER - pass on mouse event
 		if ( mouseControl ) {
@@ -759,7 +777,8 @@ namespace cinder { namespace sgui {
 				if ( l->dropped )
 					droppedList = l;
 			}
-			return true;
+			event.setHandled();
+			return;
 		}
 		// Close open DropDown list
 		if (droppedList)
@@ -767,11 +786,10 @@ namespace cinder { namespace sgui {
 			droppedList->close();
 			droppedList = NULL;
 		}
-		return false;
 	}
-	bool SimpleGUI::onMouseUp(MouseEvent event) {
+	void SimpleGUI::onMouseUp(app::MouseEvent & event) {
 		if (!enabled)
-			return false;
+			return;
 		if (selectedControl != NULL) {
 			selectedControl->onMouseUp(event);
 			selectedControl->mustRefresh = true;
@@ -780,28 +798,25 @@ namespace cinder { namespace sgui {
 			this->onMouseMove(event);
 			if (mouseControl)
 				mouseControl->mustRefresh = true;
-			return true;
-		}	
-		return false;
+			event.setHandled();
+		}
 	}
-	bool SimpleGUI::onMouseDrag(MouseEvent event) {
+	void SimpleGUI::onMouseDrag(app::MouseEvent & event) {
 		if (!enabled)
-			return false;
+			return;
 		if (selectedControl) {
 			selectedControl->onMouseDrag(event);
-			return true;
+			event.setHandled();
 		}
-		return false;
 	}
-	bool SimpleGUI::onFileDrop(FileDropEvent event) {
+	void SimpleGUI::onFileDrop(FileDropEvent & event) {
 		if (!enabled)
-			return false;
+			return;
 		Control * c = this->getMouseOverControl( event.getPos() );
 		if ( c ) {
 			c->onFileDrop(event);
-			return true;
+			event.setHandled();
 		}
-		return false;
 	}
 	
 	
@@ -998,7 +1013,7 @@ namespace cinder { namespace sgui {
 	{
 		// save current active channel
 		int oldChannel = channelOver;
-		channelOver = ( activeArea.contains(AppBasic::get()->getMousePos()) ? 0 : -1 );
+		channelOver = ( activeArea.contains(AppBasic::get()->getMousePosMainWindow()) ? 0 : -1 );
 		return ( channelOver != oldChannel );
 	}
 
@@ -1083,7 +1098,7 @@ namespace cinder { namespace sgui {
 			else
 			{
 				ss.precision(this->precision);
-				ss << v;
+				ss << v << suffix;
 			}
 		}
 		return ss.str();
@@ -1094,11 +1109,11 @@ namespace cinder { namespace sgui {
 		*var = boost::lexical_cast<float>(strValue);
 	}
 	
-	void FloatVarControl::onMouseDown(MouseEvent event) {
+	void FloatVarControl::onMouseDown(app::MouseEvent & event) {
 		onMouseDrag(event);	
 	}
 	
-	void FloatVarControl::onMouseDrag(MouseEvent event) {
+	void FloatVarControl::onMouseDrag(app::MouseEvent & event) {
 		float value = this->sliderGetMouseDragPos(event.getPos(), activeArea);
 		this->setNormalizedValue(value);
 	}
@@ -1178,7 +1193,7 @@ namespace cinder { namespace sgui {
 	bool IntVarControl::updateMouse()
 	{
 		int oldChannel = channelOver;
-		channelOver = ( activeArea.contains(AppBasic::get()->getMousePos()) ? 0 : -1 );
+		channelOver = ( activeArea.contains(AppBasic::get()->getMousePosMainWindow()) ? 0 : -1 );
 		return ( channelOver != oldChannel );
 	}
 	
@@ -1241,11 +1256,11 @@ namespace cinder { namespace sgui {
 		*var = boost::lexical_cast<int>(strValue);
 	}
 	
-	void IntVarControl::onMouseDown(MouseEvent event) {
+	void IntVarControl::onMouseDown(app::MouseEvent & event) {
 		onMouseDrag(event);
 	}
 	
-	void IntVarControl::onMouseDrag(MouseEvent event) {
+	void IntVarControl::onMouseDrag(app::MouseEvent & event) {
 		if (!readOnly)
 		{
 			if (items.size())
@@ -1306,7 +1321,7 @@ namespace cinder { namespace sgui {
 	bool ByteVarControl::updateMouse()
 	{
 		int oldChannel = channelOver;
-		channelOver = ( activeArea.contains(AppBasic::get()->getMousePos()) ? 0 : -1 );
+		channelOver = ( activeArea.contains(AppBasic::get()->getMousePosMainWindow()) ? 0 : -1 );
 		return ( channelOver != oldChannel );
 	}
 	
@@ -1369,11 +1384,11 @@ namespace cinder { namespace sgui {
 		*var = (unsigned char) boost::lexical_cast<int>(strValue);
 	}
 	
-	void ByteVarControl::onMouseDown(MouseEvent event) {
+	void ByteVarControl::onMouseDown(app::MouseEvent & event) {
 		onMouseDrag(event);
 	}
 	
-	void ByteVarControl::onMouseDrag(MouseEvent event) {
+	void ByteVarControl::onMouseDrag(app::MouseEvent & event) {
 		if (!readOnly)
 		{
 			float value = this->sliderGetMouseDragPos(event.getPos(), activeArea);
@@ -1476,13 +1491,13 @@ namespace cinder { namespace sgui {
 		return pos;	
 	}	
 
-	void FlagVarControl::onMouseDown(MouseEvent event) {
+	void FlagVarControl::onMouseDown(app::MouseEvent & event) {
 		this->touchedItem = -1;
 		this->touchedState = -1;
 		onMouseDrag(event);
 	}
 	
-	void FlagVarControl::onMouseDrag(MouseEvent event) {
+	void FlagVarControl::onMouseDrag(app::MouseEvent & event) {
 		if (!readOnly)
 		{
 			int item = -1;
@@ -1577,7 +1592,7 @@ namespace cinder { namespace sgui {
 		*var = value ? true : false;
 	}
 	
-	void BoolVarControl::onMouseDown(MouseEvent event) {
+	void BoolVarControl::onMouseDown(app::MouseEvent & event) {
 		if ( *var && dontGoOff )
 			return;
 		*var = ! *var;
@@ -1643,7 +1658,7 @@ namespace cinder { namespace sgui {
 		int oldChannel = channelOver;
 		channelOver = -1;
 		for (int i = 0 ; i < channelCount ; i++)
-			if (activeAreas[i].contains(AppBasic::get()->getMousePos()))
+			if (activeAreas[i].contains(AppBasic::get()->getMousePosMainWindow()))
 				channelOver = i;
 		return ( channelOver != oldChannel );
 	}
@@ -1815,7 +1830,7 @@ namespace cinder { namespace sgui {
 	}
 	
 	
-	void ColorVarControl::onMouseDown(MouseEvent event) {
+	void ColorVarControl::onMouseDown(app::MouseEvent & event) {
 		for (int i = 0 ; i < channelCount ; i++)
 		{
 			if (activeAreas[i].contains(event.getPos())) {
@@ -1826,7 +1841,7 @@ namespace cinder { namespace sgui {
 		onMouseDrag(event);
 	}
 	
-	void ColorVarControl::onMouseDrag(MouseEvent event) {
+	void ColorVarControl::onMouseDrag(app::MouseEvent & event) {
 		float value = this->sliderGetMouseDragPos(event.getPos(), activeArea);
 		
 		if (colorModel == SimpleGUI::RGB) {
@@ -1882,7 +1897,7 @@ namespace cinder { namespace sgui {
 		int oldChannel = channelOver;
 		channelOver = -1;
 		for (int i = 0 ; i < vecCount ; i++)
-			if (activeAreas[i].contains(AppBasic::get()->getMousePos()))
+			if (activeAreas[i].contains(AppBasic::get()->getMousePosMainWindow()))
 				channelOver = i;
 		return ( channelOver != oldChannel );
 	}
@@ -1988,7 +2003,7 @@ namespace cinder { namespace sgui {
 	}
 	
 	
-	void VectorVarControl::onMouseDown(MouseEvent event) {
+	void VectorVarControl::onMouseDown(app::MouseEvent & event) {
 		for (int i = 0 ; i < vecCount ; i++)
 		{
 			if (activeAreas[i].contains(event.getPos())) {
@@ -1999,7 +2014,7 @@ namespace cinder { namespace sgui {
 		onMouseDrag(event);
 	}
 	
-	void VectorVarControl::onMouseDrag(MouseEvent event) {
+	void VectorVarControl::onMouseDrag(app::MouseEvent & event) {
 		float value = this->sliderGetMouseDragPos(event.getPos(), activeArea);
 		if (activeTrack >= 0)
 			this->setNormalizedValue(activeTrack,value);
@@ -2041,7 +2056,7 @@ namespace cinder { namespace sgui {
 		int oldChannel = channelOver;
 		channelOver = -1;
 		//for (int i = 0 ; i < vecCount ; i++)
-		if (activeArea.contains(AppBasic::get()->getMousePos()))
+		if (activeArea.contains(AppBasic::get()->getMousePosMainWindow()))
 			channelOver = 0;
 		return ( channelOver != oldChannel );
 	}
@@ -2144,11 +2159,11 @@ namespace cinder { namespace sgui {
 	}
 	
 	
-	void XYVarControl::onMouseDown(MouseEvent event) {
+	void XYVarControl::onMouseDown(app::MouseEvent & event) {
 		onMouseDrag(event);
 	}
 	
-	void XYVarControl::onMouseDrag(MouseEvent event) {
+	void XYVarControl::onMouseDrag(app::MouseEvent & event) {
 		Vec2f c = event.getPos();
 		c.x = math<int>::clamp(c.x, activeArea.x1, activeArea.x2);
 		c.y = math<int>::clamp(c.y, activeArea.y1, activeArea.y2);
@@ -2200,7 +2215,7 @@ namespace cinder { namespace sgui {
 		//mArcball.setQuat( Quatf( Vec3f::zAxis(), 0 ) );
 		mArcball.setQuat( Quatf(*var) );
 		mArcball.setRadius( SimpleGUI::sliderSize.x * 0.5f );
-		this->onResize( app::ResizeEvent(getWindowSize()) );
+		this->onResize();
 		//printf("ARCBALL = %.4f %.4f %.4f %.4f\n",var->x,var->y,var->z,var->w);
 		//
 		// init FBO
@@ -2256,7 +2271,7 @@ namespace cinder { namespace sgui {
 	bool ArcballVarControl::updateMouse()
 	{
 		int oldChannel = channelOver;
-		channelOver = ( activeAreas[0].contains(AppBasic::get()->getMousePos()) ? 0 : -1 );
+		channelOver = ( activeAreas[0].contains(AppBasic::get()->getMousePosMainWindow()) ? 0 : -1 );
 		//printf("ARC CH OVER %d\n",channelOver);
 		return ( channelOver != oldChannel );
 	}
@@ -2300,7 +2315,7 @@ namespace cinder { namespace sgui {
 		return pos;
 	}
 	
-	void ArcballVarControl::onMouseDown(MouseEvent event)
+	void ArcballVarControl::onMouseDown(app::MouseEvent & event)
 	{
 		if (activeAreas[0].contains(event.getPos()))
 		{
@@ -2317,7 +2332,7 @@ namespace cinder { namespace sgui {
 			printf("ARCBALL RESET TO DEFAULT = %.4f %.4f %.4f %.4f\n",var->x,var->y,var->z,var->w);
 		}
 	}
-	void ArcballVarControl::onMouseDrag(MouseEvent event)
+	void ArcballVarControl::onMouseDrag(app::MouseEvent & event)
 	{
 		if (rotating)
 		{
@@ -2325,13 +2340,13 @@ namespace cinder { namespace sgui {
 			*var = mArcball.getQuat().getVec4();
 		}
 	}
-	void ArcballVarControl::onMouseUp(MouseEvent event)
+	void ArcballVarControl::onMouseUp(app::MouseEvent & event)
 	{
 		rotating = resetting = false;
 		mustRefresh = true;
 		activeTrack = -1;
 	}
-	void ArcballVarControl::onResize( app::ResizeEvent event )
+	void ArcballVarControl::onResize()
 	{
 		mArcball.setWindowSize( getWindowSize() );
 		//mArcball.setRadius( getWindowHeight() / 2.0f );
@@ -2456,10 +2471,10 @@ namespace cinder { namespace sgui {
 	}
 
 	// ROGER
-	void TextureVarControl::onMouseMove(MouseEvent event) {
+	void TextureVarControl::onMouseMove(app::MouseEvent & event) {
 		//dragging = activeArea.contains(event.getPos());
 	}
-	void TextureVarControl::onFileDrop(FileDropEvent event) {
+	void TextureVarControl::onFileDrop(FileDropEvent & event) {
 		dragging = activeArea.contains(event.getPos());
 	}
 
@@ -2596,7 +2611,7 @@ namespace cinder { namespace sgui {
 			return items[pos].label;
 	}
 
-	void ListVarControl::onMouseDown(MouseEvent event) {
+	void ListVarControl::onMouseDown(app::MouseEvent & event) {
 		for (int i = 0 ; i < items.size() ; i++) {
 			if (items[i].activeArea.contains(event.getPos())) {
 				*var = items[i].key;
@@ -2689,7 +2704,7 @@ namespace cinder { namespace sgui {
 		return pos;
 	}
 	
-	void DropDownVarControl::onMouseDown(MouseEvent event) {
+	void DropDownVarControl::onMouseDown(app::MouseEvent & event) {
 		// Drop/Undrop
 		if (activeArea.contains(event.getPos()))
 		{
@@ -2733,11 +2748,10 @@ namespace cinder { namespace sgui {
 		this->centered = false;
 		this->pressed = false;
 		this->lastPressed = this->pressed;
-		this->lastName = name;
 		this->lastName2 = name2;
 		// ROGER
-		this->callbackId = 0;
-		this->triggerUp = false;
+		this->cbFuncDown = NULL;
+		this->cbFuncUp = NULL;
 		this->update();
 	}
 	
@@ -2753,7 +2767,6 @@ namespace cinder { namespace sgui {
 	}
 	
 	Vec2f ButtonControl::draw(Vec2f pos) {
-		lastName = name;
 		lastName2 = name2;
 		lastPressed = pressed;
 		activeArea = activeAreaBase + pos;
@@ -2783,33 +2796,27 @@ namespace cinder { namespace sgui {
 		return pos;
 	}
 	
-	void ButtonControl::onMouseDown(MouseEvent event) {
+	void ButtonControl::onMouseDown(app::MouseEvent & event) {
 		pressed = true;
-		if ( !triggerUp )
-			fireClick();
+		if ( cbFuncDown )
+		{
+			cbFuncDown(event);
+			event.setHandled();
+		}
 	}
 	
-	void ButtonControl::onMouseUp(MouseEvent event) {
-		if ( triggerUp && pressed )
-			fireClick();
+	void ButtonControl::onMouseUp(app::MouseEvent & event) {
+		if ( cbFuncUp && pressed )
+		{
+			cbFuncUp(event);
+			event.setHandled();
+		}
 		pressed = false;
 	}
 	
 	// ROGER
-	void ButtonControl::onMouseDrag(MouseEvent event) {
+	void ButtonControl::onMouseDrag(app::MouseEvent & event) {
 		pressed = activeArea.contains(event.getPos());
-	}
-	
-	
-	void ButtonControl::fireClick() {
-		MouseEvent event;
-		bool handled = false;
-		if ( ! callbacksClick.empty() )
-		{
-			for( CallbackMgr<bool (MouseEvent)>::iterator cbIter = callbacksClick.begin(); ( cbIter != callbacksClick.end() ) && ( ! handled ); ++cbIter ) {
-				handled = (cbIter->second)( event );
-			}
-		}
 	}
 	
 	//-----------------------------------------------------------------------------	
@@ -2817,7 +2824,6 @@ namespace cinder { namespace sgui {
 	LabelControl::LabelControl(SimpleGUI *parent, const std::string & name, std::string * var, const std::string & defaultValue) : Control(parent) {
 		this->type = Control::LABEL;
 		this->name = name;
-		this->lastName = name;
 		this->wrap = false;
 		if ( var ) {
 			this->var = var;
@@ -2861,7 +2867,6 @@ namespace cinder { namespace sgui {
 	Vec2f LabelControl::draw(Vec2f pos) {
 		if (wrap && lastName != name)
 			this->update();
-		lastName = name;
 		if (var)
 			lastVar = (*var);
 		
@@ -3018,7 +3023,7 @@ namespace cinder { namespace sgui {
 		}
 	}
 
-	void TabControl::onMouseDown(MouseEvent event) {
+	void TabControl::onMouseDown(app::MouseEvent & event) {
 		// enable tab
 		if (!selected) {
 			selected = true;

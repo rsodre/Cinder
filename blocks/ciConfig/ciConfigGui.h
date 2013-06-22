@@ -97,30 +97,60 @@ namespace cinder {
 		{
 			return mGui->addButton(label);
 		}
-		ButtonControl*		guiAddButton(const std::string & label, std::function<bool (MouseEvent)> callback )
+		ButtonControl*		guiAddButton(const std::string & label, std::function<void (app::MouseEvent&)> callbackUp )
 		{
 			ButtonControl *c = mGui->addButton(label);
-			if (callback) c->registerClick( callback );
+			c->registerClickUp( callbackUp );
 			return c;
 		}
-		ButtonControl*		guiAddButton(const std::string & label, const std::string & label2, std::function<bool (MouseEvent)> callback )
+		ButtonControl*		guiAddButton(const std::string & label, std::function<void (app::MouseEvent&)> callbackDown, std::function<void (app::MouseEvent&)> callbackUp )
+		{
+			ButtonControl *c = mGui->addButton(label);
+			c->registerClickDown( callbackDown );
+			c->registerClickUp( callbackUp );
+			return c;
+		}
+		ButtonControl*		guiAddButton(const std::string & label, const std::string & label2, std::function<void (app::MouseEvent&)> callbackUp )
 		{
 			ButtonControl *c = mGui->addButton(label,label2);
-			if (callback) c->registerClick( callback );
+			c->registerClickUp( callbackUp );
+			return c;
+		}
+		ButtonControl*		guiAddButton(const std::string & label, const std::string & label2, std::function<void (app::MouseEvent&)> callbackDown, std::function<void (app::MouseEvent&)> callbackUp )
+		{
+			ButtonControl *c = mGui->addButton(label,label2);
+			c->registerClickDown( callbackDown );
+			c->registerClickUp( callbackUp );
 			return c;
 		}
 		template<typename T>
-		ButtonControl*		guiAddButton(const std::string & label, T *obj, bool (T::*callback)(app::MouseEvent) )
+		ButtonControl*		guiAddButton(const std::string & label, T *obj, void (T::*callbackUp)(app::MouseEvent&) )
 		{
 			ButtonControl *c = mGui->addButton(label);
-			if (callback) c->registerClick( obj, callback );
+			c->registerClickUp( obj, callbackUp );
 			return c;
 		}
 		template<typename T>
-		ButtonControl*		guiAddButton(const std::string & label, const std::string & label2, T *obj, bool (T::*callback)(app::MouseEvent) )
+		ButtonControl*		guiAddButton(const std::string & label, T *obj, void (T::*callbackDown)(app::MouseEvent&), void (T::*callbackUp)(app::MouseEvent&) )
+		{
+			ButtonControl *c = mGui->addButton(label);
+			c->registerClickDown( obj, callbackDown );
+			c->registerClickUp( obj, callbackUp );
+			return c;
+		}
+		template<typename T>
+		ButtonControl*		guiAddButton(const std::string & label, const std::string & label2, T *obj, void (T::*callbackUp)(app::MouseEvent&) )
 		{
 			ButtonControl *c = mGui->addButton(label,label2);
-			if (callback) c->registerClick( obj, callback );
+			c->registerClickUp( obj, callbackUp );
+			return c;
+		}
+		template<typename T>
+		ButtonControl*		guiAddButton(const std::string & label, const std::string & label2, T *obj, void (T::*callbackDown)(app::MouseEvent&), void (T::*callbackUp)(app::MouseEvent&) )
+		{
+			ButtonControl *c = mGui->addButton(label,label2);
+			c->registerClickDown( obj, callbackDown );
+			c->registerClickUp( obj, callbackUp );
 			return c;
 		}
 

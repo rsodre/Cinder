@@ -246,7 +246,7 @@ namespace cinder { namespace qb {
 	}
 	void qbDomeMaster::drawGrid( bool esfera )
 	{
-		glPushMatrix();
+		// make?
 		glLineWidth( 1 );
 		if ( ! mMeshGrid[esfera] )
 		{
@@ -288,15 +288,14 @@ namespace cinder { namespace qb {
 			}
 			mMeshGrid[esfera].endList();
 		}
-		else
-			mMeshGrid[esfera].draw();
+
+		// draw!
+		mMeshGrid[esfera].draw();
 		
-		glPopMatrix();
 	}
 	void qbDomeMaster::drawMesh( Vec2f uv, bool esfera )
 	{
-		//glPushMatrix();
-		//glTranslatef( QB_CENTER );
+		// Make?
 		if ( ! mMeshDome[esfera] )
 		{
 			mMeshDome[esfera] = gl::DisplayList( GL_COMPILE );
@@ -309,26 +308,27 @@ namespace cinder { namespace qb {
 				{
 					Vec3f p0 = LATLNG_TO_XYZ( lat, lng );
 					Vec3f p1 = LATLNG_TO_XYZ( lat+mMeshStep, lng );
+					Vec3f n0 = ( esfera ? p0 : -p0 );
+					Vec3f n1 = ( esfera ? p1 : -p1 );
 					// TODO:: TESTAR SEM SHADER !!! - vai dar problema no displaylist
 					//Vec2f t0 = ( esfera ? domeToGeo( p0 ) : domeToTexel( p0 ) );
 					//Vec2f t1 = ( esfera ? domeToGeo( p1 ) : domeToTexel( p1 ) );
 					//t0 *= uv;
 					//t1 *= uv;
 					//glTexCoord2f( t0 );
-					glNormal3f( p0 );
+					glNormal3f( n0 );
 					glVertex3f( p0 );
 					//glTexCoord2f( t1 );
-					glNormal3f( p1 );
+					glNormal3f( n1 );
 					glVertex3f( p1 );
 				}
 				glEnd();
 			}
 			mMeshDome[esfera].endList();
 		}
-		else
-			mMeshDome[esfera].draw();
 
-		//glPopMatrix();
+		// Draw!
+		mMeshDome[esfera].draw();
 	}
 	
 	/////////////////////////////////////////////////////////////////////
