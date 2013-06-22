@@ -74,6 +74,8 @@ class Area {
 	void			setY2( int32_t aY2 ) { y2 = aY2; }
 	Vec2i			getUL() const { return Vec2i( x1, y1 ); } // left-top offset
 	Vec2i			getLR() const { return Vec2i( x2, y2 ); } // right-bottom offset
+	Vec2i			getLL() const { return Vec2i( x2, y1 ); } // ROGER
+	Vec2i			getUR() const { return Vec2i( x2, y1 ); } // ROGER
 
 	bool			contains( const Vec2i &offset ) const;
 
