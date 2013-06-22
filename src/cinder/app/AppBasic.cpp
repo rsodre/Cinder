@@ -263,13 +263,12 @@ bool AppBasic::privateShouldQuit()
 		return false;
 #endif
 	};
-	void AppBasic::setAutoWindowFrame(const std::string & frameName)
+	void AppBasic::setFocusMainWindow()
 	{
-#if defined( CINDER_COCOA )
-		NSString *name = [NSString stringWithCString:frameName.c_str() encoding:[NSString defaultCStringEncoding]];
-		[mImpl setAutoWindowFrameWithName:name];
+#if defined( CINDER_MAC )
+		[mImpl setFocusMainWindow];
 #endif
-	}
+	};
 	std::string AppBasic::getAppName()
 	{
 #if defined( CINDER_COCOA )
