@@ -75,6 +75,27 @@ public:
 	{
 		return Vec4<T>( v.x, v.y, v.z, w );
 	}
+	// ROGER -- Euler
+	// from: http://willperone.net/Code/quaternion.php
+	// TESTAR!!!!!!!!!
+	Vec3<T> getEuler(bool homogenous=true) const
+	{
+		float sqw = w*w;
+		float sqx = v.x*v.x;
+		float sqy = v.y*v.y;
+		float sqz = v.z*v.z;
+		Vec3<T> euler;
+		if (homogenous) {
+			euler.x = atan2f(2.0 * (v.x*v.y + v.z*w), sqx - sqy - sqz + sqw);
+			euler.y = asinf(-2.0 * (v.x*v.z - v.y*w));
+			euler.z = atan2f(2.0 * (v.y*v.z + v.x*w), -sqx - sqy + sqz + sqw);
+		} else {
+			euler.x = atan2f(2.0 * (v.z*v.y + v.x*w), 1.0 - 2.0*(sqx + sqy));
+			euler.y = asinf(-2.0 * (v.x*v.z - v.y*w));
+			euler.z = atan2f(2.0 * (v.x*v.y + v.z*w), 1.0 - 2.0*(sqy + sqz));
+		}
+		return euler;
+	}
 	
 	// get axis-angle representation's axis
 	Vec3<T> getAxis() const
