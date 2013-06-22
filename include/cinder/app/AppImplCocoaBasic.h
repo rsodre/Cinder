@@ -76,12 +76,11 @@
 - (WindowImplBasicCocoa*)findWindowImpl:(NSWindow*)window;
 
 // ROGER
+- (bool)isMinimized;
+- (void)setFocusMainWindow;
 - (std::string)getAppName;
 - (std::string)getAppVersion;
 - (std::string)getApplicationSupportFolder:(bool)create;
-// ROGER
-- (bool)isMinimized;
-- (void)setAutoWindowFrameWithName:(NSString*)frameName;
 
 @end
 

@@ -203,6 +203,11 @@ class App {
 		//! maximum frameRate of the application specified in frames per second
 		float	getFrameRate() const { return mFrameRate; }
 		
+		// ROGER
+		//! Should remember main window position?
+		void	rememberMainWindowPos()			{ bRememberMainWindowPos = true; }
+		bool	getRememberMainWindowPos()		{ return bRememberMainWindowPos; }
+		
 		Settings();
 		virtual ~Settings() {}	  
 
@@ -220,6 +225,7 @@ class App {
 		bool			mEnableHighDensityDisplay;
 		bool			mEnableMultiTouch;
 		std::string		mTitle;
+		bool			bRememberMainWindowPos;		// ROGER
 		
 		friend class App;
 	};
@@ -350,9 +356,18 @@ class App {
 	double				getElapsedSeconds() const { return mTimer.getSeconds(); }
 	//! Returns the number of animation frames which have elapsed since application launch
 	uint32_t			getElapsedFrames() const { return mFrameCount; }
+	// ROGER
+	//! Returns true if this is the first frame
+	bool				isFirst() const { return (mFrameCount == 0); }
 
 	//! Returns the current location of the mouse in screen coordinates measured in points. Can be called outside the normal event loop.
 	static Vec2i		getMousePos();
+	// ROGER
+	//! Returns the current location of the mouse relative to a window.
+	Vec2i				getMousePos( WindowRef w );
+	Vec2i				getMousePosMainWindow();
+	Vec2i				getMousePosWindow();
+
 	
 	// utilities
 	//! Returns a DataSourceRef to an application resource. On Mac OS X, \a macPath is a path relative to the bundle's resources folder. On Windows, \a mswID and \a mswType identify the resource as defined the application's .rc file(s). Throws ResourceLoadExc on failure. \sa \ref CinderResources

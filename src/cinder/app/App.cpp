@@ -68,6 +68,7 @@ App::Settings::Settings()
 	mEnableHighDensityDisplay = false;
 	mEnableMultiTouch = false;	
 #endif	
+	bRememberMainWindowPos = false;		// ROGER
 }
 
 void App::Settings::disableFrameRate()
@@ -511,6 +512,22 @@ Vec2i App::getMousePos()
 #endif
 }
 
+	// ROGER
+	Vec2i App::getMousePos( WindowRef w )
+	{
+		if ( ! w )
+			return Vec2i::zero();
+		return getMousePos() - w->getPos();
+	}
+	Vec2i App::getMousePosMainWindow()
+	{
+		return this->getMousePos( this->getWindowIndex( 0 ) );
+	}
+	Vec2i App::getMousePosWindow()
+	{
+		return this->getMousePos( this->getWindow() );
+	}
+	
 #if defined( CINDER_COCOA )
 ResourceLoadExc::ResourceLoadExc( const string &macPath )
 {

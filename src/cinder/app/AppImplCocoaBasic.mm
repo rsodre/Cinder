@@ -78,7 +78,7 @@
 
 	// create all the requested windows
 	for( const auto &format : formats ) {
-		WindowImplBasicCocoa *winImpl = [ WindowImplBasicCocoa instantiate:format withAppImpl:self withRetina:mApp->getSettings().isHighDensityDisplayEnabled() ];
+		WindowImplBasicCocoa *winImpl = [ WindowImplBasicCocoa instantiate:format withAppImpl:self withRetina:mApp->getSettings().isHighDensityDisplayEnabled()];
 		[mWindows addObject:winImpl];
 		if( format.isFullScreen() )
 			[winImpl setFullScreen:YES options:&format.getFullScreenOptions()];
@@ -137,6 +137,18 @@
 		[winIt->mCinderView setReadyToDraw:YES];
 	}
 	
+	// ROGER -- Remember window pos
+	// https://developer.apple.com/library/mac/#documentation/Cocoa/Conceptual/WinPanel/Tasks/SavingWindowPosition.html#//apple_ref/doc/uid/20000229
+	if (mApp->getElapsedFrames() == 0)
+	{
+		WindowImplBasicCocoa *winImpl = [mWindows objectAtIndex:0];
+		NSString * frameName = [NSString stringWithFormat:@"mainWindow"];
+		[[winImpl->mWin windowController] setShouldCascadeWindows:NO];	// Tell the controller to not cascade its windows.
+		[winImpl->mWin setFrameAutosaveName:frameName];					// Specify the autosave name for the window.
+		[winImpl->mWin setFrameUsingName:frameName];					// read saved pos
+		[winImpl windowMovedNotification:[NSNotification notificationWithName:frameName object:winImpl->mWin]];
+	}
+
 	// walk all windows and draw them
 	for( WindowImplBasicCocoa* winIt in mWindows ) {
 		[winIt->mCinderView draw];
@@ -160,7 +172,7 @@
 
 	// mark the window as readyToDraw, now that we've resized it
 	[winImpl->mCinderView setReadyToDraw:YES];
-		
+	
 	return winImpl->mWindowRef;
 }
 
@@ -371,6 +383,16 @@
 }
 
 // ROGER
+- (bool)isMinimized
+{
+	WindowImplBasicCocoa *w = [mWindows objectAtIndex:0];
+	return [w->mWin isMiniaturized];
+}
+- (void)setFocusMainWindow
+{
+	WindowImplBasicCocoa *w = [mWindows objectAtIndex:0];
+	[w->mWin makeKeyWindow];
+}
 - (std::string)getAppName
 {
 	NSString *resultPath = [[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleNameKey];
@@ -411,23 +433,6 @@
 		}
 	}
 	return result;
-}
-
-// ROGER
-- (bool)isMinimized
-{
-	WindowImplBasicCocoa *w = [mWindows objectAtIndex:0];
-	return [w->mWin isMiniaturized];
-}
-- (void)setAutoWindowFrameWithName:(NSString*)frameName
-{
-	// Remember window pos
-	// https://developer.apple.com/library/mac/#documentation/Cocoa/Conceptual/WinPanel/Tasks/SavingWindowPosition.html#//apple_ref/doc/uid/20000229
-	for( WindowImplBasicCocoa* winIt in mWindows ) {
-		[[winIt->mWin windowController] setShouldCascadeWindows:NO];	// Tell the controller to not cascade its windows.
-		[winIt->mWin setFrameAutosaveName:frameName];					// Specify the autosave name for the window.
-		[winIt->mWin setFrameUsingName:frameName];						// read saved pos
-	}
 }
 
 @end
@@ -806,7 +811,7 @@
 
 	// make this window the active window
 	appImpl->mActiveWindow = winImpl;
-
+	
 	return [winImpl autorelease];
 }
 
