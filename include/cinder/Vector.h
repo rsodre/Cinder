@@ -1316,7 +1316,7 @@ Vec2<T> fromPolar( Vec2<T> pol )
 // ROGER
 //! Calculate the normal of a triangle
 template<typename T>
-Vec3<T> triangleNormal( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
+static Vec3<T> triangleNormal( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
 {
 	Vec3<T> u( p1 - p0 );
 	Vec3<T> v( p2 - p0 );
@@ -1327,12 +1327,12 @@ Vec3<T> triangleNormal( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
 	// ROGER
 	//! Calculate the centroid of a triangle
 	template<typename T>
-	Vec2<T> triangleCentroid( Vec2<T> p0, Vec2<T> p1, Vec2<T> p2 )
+	static Vec2<T> triangleCentroid( Vec2<T> p0, Vec2<T> p1, Vec2<T> p2 )
 	{
 		return Vec2<T>( (p0.x+p1.x+p2.x)/3.0f, (p0.y+p1.y+p2.y)/3.0f );
 	}
 	template<typename T>
-	Vec3<T> triangleCentroid( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
+	static Vec3<T> triangleCentroid( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
 	{
 		return Vec3<T>( (p0.x+p1.x+p2.x)/3.0f, (p0.y+p1.y+p2.y)/3.0f, (p0.z+p1.z+p2.z)/3.0f );
 	}
