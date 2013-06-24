@@ -291,7 +291,6 @@ namespace cinder { namespace sgui {
 		Vec2f	position;
 		ColorA	bgColor;
 		Type	type;
-		std::string lastName;
 		std::string name;
 		std::string nameOff;
 		std::string lastName;
