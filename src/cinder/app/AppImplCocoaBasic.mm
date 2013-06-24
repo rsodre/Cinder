@@ -495,7 +495,7 @@
 		if (appSupportDir)
 		{
 			result = std::string([[appSupportDir path] UTF8String]) + "/" + [self getAppName];
-			NSLog(@">>>> App Support Folder = [%s]\n",result.c_str());
+			//NSLog(@">>>> App Support Folder = [%s]\n",result.c_str());
 			// Create App Support folder
 			// http://www.techotopia.com/index.php/Working_with_Directories_in_Objective-C
 			// https://developer.apple.com/library/ios/#documentation/Cocoa/Reference/Foundation/Classes/NSFileManager_Class/Reference/Reference.html
@@ -504,7 +504,7 @@
 			{
 				NSString *newpath = [NSString stringWithUTF8String:result.c_str()];
 				[[NSFileManager defaultManager] createDirectoryAtPath:newpath withIntermediateDirectories:YES attributes: nil error:nil];
-				NSLog(@">>>> App Support Folder CREATED!\n");
+				NSLog(@">>>> App Support Folder CREATED = [%s]\n",result.c_str());
 			}
 		}
 	}

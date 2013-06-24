@@ -79,12 +79,12 @@ namespace cinder { namespace sgui {
 		cfg->guiAddGroup("");
 		cfg->guiAddParam("", &mFilename);
 		cfg->guiAddSeparator();
-		cfg->guiAddButton("Reset",							this, &ciGuiBlockLoadSave::cbReset)->setTriggerUp()->setPostGap(false);
-		cfg->guiAddButton("Load Default",		cmd+"L",	this, &ciGuiBlockLoadSave::cbLoadDefault)->setTriggerUp()->setPostGap(false);
-		cfg->guiAddButton("Save as Default",	cmd+"S",	this, &ciGuiBlockLoadSave::cbSaveDefault)->setTriggerUp();
+		cfg->guiAddButton("Reset",							this, &ciGuiBlockLoadSave::cbReset)->setPostGap(false);
+		cfg->guiAddButton("Load Default",		cmd+"L",	this, &ciGuiBlockLoadSave::cbLoadDefault)->setPostGap(false);
+		cfg->guiAddButton("Save as Default",	cmd+"S",	this, &ciGuiBlockLoadSave::cbSaveDefault);
 		cfg->guiAddSeparator();
-		cfg->guiAddButton("Import Config...",	cmd+"I",	this, &ciGuiBlockLoadSave::cbLoadFile)->setTriggerUp()->setPostGap(false);
-		cfg->guiAddButton("Export Config...",	cmd+"E",	this, &ciGuiBlockLoadSave::cbSaveFile)->setTriggerUp();
+		cfg->guiAddButton("Import Config...",	cmd+"I",	this, &ciGuiBlockLoadSave::cbLoadFile)->setPostGap(false);
+		cfg->guiAddButton("Export Config...",	cmd+"E",	this, &ciGuiBlockLoadSave::cbSaveFile);
 	}
 	
 	void ciGuiBlockLoadSave::update()

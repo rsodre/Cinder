@@ -2701,7 +2701,6 @@
 				GCC_PREFIX_HEADER = cinder_Prefix.pch;
 				GENERATE_MASTER_OBJECT_FILE = YES;
 				INSTALL_PATH = /usr/local/lib;
-				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					../lib/macosx/libboost_thread.a,
@@ -2715,7 +2714,6 @@
 					"../lib/ios-sim/libboost_regex.a",
 				);
 				PRODUCT_NAME = cinder_d;
-				SDKROOT = "";
 				VALID_ARCHS = i386;
 			};
 			name = Debug;
@@ -2737,7 +2735,6 @@
 				GCC_PREFIX_HEADER = cinder_Prefix.pch;
 				GENERATE_MASTER_OBJECT_FILE = YES;
 				INSTALL_PATH = /usr/local/lib;
-				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
@@ -2752,7 +2749,6 @@
 					"../lib/ios-sim/libboost_regex.a",
 				);
 				PRODUCT_NAME = cinder;
-				SDKROOT = "";
 				VALID_ARCHS = i386;
 			};
 			name = Release;
@@ -2773,9 +2769,11 @@
 					../include/macosx/cairo,
 					../include/jsoncpp,
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				OBJROOT = build/;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PREBINDING = NO;
+				SDKROOT = macosx;
 				SYMROOT = ../lib;
 				USER_HEADER_SEARCH_PATHS = "../include ../include/json";
 			};
@@ -2797,9 +2795,11 @@
 					../include/macosx/cairo,
 					../include/jsoncpp,
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				OBJROOT = build/;
 				OTHER_CPLUSPLUSFLAGS = "$(OTHER_CFLAGS)";
 				PREBINDING = NO;
+				SDKROOT = macosx;
 				SYMROOT = ../lib;
 				USER_HEADER_SEARCH_PATHS = ../include;
 			};
