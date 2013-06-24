@@ -291,6 +291,7 @@ namespace cinder { namespace sgui {
 		Vec2f	position;
 		ColorA	bgColor;
 		Type	type;
+		std::string lastName;
 		std::string name;
 		std::string nameOff;
 		std::string lastName;
@@ -314,9 +315,14 @@ namespace cinder { namespace sgui {
 		bool	invertSwitch;
 		bool	mouseMoved;
 		int		channelOver;
-
-		Control(SimpleGUI *parent);
+		Control(SimpleGUI *parent, const std::string & name);
 		virtual ~Control() {};
+		
+		bool enabled, lastEnabled;
+		void enable(bool b=true)		{ enabled = b; }
+		void disable()					{ enabled = false; }
+		bool isEnabled()				{ return enabled; }
+		
 		void setBackgroundColor(ColorA color);
 		void notifyUpdateListeners();
 		virtual Vec2f draw(Vec2f pos) = 0;
@@ -330,9 +336,10 @@ namespace cinder { namespace sgui {
 		// ROGER
 		void addSwitchPanel(const std::string & name)		{ panelToSwitch = parentGui->addPanel(name); invertSwitch = false; }	// Panel to switch ON/OFF with my value
 		void addSwitchPanelInv(const std::string & name)	{ panelToSwitch = parentGui->addPanel(name); invertSwitch = true; }		// Panel to switch ON/OFF with my value
-		void setName(const std::string & s)					{ name = s; }
 		void setSuffix(const std::string & s)				{ suffix = s; }
-		bool hasChanged()							{ if (unitControl) if (unitControl->valueHasChanged()) mustRefresh = true; return (this->valueHasChanged() || this->mustRefresh || name.compare(lastName)!=0); }
+		void setName(const std::string & newName)			{ name = newName; mustRefresh = true; }
+		bool hasChanged()							{ if (unitControl) if (unitControl->valueHasChanged()) mustRefresh = true; return this->valueHasChanged() || this->mustRefresh; }
+		bool controlHasResized()					{ return (this->hasResized() || enabled != lastEnabled); }
 		bool isHighlighted(int ch=0)				{ return (channelOver == ch && parentGui->selectedControl == NULL) || (this->isActiveChannel(ch) && parentGui->selectedControl == this); }
 		void setUnitControl(Control *c)				{ unitControl = c; }
 		Control* setReadOnly(bool b=true);			// chained setters
@@ -802,10 +809,10 @@ namespace cinder { namespace sgui {
 		std::string lastVar;
 		gl::Texture wrapTex;
 		bool wrap;
+		bool hideNull;
 	};
 	
 	//-----------------------------------------------------------------------------
-	
 	class SeparatorControl : public Control {
 	public:
 		SeparatorControl(SimpleGUI *parent);
@@ -817,16 +824,11 @@ namespace cinder { namespace sgui {
 	// ROGER
 	class AreaControl : public Control {
 	public:
-		AreaControl(SimpleGUI *parent) : enabled(true), lastEnabled(true), locked(false), lastLocked(false), Control(parent) { name="area"; }
-		bool valueHasChanged()		{ return (enabled != lastEnabled || locked != lastLocked); }
+		AreaControl(SimpleGUI *parent, const std::string & name) : locked(false), lastLocked(false), Control(parent,name) {}
+		bool valueHasChanged()		{ return (locked != lastLocked); }
 		bool hasResized()			{ return this->valueHasChanged(); }
 		void lock(bool b=true)		{ locked = b; }
-		void enable(bool b=true)	{ enabled = b; }
-		void disable()				{ enabled = false; }
-		bool isEnabled()			{ return enabled; }
 	protected:
-		bool enabled;
-		bool lastEnabled;
 		bool locked;
 		bool lastLocked;
 	};
@@ -856,7 +858,7 @@ namespace cinder { namespace sgui {
 		void update();
 		void select(bool b=true)		{ selected = b; }
 		void reset()					{ selected = defaultSelected; if (var) *var = defaultValue; }
-		bool valueHasChanged()			{ return (var ? (*var != lastValue) : false ) || lastSelected != selected  || this->AreaControl::valueHasChanged(); }
+		bool valueHasChanged()			{ return (var ? (*var != lastValue) : false ) || lastSelected != selected || this->AreaControl::valueHasChanged(); }
 		bool hasResized()				{ return false; };
 		float getValue()				{ return (float)*var; }
 	};

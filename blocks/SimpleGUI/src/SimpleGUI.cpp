@@ -97,8 +97,7 @@ namespace cinder { namespace sgui {
 		//SimpleGUI::textFont = Font(loadResource("pf_tempesta_seven_ROGER.ttf"), 8);	// tuned
 		//SimpleGUI::textFont = Font("Arial", 12);
 		selectedControl = NULL;
-
-		app->setFpsSampleInterval( 0.5 );
+		app->setFpsSampleInterval( 0.2 );
 
 		// register events
 
@@ -331,7 +330,7 @@ namespace cinder { namespace sgui {
 				control->visible = false;
 			// force update
 			if (control->visible) {
-				if (control->hasChanged() || control->hasResized()) {
+				if (control->hasChanged() || control->controlHasResized()) {
 					control->updateFbo();	// update fbo before GUI drawing
 					control->mustRefresh = true;
 					if (control->panelToSwitch)
@@ -504,7 +503,7 @@ namespace cinder { namespace sgui {
 					clearDown = false;
 				}
 				// if resized, erase everything under control
-				if (control->hasResized() && !clearDown && !clearAll)
+				if (control->controlHasResized() && !clearDown && !clearAll)
 				{
 					Rectf eraseArea;
 					if (control->type == Control::COLUMN)
@@ -534,14 +533,14 @@ namespace cinder { namespace sgui {
 					if (control->visible)
 						position = this->drawControl(position, control);
 					else
-						control->draw(position);
+						this->drawControl(position, control);
 					continue;
 				}
 				// Draw Panel to update valueHasChanged()
 				if (control->type == Control::PANEL)
 				{
 					currPanel = (PanelControl*)control;
-					control->draw(position);
+					this->drawControl(position, control);
 					continue;
 				}
 				// not visible!
@@ -578,6 +577,7 @@ namespace cinder { namespace sgui {
 		Vec2f newPos = control->draw(pos);
 		control->drawOffset = (newPos - pos);
 		control->mustRefresh = false;
+		control->lastEnabled = control->enabled;
 		control->lastName = control->name;
 		return newPos;
 	}
@@ -901,8 +901,10 @@ namespace cinder { namespace sgui {
 	// CONTROL
 	//
 	
-	Control::Control(SimpleGUI *parent) {
+	Control::Control(SimpleGUI *parent, const std::string & name) {
 		this->parentGui = parent;
+		this->name = this->lastName = name;
+		this->enabled = this->lastEnabled = true;
 		bgColor = SimpleGUI::bgColor;
 		drawOffset = Vec2f::zero();
 		this->panelToSwitch = NULL;
@@ -963,9 +965,8 @@ namespace cinder { namespace sgui {
 	
 	//-----------------------------------------------------------------------------
 	
-	FloatVarControl::FloatVarControl(SimpleGUI *parent, const std::string & name, float* var, float min, float max, float defaultValue) : Control(parent) {
+	FloatVarControl::FloatVarControl(SimpleGUI *parent, const std::string & name, float* var, float min, float max, float defaultValue) : Control(parent,name) {
 		this->type = Control::FLOAT_VAR;
-		this->name = name;
 		this->var = var;
 		this->min = min;
 		this->max = max;
@@ -1127,9 +1128,8 @@ namespace cinder { namespace sgui {
 	
 	//-----------------------------------------------------------------------------
 	
-	IntVarControl::IntVarControl(SimpleGUI *parent, const std::string & name, int* var, int min, int max, int defaultValue) : Control(parent) {
+	IntVarControl::IntVarControl(SimpleGUI *parent, const std::string & name, int* var, int min, int max, int defaultValue) : Control(parent,name) {
 		this->type = Control::INT_VAR;
-		this->name = name;
 		this->var = var;
 		this->min = min;
 		this->max = max;
@@ -1290,9 +1290,8 @@ namespace cinder { namespace sgui {
 	
 	//-----------------------------------------------------------------------------
 	// ROGER
-	ByteVarControl::ByteVarControl(SimpleGUI *parent, const std::string & name, unsigned char* var, unsigned char defaultValue) : Control(parent) {
+	ByteVarControl::ByteVarControl(SimpleGUI *parent, const std::string & name, unsigned char* var, unsigned char defaultValue) : Control(parent,name) {
 		this->type = Control::INT_VAR;
-		this->name = name;
 		this->var = var;
 		this->min = 0;
 		this->max = 255;
@@ -1525,9 +1524,8 @@ namespace cinder { namespace sgui {
 	
 	//-----------------------------------------------------------------------------
 	
-	BoolVarControl::BoolVarControl(SimpleGUI *parent, const std::string & name, bool* var, bool defaultValue, int groupId) : Control(parent) {
+	BoolVarControl::BoolVarControl(SimpleGUI *parent, const std::string & name, bool* var, bool defaultValue, int groupId) : Control(parent,name) {
 		this->type = Control::BOOL_VAR;
-		this->name = name;
 		this->nameOff = name;
 		this->var = var;
 		this->groupId = groupId;
@@ -1601,9 +1599,8 @@ namespace cinder { namespace sgui {
 	//-----------------------------------------------------------------------------
 	
 	// ROGER
-	ColorVarControl::ColorVarControl(SimpleGUI *parent, const std::string & name, Color* var, Color defaultValue, int colorModel) : Control(parent) {
+	ColorVarControl::ColorVarControl(SimpleGUI *parent, const std::string & name, Color* var, Color defaultValue, int colorModel) : Control(parent,name) {
 		this->type = Control::COLOR_VAR;
-		this->name = name;
 		this->var = var;
 		this->varA = NULL;
 		this->colorModel = colorModel;
@@ -1617,9 +1614,8 @@ namespace cinder { namespace sgui {
 		this->update();
 	}
 	
-	ColorVarControl::ColorVarControl(SimpleGUI *parent, const std::string & name, ColorA* var, ColorA defaultValue, int colorModel) : Control(parent) {
+	ColorVarControl::ColorVarControl(SimpleGUI *parent, const std::string & name, ColorA* var, ColorA defaultValue, int colorModel) : Control(parent,name) {
 		this->type = Control::COLOR_VAR;
-		this->name = name;
 		this->var = NULL;
 		this->varA = var;
 		this->colorModel = colorModel;
@@ -1870,9 +1866,8 @@ namespace cinder { namespace sgui {
 	//-----------------------------------------------------------------------------
 	// VECTOR CONTROL
 	//
-	VectorVarControl::VectorVarControl(SimpleGUI *parent, const std::string & name, Vec4f* var, int vc, float min, float max, Vec4f defaultValue) : Control(parent) {
+	VectorVarControl::VectorVarControl(SimpleGUI *parent, const std::string & name, Vec4f* var, int vc, float min, float max, Vec4f defaultValue) : Control(parent,name) {
 		this->type = Control::VECTOR_VAR;
-		this->name = name;
 		this->var = var;
 		this->vecCount = vc;
 		this->min = min;
@@ -2029,9 +2024,8 @@ namespace cinder { namespace sgui {
 	//-----------------------------------------------------------------------------
 	// XY CANVAS CONTROL
 	//
-	XYVarControl::XYVarControl(SimpleGUI *parent, const std::string & name, Vec2f* var, float min, float max, Vec2f defaultValue) : Control(parent) {
+	XYVarControl::XYVarControl(SimpleGUI *parent, const std::string & name, Vec2f* var, float min, float max, Vec2f defaultValue) : Control(parent,name) {
 		this->type = Control::XY_VAR;
-		this->name = name;
 		this->var = var;
 		this->vecCount = 2;
 		this->over = false;
@@ -2175,9 +2169,8 @@ namespace cinder { namespace sgui {
 	// ARCBALL QUATERNION CONTROL
 	// from sample project: samples/ImageHeightField
 	//
-	ArcballVarControl::ArcballVarControl(SimpleGUI *parent, const std::string & name, Vec4f* var, Vec4f defaultValue) : Control(parent) {
+	ArcballVarControl::ArcballVarControl(SimpleGUI *parent, const std::string & name, Vec4f* var, Vec4f defaultValue) : Control(parent,name) {
 		this->type = Control::ARCBALL_VAR;
-		this->name = name;
 		this->var = var;
 		this->resetting = false;
 		this->rotating = false;
@@ -2356,9 +2349,8 @@ namespace cinder { namespace sgui {
 	//-----------------------------------------------------------------------------
 	// TEXTURE CONTROL
 	//
-	TextureVarControl::TextureVarControl(SimpleGUI *parent, const std::string & name, gl::Texture* var, float refreshRate, bool flipVert) : Control(parent) {
+	TextureVarControl::TextureVarControl(SimpleGUI *parent, const std::string & name, gl::Texture* var, float refreshRate, bool flipVert) : Control(parent,name) {
 		this->type = Control::TEXTURE_VAR;
-		this->name = name;
 		this->var = var;
 		this->flipVert = flipVert;
 		this->refreshRate = refreshRate;		// 0.0 means never refresh
@@ -2482,9 +2474,8 @@ namespace cinder { namespace sgui {
 	//-----------------------------------------------------------------------------
 	// LIST CONTROL
 	//
-	ListVarControl::ListVarControl(SimpleGUI *parent, const std::string & name, int* var, const std::map<int,std::string> &valueLabels) : Control(parent) {
+	ListVarControl::ListVarControl(SimpleGUI *parent, const std::string & name, int* var, const std::map<int,std::string> &valueLabels) : Control(parent,name) {
 		this->type = Control::LIST_VAR;
-		this->name = name;
 		this->var = var;
 		this->defaultValue = *var;
 		this->lastValue = *var;
@@ -2741,9 +2732,8 @@ namespace cinder { namespace sgui {
 	
 	//-----------------------------------------------------------------------------	
 	
-	ButtonControl::ButtonControl(SimpleGUI *parent, const std::string & name, const std::string & name2) : Control(parent) {
+	ButtonControl::ButtonControl(SimpleGUI *parent, const std::string & name, const std::string & name2) : Control(parent,name) {
 		this->type = Control::BUTTON;
-		this->name = name;
 		this->name2 = name2;
 		this->centered = false;
 		this->pressed = false;
@@ -2821,10 +2811,10 @@ namespace cinder { namespace sgui {
 	
 	//-----------------------------------------------------------------------------	
 	
-	LabelControl::LabelControl(SimpleGUI *parent, const std::string & name, std::string * var, const std::string & defaultValue) : Control(parent) {
+	LabelControl::LabelControl(SimpleGUI *parent, const std::string & name, std::string * var, const std::string & defaultValue) : Control(parent,name) {
 		this->type = Control::LABEL;
-		this->name = name;
 		this->wrap = false;
+		this->hideNull = true;
 		if ( var ) {
 			this->var = var;
 			*var = defaultValue;
@@ -2849,6 +2839,9 @@ namespace cinder { namespace sgui {
 						 (-SimpleGUI::padding).y,
 						 (SimpleGUI::sliderSize + SimpleGUI::padding).x,
 						 (SimpleGUI::padding).y + h );
+		// Hide simple label
+		if ( !enabled || (var == NULL && name.length() == 0 && hideNull) )
+			backArea = Rectf();
 	}
 	
 	bool LabelControl::valueHasChanged() {
@@ -2865,10 +2858,12 @@ namespace cinder { namespace sgui {
 	}
 	
 	Vec2f LabelControl::draw(Vec2f pos) {
-		if (wrap && lastName != name)
-			this->update();
+		this->update();
 		if (var)
 			lastVar = (*var);
+		
+		if ( backArea.getHeight() == 0 )	// hidden
+			return pos;
 		
 		gl::color( bgColor ? bgColor : SimpleGUI::bgColor);
 		gl::drawSolidRect(backArea+pos);
@@ -2899,7 +2894,7 @@ namespace cinder { namespace sgui {
 	
 	//-----------------------------------------------------------------------------		
 	
-	SeparatorControl::SeparatorControl(SimpleGUI *parent) : Control(parent) {
+	SeparatorControl::SeparatorControl(SimpleGUI *parent) : Control(parent,name) {
 		this->type = Control::SEPARATOR;
 		this->name = "separator";
 		// ROGER
@@ -2926,7 +2921,7 @@ namespace cinder { namespace sgui {
 	
 	//-----------------------------------------------------------------------------
 	
-	TabControl::TabControl(SimpleGUI *parent, const std::string & tabName, bool *var, bool defaultValue) : AreaControl(parent) {
+	TabControl::TabControl(SimpleGUI *parent, const std::string & tabName, bool *var, bool defaultValue) : AreaControl(parent,"TabControl") {
 		this->type = Control::TAB;
 		this->name = tabName;
 		this->lastName = tabName;
@@ -2970,7 +2965,6 @@ namespace cinder { namespace sgui {
 	Vec2f TabControl::draw(Vec2f pos) {
 		this->lastSelected = selected;
 		this->lastLocked = locked;
-		this->lastName = name;
 		if (var)
 			this->lastValue = *var;
 		
@@ -3036,14 +3030,13 @@ namespace cinder { namespace sgui {
 
 	//-----------------------------------------------------------------------------
 	
-	ColumnControl::ColumnControl(SimpleGUI *parent, const std::string & colName) : AreaControl(parent) {
+	ColumnControl::ColumnControl(SimpleGUI *parent, const std::string & colName) : AreaControl(parent,"ColumnControl") {
 		this->tab = NULL;
 		this->type = Control::COLUMN;
 		this->name = ( colName.length() ? colName : "column" );
 	}
 	
 	Vec2f ColumnControl::draw(Vec2f pos) {
-		this->lastEnabled = enabled;
 		this->lastLocked = locked;
 		if (enabled)
 		{
@@ -3055,14 +3048,13 @@ namespace cinder { namespace sgui {
 	
 	//-----------------------------------------------------------------------------
 	
-	PanelControl::PanelControl(SimpleGUI *parent, const std::string& panelName) : AreaControl(parent) {
+	PanelControl::PanelControl(SimpleGUI *parent, const std::string& panelName) : AreaControl(parent,"PanelControl") {
 		this->column = false;
 		this->type = Control::PANEL;
 		this->name = ( panelName.length() ? panelName : "panel" );
 	}	
 	
 	Vec2f PanelControl::draw(Vec2f pos) {
-		this->lastEnabled = enabled;
 		this->lastLocked = locked;
 		return pos;
 	}
