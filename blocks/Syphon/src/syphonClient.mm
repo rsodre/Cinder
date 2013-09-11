@@ -75,11 +75,15 @@ void syphonClient::setApplicationName(std::string appName)
 {
     if(bSetup)
     {
+		mAppName = appName;
+		
         NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
         
         NSString *name = [NSString stringWithCString:appName.c_str() encoding:[NSString defaultCStringEncoding]];
         
         [(SyphonNameboundClient*)mClient setAppName:name];
+		
+		this->refresh(true);
 		
         [pool drain];
     }
@@ -89,6 +93,8 @@ void syphonClient::setServerName(std::string serverName)
 {
     if(bSetup)
     {
+		mServerName = serverName;
+		
         NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
         
         NSString *name = [NSString stringWithCString:serverName.c_str() encoding:[NSString defaultCStringEncoding]];
@@ -201,10 +207,10 @@ void syphonClient::update()
 // Refresh current texture from Syphon Client
 // Sets all data for this client, like
 // Can be called by all methods, will be updated just once per frame
-void syphonClient::refresh()
+void syphonClient::refresh( bool force )
 {
 	// refresh once per frame
-	if ( refreshFrame == app::getElapsedFrames() )
+	if ( refreshFrame == app::getElapsedFrames() && !force )
 		return;
 	refreshFrame = app::getElapsedFrames();
 	

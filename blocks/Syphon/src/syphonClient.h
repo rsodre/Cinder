@@ -54,6 +54,8 @@ class syphonClient {
 	void draw( const ci::Area & srcArea, const ci::Rectf & destRect );
 
 	ci::gl::Texture & getTexture()	{ return mTex; }
+	std::string & getAppName()		{ return mAppName; }
+	std::string & getServerName()	{ return mServerName; }
 	int getWidth()					{ return ( mTex ? mTex.getWidth() : 0 ); }
 	int getHeight()					{ return ( mTex ? mTex.getHeight() : 0 ); }
 	ci::Vec2i getSize()				{ return ( mTex ? mTex.getSize() : ci::Vec2i::zero() ); }
@@ -66,7 +68,8 @@ class syphonClient {
 protected:
 
 	void* mClient;
-	std::string name;
+	std::string mAppName;
+	std::string mServerName;
 	ci::gl::Texture mTex;
 	GLboolean mOldTargetBinding;
 	int width, height;
@@ -75,5 +78,5 @@ protected:
 	uint32_t refreshFrame;
 	unsigned int mCurrentFrame;
 	
-	void refresh();
+	void refresh( bool force=false );
 };
