@@ -18,10 +18,54 @@ using namespace ci::qtime;
 
 namespace cinder { namespace qb {
 	
+	std::vector<std::string> _qbSourceExt;
+
 	//////////////////////////////////////////////////////////////////
 	//
 	// WRAPPER Source
 	//
+	qbSourceSelector::qbSourceSelector() : mSrc( std::shared_ptr<qbSourceBase>( new qbSourceBase() ) )
+	{
+		bNewFrame		= false;
+		bCatchingFiles	= false;
+		mFlags			= 0;
+		cfgSelectorId	= -1;
+		cfgTriggerId	= -1;
+		cfgNameId		= -1;
+		
+		mCatchConn = app::getWindow()->connectFileDrop( & qbSourceSelector::onFileDrop, this );
+		
+		// possible extensions
+		// if add any, chage isMovieFile() and isImageFile() as well
+		if ( _qbSourceExt.empty() )
+		{
+			_qbSourceExt.push_back( "mov" );
+			_qbSourceExt.push_back( "mp4" );
+			_qbSourceExt.push_back( "jpg" );
+			_qbSourceExt.push_back( "jpeg" );
+			_qbSourceExt.push_back( "png" );
+		}
+	}
+	qbSourceSelector::~qbSourceSelector()
+	{
+		mCatchConn.disconnect();
+	}
+	
+	bool qbSourceSelector::isMovieFile( const std::string & f )
+	{
+		std::string ext = getPathExtension( f );
+		return ( ! toLower(ext).compare(0,3,"mov") || ! toLower(ext).compare(0,3,"mp4") );
+	}
+	bool qbSourceSelector::isImageFile( const std::string & f )
+	{
+		std::string ext = getPathExtension( f );
+		return ( ! toLower(ext).compare(0,3,"jpg") || ! toLower(ext).compare(0,3,"jpeg") || ! toLower(ext).compare(0,3,"png") );
+	}
+
+	/*qbSourceSelector::qbSourceSelector(const std::string & _f) : mSrc( std::shared_ptr<qbSourceBase>( new qbSourceBase() ) )
+	{
+		this->load(_f);
+	}*/
 	bool qbSourceSelector::load( const std::string & _f )
 	{
 		printf("SOURCE [%s]\n",_f.c_str());
@@ -38,8 +82,7 @@ namespace cinder { namespace qb {
 		else
 		{
 			// Load by extension
-			std::string ext = getPathExtension( _f );
-			if ( ext.compare(0,3,"mov") == 0 || ext.compare(0,3,"MOV") == 0 )
+			if ( this->isMovieFile(_f) )
 			{
 				qbSourceMovie *newSrc = new qbSourceMovie();
 				if ( newSrc->load(_f,mFlags) == false )
@@ -49,7 +92,7 @@ namespace cinder { namespace qb {
 				}
 				this->setSource(newSrc);
 			}
-			else
+			else if ( this->isImageFile(_f) )
 			{
 				qbSourceImage *newSrc = new qbSourceImage();
 				if ( newSrc->load(_f,mFlags) == false )
@@ -59,11 +102,12 @@ namespace cinder { namespace qb {
 				}
 				this->setSource(newSrc);
 			}
+			else
+				return false;
 		}
 		// Update ciConfig
-		mConfigName = this->getName();
-		mConfigDesc = this->getDesc();
-		mConfigTexture = this->getTexture();
+		if ( cfgNameId >= 0 )
+			cfgNamePtr->set( cfgNameId, _f );
 		return true;
 	}
 	bool qbSourceSelector::loadSyphon( const std::string & _app, const std::string & _tex )
@@ -77,67 +121,109 @@ namespace cinder { namespace qb {
 	{
 		mSrc = std::shared_ptr<qbSourceBase>( newSrc );
 	}
+	void qbSourceSelector::onFileDrop( ci::app::FileDropEvent & event )
+	{
+		if ( bCatchingFiles && event.getNumFiles() > 0 )
+		{
+			std::string theFile = event.getFile( 0 ).string();
+			this->load(theFile);
+			event.setHandled();
+		}
+	}
 	
 	// Source shortcut list
 	void qbSourceSelector::setList( int _key, std::string _name )
 	{
 		mList[_key] = _name;
-		if (mConfigSelectorId >= 0)
-			mConfigSelectorPtr->setValueLabel( mConfigSelectorId, _key,  getPathFileName(_name) );
+		if (cfgSelectorId >= 0)
+			cfgSelectorPtr->setValueLabel( cfgSelectorId, _key,  getPathFileName(_name) );
 	}
 	void qbSourceSelector::useConfigSelector( int _id, ciConfig *_ptr, bool popValueList )
 	{
-		mConfigSelectorId = _id;
-		mConfigSelectorPtr = ( _ptr ? _ptr : &_cfg );
+		cfgSelectorId = _id;
+		cfgSelectorPtr = ( _ptr ? _ptr : &_cfg );
 		
-		//mConfigSelectorPtr->setValueLabels( mConfigSelectorId, mList );
+		//cfgSelectorPtr->setValueLabels( cfgSelectorId, mList );
 		if (popValueList)
 		{
 			std::map<int,std::string>::const_iterator it;
 			for ( it = mList.begin() ; it != mList.end(); it++ )
-				mConfigSelectorPtr->setValueLabel( mConfigSelectorId, it->first,  getPathFileName(it->second) );
+				cfgSelectorPtr->setValueLabel( cfgSelectorId, it->first,  getPathFileName(it->second) );
 		}
 		else
-			mConfigSelectorPtr->setLimits(_id,0,mList.size()-1);
+			cfgSelectorPtr->setLimits(_id,0,mList.size()-1);
 	}
 	void qbSourceSelector::useConfigTrigger( int _id, ciConfig *_ptr )
 	{
-		mConfigTriggerId = _id;
-		mConfigTriggerPtr = ( _ptr ? _ptr : &_cfg );
+		cfgTriggerId = _id;
+		cfgTriggerPtr = ( _ptr ? _ptr : &_cfg );
+	}
+	void qbSourceSelector::useConfigName( int _id, ciConfig *_ptr )
+	{
+		cfgNameId = _id;
+		cfgNamePtr = ( _ptr ? _ptr : &_cfg );
 	}
 	//
 	// Main Loop update
 	void qbSourceSelector::update()
 	{
-		// Config Selector
-		if (mConfigSelectorId >= 0)
+		//
+		// Config Selector, from source List
+		bool playing = ( mSrc ? mSrc->isPlaying() : false );
+		if (cfgSelectorId >= 0)
 		{
-			if ( mConfigSelectorPtr->isFresh(mConfigSelectorId ) )
+			// selected on list
+			if ( cfgSelectorPtr->isFresh(cfgSelectorId ) )
 			{
-				int i = mConfigSelectorPtr->getInt(mConfigSelectorId);
+				int i = cfgSelectorPtr->getInt(cfgSelectorId);
 				if (mList.find(i) != mList.end())
 				{
-					bool playing = ( mSrc ? mSrc->isPlaying() : false );
-					if ( this->load( mList[i] ) )
+					// play by name?
+					if (cfgNameId >= 0)
+						cfgNamePtr->set( cfgNameId, mList[i] );
+					// play now
+					else if ( this->load( mList[i] ) )
 						this->play( playing );
-					return;
 				}
 			}
 		}
-		// Config Trigger
-		if (mConfigTriggerId >= 0)
+
+		//
+		// Config Selector by NAME
+		if (cfgNameId >= 0)
 		{
-			bool shouldBePlaying = mConfigTriggerPtr->getBool(mConfigTriggerId);
+			// Source name is new??
+			if ( cfgNamePtr->isFresh(cfgNameId ) )
+			{
+				std::string name = cfgNamePtr->getString(cfgNameId);
+				if ( ! name.empty() )
+				{
+					if ( this->load( name ) )
+					{
+						this->play( playing );
+						// select on list
+						cfgSelectorPtr->set( cfgSelectorId, -1 );
+						for ( auto it=mList.begin() ; it != mList.end() ; it++ )
+							if ( name.compare(it->second) == 0 )
+								cfgSelectorPtr->set( cfgSelectorId, it->first );
+					}
+				}
+			}
+		}
+
+		//
+		// Config Trigger -- PLAY / STOP
+		if (cfgTriggerId >= 0)
+		{
+			bool shouldBePlaying = cfgTriggerPtr->getBool(cfgTriggerId);
 			if ( ! mSrc->isPlaying() && shouldBePlaying )
 				this->play();
 			else if ( mSrc->isPlaying() && ! shouldBePlaying )
 				this->stop();
 		}
+		
 		// update Frame
-		mSrc->updateFrame();
-		mConfigName = this->getName();
-		mConfigDesc = this->getDesc();
-		mConfigTexture = this->getTexture();
+		bNewFrame = mSrc->updateFrame();
 	}
 
 	
@@ -315,13 +401,13 @@ namespace cinder { namespace qb {
 			
 			if ( TEST_FLAG( _flags, QBFAG_SURFACE) )
 			{
-				mMovieGl = qtime::MovieGl();
+				mMovieGl = qtime::MovieGlHap();
 				mMovieSurface = qtime::MovieSurface( theFile );
 				mMovie = & mMovieSurface;
 			}
 			else
 			{
-				mMovieGl = qtime::MovieGl( theFile );
+				mMovieGl = qtime::MovieGlHap( theFile );
 				mMovieSurface = qtime::MovieSurface();
 				mMovie = & mMovieGl;
 			}
@@ -339,6 +425,9 @@ namespace cinder { namespace qb {
 			mFrameTime = (mDuration / mFrameCount);
 			mDurationQT = (mDuration - mFrameTime);
 			mFullPath = _f;
+			mCurrentTime = 0.0;
+			mCurrentFrame = mLastRenderedFrame = 0;
+			mFpsTime = mFpsFrames = 0;
 		}
 		catch( ... ) {
 			printf("ERRO!!! MovieGl throws...\n");
@@ -362,7 +451,7 @@ namespace cinder { namespace qb {
 		os << "Movie: " << mSize.x << " x " << mSize.y << ", " << mDuration << "s";
 		mDesc = os.str();
 		mSpawnedAtFrame = app::getElapsedFrames();
-		
+
 		printf("SOURCE Movie [%s] loaded as %s!\n",theFile.c_str(),(mMovieGl?"MovieGl":"MovieSurface"));
 		return true;
 	}
@@ -370,10 +459,10 @@ namespace cinder { namespace qb {
 	//
 	// Get new Frame
 	// qbUpdateObject VIRTUAL
-	void qbSourceMovie::updateFrame( bool _force )
+	bool qbSourceMovie::updateFrame( bool _force )
 	{
 		if ( ! mMovie )
-			return;
+			return false;
 		
 		// start/stop
 		/* no need to play as we do it frame by frame
@@ -384,8 +473,8 @@ namespace cinder { namespace qb {
 		 */
 		
 		// maybe this shouldn't be playing...
-		if ( ( ! bPlaying || ! _qb.isPlaying() ) && ! _force )
-			return;
+		//if ( ( ! bPlaying || ! _qb.isPlaying() ) && ! _force )
+		//	return false;
 		
 		// Time Profiler
 		double d = (app::getElapsedSeconds() - mTimeProfiler);
@@ -401,8 +490,12 @@ namespace cinder { namespace qb {
 			t = (mDurationQT - t);
 		int fr = roundf(mFrameCount * (t/mDuration));
 		//if (_renderer.isRendering()) printf("PLAY   t1 %.8f     fr %d\n",t,fr);
+		// same frame, abort!
+		if ( mLastRenderedFrame == fr && ! _force )
+			return false;
 		//mMovie->seekToTime( t );
 		mMovie->seekToFrame( fr );
+		mLastRenderedFrame = fr;
 		newFrame = true;
 		
 		// load new frame?
@@ -433,6 +526,18 @@ namespace cinder { namespace qb {
 			os.precision(1);
 			os << mDuration << " s .. " << mCurrentTime << " s";
 			mDesc2 = os.str();
+
+			// Update current framerate
+			mFpsFrames++;
+			double now = app::getElapsedSeconds();
+			double dt = now - mFpsTime;
+			float interval = 0.25;
+			if ( dt >= interval )
+			{
+				mCurrentFrameRate = mFpsFrames / interval;
+				mFpsTime = now;
+				mFpsFrames = 0;
+			}
 		}
 //if (_renderer.isRendering())
 //printf("SOURCE PLAY  time %.8f / fr %d\n",mCurrentTime,mCurrentFrame);;
@@ -442,6 +547,7 @@ namespace cinder { namespace qb {
 		//rintf("%d) t(%.5f) QB source out...\n",app::getElapsedFrames(),(float)d);
 		mTimeProfiler = app::getElapsedSeconds();
 
+		return newFrame;
 	}
 	
 	
@@ -479,10 +585,10 @@ namespace cinder { namespace qb {
 	//
 	// Get new Frame
 	// qbUpdateObject VIRTUAL
-	void qbSourceSyphon::updateFrame( bool _force )
+	bool qbSourceSyphon::updateFrame( bool _force )
 	{
-		if ( ! _force && ! (bPlaying && _qb.isPlaying()) )
-			return;
+		if ( ! _force && ! mSyphonClient.hasNewFrame() )
+			return false;
 		mSyphonClient.update();
 		mTex = mSyphonClient.getTexture();
 		mSize = mSyphonClient.getSize();
@@ -494,6 +600,7 @@ namespace cinder { namespace qb {
 		std::stringstream os;
 		os << "Syphon: " << mSize.x << " x " << mSize.y;
 		mDesc = os.str();
+		return true;
 	}
 	
 	

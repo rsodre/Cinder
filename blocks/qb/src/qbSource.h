@@ -7,15 +7,14 @@
 #pragma once
 
 #include "cinder/Cinder.h"
-#include "cinder/app/App.h"
+#include "cinder/app/AppBasic.h"
 #include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
 #include "cinder/qtime/QuickTime.h"
 #include "cinder/ImageIo.h"
 #include "cinder/Utilities.h"
-
 #include "cinderSyphon.h"
-
+#include "MovieGlHap.h"
 #include "qbCube.h"
 
 namespace cinder {
@@ -30,6 +29,13 @@ class ciConfig;
 //
 namespace cinder { namespace qb {
 	
+#define QB_SOURCE_UNDEFINED		"Undefined"
+#define QB_SOURCE_IMAGE			"Image"
+#define QB_SOURCE_MOVIE			"Movie"
+#define QB_SOURCE_SYPHON		"Syphon"
+	
+	extern std::vector<std::string> _qbSourceExt;
+
 	//
 	// Source Base -- VIRTUAL
 	class qbSourceBase {
@@ -39,10 +45,10 @@ namespace cinder { namespace qb {
 
 		void	makeUV( float _u, float _v );
 
-		virtual void	updateFrame( bool _force=false )	{}	// update Pool
+		virtual bool	updateFrame( bool _force=false )	{ return false; }
 		
 		virtual bool	load(const std::string & _f, char _flags=0)	{ return false; }
-		const bool		isFresh()				{ return (mSpawnedAtFrame >= 0 && mSpawnedAtFrame == app::getElapsedFrames()); }
+		const bool		isFresh()						{ return (mSpawnedAtFrame >= 0 && mSpawnedAtFrame == app::getElapsedFrames()); }
 
 		virtual void	bind(int unit=0);
 		virtual void	unbind();
@@ -57,12 +63,14 @@ namespace cinder { namespace qb {
 		bool				isPlaying()					{ return bPlaying; }
 		virtual void		playBackwards(bool _b=true)	{ bBackwards = _b; }
 
+		virtual const std::string getType()				{ return QB_SOURCE_UNDEFINED; }
 		virtual const int	getFrameCount()				{ return 1; }
 		virtual const int	getCurrentFrame()			{ return 0; }
 		virtual const float	getDuration()				{ return 0.0; }
 		virtual const float	getCurrentTime()			{ return 0.0; }
 		virtual const float	getFrameRate()				{ return 0.0; }
-		
+		virtual const float getCurrentFrameRate()		{ return 0.0; }
+
 		const gl::Texture	& getTexture()
 		{
 			if ( ! mTex && mSurface )
@@ -119,6 +127,8 @@ namespace cinder { namespace qb {
 		
 		bool load(const std::string & _f, char _flags=0);
 		
+		const std::string getType()		{ return QB_SOURCE_IMAGE; }
+
 	private:
 	};
 	
@@ -129,6 +139,9 @@ namespace cinder { namespace qb {
 		qbSourceMovie() : qbSourceBase()
 		{
 			mMovie = NULL;
+			mCurrentFrameRate = 0;
+			mFpsTime = mFpsFrames = 0;
+			mLastRenderedFrame = 0;
 #ifdef VERBOSE_SOURCE
 			std::cout << ">>>>>>> qbSourceMovie CONSTRUCT this [" << this << "] " << mName << std::endl;
 #endif
@@ -143,28 +156,34 @@ namespace cinder { namespace qb {
 		}
 		
 		bool		load(const std::string & _f, char _flags=0);
-		void		updateFrame( bool _force=false );
+		bool		updateFrame( bool _force=false );
 		
-		void		rewind()					{ if (mMovie) mMovie->seekToStart(); }
+		void		rewind()						{ if (mMovie) mMovie->seekToStart(); this->updateFrame(true); }
 
-		const int			getFrameCount()		{ return mFrameCount; }
-		const int			getCurrentFrame()	{ return mCurrentFrame; }
-		const float			getDuration()		{ return mDuration; }
-		const float			getCurrentTime()	{ return mCurrentTime; }
-		const float			getFrameRate()		{ return mFrameRate; }
+		const std::string	getType()				{ return QB_SOURCE_MOVIE; }
+		const int			getFrameCount()			{ return mFrameCount; }
+		const int			getCurrentFrame()		{ return mCurrentFrame; }
+		const float			getDuration()			{ return mDuration; }
+		const float			getCurrentTime()		{ return mCurrentTime; }
+		const float			getFrameRate()			{ return mFrameRate; }
+		const float			getCurrentFrameRate()	{ return mCurrentFrameRate; }
 		
 	private:
-		qtime::MovieGl		mMovieGl;
+		qtime::MovieGlHap	mMovieGl;
 		qtime::MovieSurface	mMovieSurface;
 		qtime::MovieBase *	mMovie;
 		int					mFrameCount;
 		int					mCurrentFrame;
+		int					mLastRenderedFrame;
 		float				mDuration;
 		float				mDurationQT;
 		float				mCurrentTime;
-		float				mFrameRate;
 		float				mFrameTime;
-		
+		float				mFrameRate;
+		float				mCurrentFrameRate;
+		double				mFpsTime;
+		int					mFpsFrames;
+
 		double	mTimeProfiler;
 	};
 	
@@ -183,7 +202,10 @@ namespace cinder { namespace qb {
 		
 		bool load(const std::string & _app, char _flags=0);
 		bool load(const std::string & _app, const std::string & _tex, char _flags=0);
-		void updateFrame( bool _force=false );
+		bool updateFrame( bool _force=false );
+
+		const std::string getType()			{ return QB_SOURCE_SYPHON; }
+		const float	getCurrentFrameRate()	{ return mSyphonClient.getCurrentFrameRate(); }
 		
 		void bind(int unit=0)	{ mSyphonClient.bind(unit); }
 		void unbind()			{ mSyphonClient.unbind(); }
@@ -199,22 +221,16 @@ namespace cinder { namespace qb {
 	//
 	class qbSourceSelector {
 	public:
-		qbSourceSelector() : mSrc( std::shared_ptr<qbSourceBase>( new qbSourceBase() ) )
-		{
-			mFlags = 0;
-			mConfigSelectorId = -1;
-			mConfigTriggerId = -1;
-		}
-		qbSourceSelector(const std::string & _f) : mSrc( std::shared_ptr<qbSourceBase>( new qbSourceBase() ) )
-		{
-			this->load(_f);
-		}
-		//~qbSourceSelector();
+		qbSourceSelector();
+		//qbSourceSelector(const std::string & _f);
+		~qbSourceSelector();
 		
 		// setup
 		bool		load( const std::string & _f );
-		bool		loadSyphon( const std::string & _app, const std::string & _tex="" );
+		const bool	hasNewFrame()					{ return bNewFrame; }
 		const bool	isFresh()						{ return ( mSrc ? mSrc->isFresh() : false ); }
+		bool		isCatchingFiles()				{ return bCatchingFiles; }
+		void		setIsCatchingFiles( bool b)		{ bCatchingFiles=b; }
 		/// Flags
 		char		setFlags( const char _flags)	{ return mFlags = _flags; }
 		const char	getFlags()						{ return mFlags; }
@@ -224,6 +240,7 @@ namespace cinder { namespace qb {
 		void			setList( int _key, std::string _name );
 		void			useConfigSelector( int _id, ci::ciConfig *_ptr=NULL, bool popValueList=true );
 		void			useConfigTrigger( int _id, ci::ciConfig *_ptr=NULL );
+		void			useConfigName( int _id, ci::ciConfig *_ptr=NULL );
 
 		// From actual source
 		void			update();
@@ -239,18 +256,20 @@ namespace cinder { namespace qb {
 		const bool		isPlaying()					{ return ( mSrc ? mSrc->isPlaying() : false ); }
 		const void		playBackwards(bool _b=true)	{ if (mSrc) mSrc->playBackwards(_b); }
 		// movie getters
+		const std::string getType()				{ return ( mSrc ? mSrc->getType() : QB_SOURCE_UNDEFINED ); }
 		const int		getFrameCount()			{ return ( mSrc ? mSrc->getFrameCount() : 0 ); }
 		const int		getCurrentFrame()		{ return ( mSrc ? mSrc->getCurrentFrame() : 0 ); }
 		const float		getDuration()			{ return ( mSrc ? mSrc->getDuration() : 0 ); }
 		const float		getCurrentTime()		{ return ( mSrc ? mSrc->getCurrentTime() : 0 ); }
 		const float		getFrameRate()			{ return ( mSrc ? mSrc->getFrameRate() : 0 ); }
+		const float		getCurrentFrameRate()	{ return ( mSrc ? mSrc->getCurrentFrameRate() : 0 ); }
 		// generic getters
 		const gl::Texture	& getTexture()		{ return ( mSrc ? mSrc->getTexture() : mNullTex ); }
 		//const Surface8u		& getSurface()		{ return ( mSrc ? mSrc->getSurface() : mNullSurf ); }
 		const GLfloat		* getTexes()		{ return ( mSrc ? mSrc->getTexes() : NULL ); }
 		const std::string	getFullPath()		{ return ( mSrc ? mSrc->getFullPath() : "" ); }
-		const std::string	getName()			{ return ( mSrc ? mSrc->getName() : "Null" ); }
-		const std::string	getDesc()			{ return ( mSrc ? mSrc->getDesc() : "Null" ); }
+		const std::string	getName()			{ return ( mSrc ? mSrc->getName() : "< none >" ); }
+		const std::string	getDesc()			{ return ( mSrc ? mSrc->getDesc() : "< none >" ); }
 		const bool		hasAlpha()				{ return ( mSrc ? mSrc->hasAlpha() : false ); }
 		const bool		isRect()				{ return ( mSrc ? mSrc->isRect() : false ); }
 		const bool		isFlipped()				{ return ( mSrc ? mSrc->isFlipped() : false ); }
@@ -259,23 +278,33 @@ namespace cinder { namespace qb {
 		const Vec2i		& getSize()				{ return ( mSrc ? mSrc->getSize() : mNullVec2i ); }
 		const Vec2f		& getUV()				{ return ( mSrc ? mSrc->getUV() : mNullVec2f ); }
 		const Rectf		getBounds()				{ return ( mSrc ? mSrc->getBounds() : Rectf() ); }
+		const std::map<int,std::string> & getList()	{ return mList; }
 		// from surface
 		ColorA			getColorProg(float _px, float _py)	{ return ( mSrc ? mSrc->getColorProg(_px,_py) : ColorA::black() ); }
+		
+		// static
+		static bool isMovieFile( const std::string & f );
+		static bool isImageFile( const std::string & f );
 
 	protected:
-		std::shared_ptr<qbSourceBase>		mSrc;
-		std::map<int,std::string>			mList;
-		char								mFlags;
+		
+		void	onFileDrop( app::FileDropEvent & event );
+		bool	loadSyphon( const std::string & _app, const std::string & _tex="" );
+
+		std::shared_ptr<qbSourceBase>	mSrc;
+		std::map<int,std::string>		mList;
+		char			mFlags;
+		bool			bNewFrame;
+		bool			bCatchingFiles;
+		boost::signals2::connection	mCatchConn;
 		// ciConfig integration
-		ci::ciConfig						*mConfigSelectorPtr, *mConfigTriggerPtr;
-		int									mConfigSelectorId, mConfigTriggerId;
-		std::string							mConfigName, mConfigDesc;
-		gl::Texture							mConfigTexture;
+		ci::ciConfig	*cfgSelectorPtr, *cfgTriggerPtr, *cfgNamePtr;
+		int				cfgSelectorId, cfgTriggerId, cfgNameId;
 		// dummies
-		gl::Texture			mNullTex;
-		Surface8u			mNullSurf;
-		Vec2i				mNullVec2i;
-		Vec2f				mNullVec2f;
+		gl::Texture		mNullTex;
+		Surface8u		mNullSurf;
+		Vec2i			mNullVec2i;
+		Vec2f			mNullVec2f;
 
 	public:
 	 	//@{

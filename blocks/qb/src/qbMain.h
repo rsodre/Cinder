@@ -87,7 +87,7 @@ public:
 	void	setBackgroundColor( ci::Color c )		{ mBackgroundColor = c; }
 	void	enableRenderControls( bool e=true )		{ bRenderControls=e; mConfig->columnRender->enable(e); };
 	void	enableSyphonControls( bool e=true )		{ bSyphonControls=e; mConfig->panelSyphon->enable(e); };
-	void	enablePaletteControls( bool e=true )	{ if (mConfig->columnPalette) mConfig->columnPalette->enable(e); if(mConfig->columnPerlinSource) mConfig->columnPerlinSource->enable(e); };
+	void	enablePaletteControls( bool e=true )	{ bPaletteControls=e; if (mConfig->columnPalette) mConfig->columnPalette->enable(e); if(mConfig->columnPerlinSource) mConfig->columnPerlinSource->enable(e); };
 	void	disableQBTab()	{
 		this->enableRenderControls( false );
 		this->enableSyphonControls( false );
@@ -122,7 +122,7 @@ public:
 	int			getRenderHeight()		{ return mRenderHeight; }
 	int			getRenderAspect()		{ return mRenderAspect; }
 	Vec2i &		getRenderSize()			{ return mRenderSize; }
-	Rectf &		getRenderBounds()		{ return mRenderBounds; }
+	Area &		getRenderBounds()		{ return mRenderBounds; }
 	int			getWindowWidth()		{ return mWindowWidth; }
 	int			getWindowHeight()		{ return mWindowHeight; }
 	int			getPrintWidth()			{ return mPrintWidth; }
@@ -193,19 +193,19 @@ public:
 	void	bindFboRight( Color c )				{ if (this->isCameraStereo()) this->bindFramebuffer( mFboRight, c ); }		// STEREO Fbo
 	void	bindFboRight( ColorA c )			{ if (this->isCameraStereo()) this->bindFramebuffer( mFboRight, c ); }		// STEREO Fbo
 	void	bindFbo( int i )					{ mFbos[i].bindFramebuffer(); }					// Additional FBOs
-	void	unbindFbo()							{ mFboRender.unbindFramebuffer(); }				// Any Fbo
-	void	bindFboTexture( int unit )			{ mFboRender.getTexture().bind(unit); }
+	void	unbindFbo()							{ if (bRenderToFbo) mFboRender.unbindFramebuffer(); }				// Any Fbo
+	void	bindFboTexture( int unit )			{ if (bRenderToFbo) mFboRender.getTexture().bind(unit); }
 	void	bindFboTexture( int i, int unit )	{ mFbos[i].getTexture().bind(unit); }
-	void	unbindFboTexture()					{ mFboRender.getTexture().unbind(); }			// Any Fbo
+	void	unbindFboTexture()					{ if (bRenderToFbo) mFboRender.getTexture().unbind(); }			// Any Fbo
 	void	unbindFboTexture( int i )			{ mFbos[i].getTexture().unbind(); }				// Any Fbo
-	void	drawFbo()							{ gl::draw( mFboRender.getTexture() ); }
-	void	drawFbo( Rectf b )					{ gl::draw( mFboRender.getTexture(), b ); }
-	void	drawFbo( Rectf b, Area a )			{ gl::draw( mFboRender.getTexture(), a, b ); }
+	void	drawFbo()							{ if (bRenderToFbo) gl::draw( mFboRender.getTexture() ); }
+	void	drawFbo( Rectf b )					{ if (bRenderToFbo) gl::draw( mFboRender.getTexture(), b ); }
+	void	drawFbo( Rectf b, Area a )			{ if (bRenderToFbo) gl::draw( mFboRender.getTexture(), a, b ); }
 	void	drawFbo( int i )					{ gl::draw( mFbos[i].getTexture() ); }
 	void	drawFbo( int i, Rectf b )			{ gl::draw( mFbos[i].getTexture(), b ); }
 	void	drawModul8( Rectf b );
 	void	finishAndDraw();
-	gl::Texture	getFboTexture()					{ return mFboRender.getTexture(); }
+	gl::Texture	getFboTexture()					{ return ( bRenderToFbo ? mFboRender.getTexture() : gl::Texture() ); }
 	gl::Texture	getFboTexture(int i)			{ return mFbos[i].getTexture(); }
 
 	//
@@ -238,19 +238,21 @@ private:
 
 	// misc
 	bool						bInited;
+	bool						bRenderToFbo;
 	bool						bAutoResizeFbos;
 	bool						bDrawGui;
 	bool						bSyphonControls;
 	bool						bRenderControls;
+	bool						bPaletteControls;
 	std::string					mAppName;
 	std::string					mAppVersion;
 	std::string					mScreenName;
 	std::vector<std::string>	mPathList;
 	
 	// QB
-	qbUpdatePool				mUpdatePool;
+	qbUpdatePool					mUpdatePool;
 	std::map<int,qbSourceSelector>	mSources;					// Active sources
-	int							mBoundSource[QB_MAX_UNITS];		// currently bound source
+	int								mBoundSource[QB_MAX_UNITS];		// currently bound source
 	
 	// GL
 	ci::Color					mBackgroundColor;
@@ -272,7 +274,7 @@ private:
 	int					mRenderHeight;
 	float				mRenderAspect;
 	Vec2i				mRenderSize;
-	Rectf				mRenderBounds;
+	Area				mRenderBounds;
 	// Print dimensions
 	int					mPrintWidth;
 	int					mPrintHeight;

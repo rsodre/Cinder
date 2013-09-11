@@ -116,7 +116,17 @@ namespace cinder { namespace qb {
 	// Update
 	void qbPlayhead::update()
 	{
-		if ( bPlaying )
+		// switch play
+		if ( _cfg.isFresh(QBCFG_PLAYING) && bPlaying != _cfg.getBool(QBCFG_PLAYING) )
+			bPlaying = _cfg.getBool(QBCFG_PLAYING);
+		// scratch!
+		if ( _cfg.guiIsInteracting(QBCFG_CURRENT_PROG) )
+		{
+			this->seekToProg( _cfg.get(QBCFG_CURRENT_PROG) );
+			//printf("PROG  %.3f   secs %.3f   fr %d\n",_cfg.get(QBCFG_CURRENT_PROG),mSeconds,mCurrentFrame);
+		}
+		// move playhead
+		else if ( bPlaying )
 		{
 			double now = CFAbsoluteTimeGetCurrent();
 			// Realtime = Play continuously, may lose frames
@@ -148,6 +158,7 @@ namespace cinder { namespace qb {
 		// Update GUI
 		_cfg.set(QBCFG_PLAYING, bPlaying);
 		_cfg.set(QBCFG_CURRENT_TIME, mSeconds);
+		_cfg.set(QBCFG_CURRENT_PROG, QB_PROG);
 		std::stringstream os;
 		os << (mCurrentFrame+1) << "/" << ( _qb.getRenderFrames() ? toString(_qb.getRenderFrames()) : std::string("?") );
 		_cfg.set(DUMMY_CURRENT_FRAME, os.str());
@@ -157,8 +168,11 @@ namespace cinder { namespace qb {
 	}
 	void qbPlayhead::seekToProg( float _prog )
 	{
-		double t = _qb.getRenderSeconds() * _prog;
-		this->seekToTime( t );
+		//double t = _qb.getRenderSeconds() * _prog;
+		//this->seekToTime( t );
+		mCurrentFrame = (int) ((QB_ANIM_FRAMES-1) * _prog);
+		mSeconds = ( mCurrentFrame * QB_FRAME_DURATION );
+		mLastTime = CFAbsoluteTimeGetCurrent();
 	}
 	void qbPlayhead::seekToTime( double _s )
 	{

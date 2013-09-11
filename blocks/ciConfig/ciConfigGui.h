@@ -31,7 +31,7 @@ namespace cinder {
 	class ciConfigGui;
 	class ciConfigGuiBlock {
 	public:
-		ciConfigGuiBlock( ciConfigGui *cfg ) : mConfig(cfg), mPanel(NULL) {}
+		ciConfigGuiBlock( ciConfigGui *cfg ) : mCfg(cfg), mPanel(NULL) {}
 		~ciConfigGuiBlock() {}
 		
 		PanelControl*	getPanel()	{ return mPanel; }
@@ -40,7 +40,7 @@ namespace cinder {
 		virtual void	update()	{}
 		
 	protected:
-		ciConfigGui		*mConfig;
+		ciConfigGui		*mCfg;
 		PanelControl	*mPanel;
 	};
 	
@@ -70,6 +70,7 @@ namespace cinder {
 		Vec2f		guiGetSize()					{ return mGui->getSize(); }
 		int			guiGetTabId()					{ return mGui->getTabId(); }
 		void		guiSetTab(int t)				{ return mGui->setTab(t); }
+		bool		guiIsInteracting(int id)		{ return ( params[id] ? ((Control*)(params[id]->guiControl))->isInteracting() : false ); }
 		
 		// Wrappers
 		void		guiHide()						{ this->guiShow(false); }
@@ -84,7 +85,9 @@ namespace cinder {
 		ListVarControl*		guiAddParamList( const std::string & label, int * var, const std::map<int,std::string> &valueLabels );
 		ListVarControl*		guiAddParamDropDown( const std::string & label, int * var, const std::map<int,std::string> &valueLabels );
 		TextureVarControl*	guiAddTexture( const std::string & label, gl::Texture* tex, float refreshRate=1.0f );
-
+		// typed shortcuts
+		BoolVarControl*		guiAddParamBool( const std::string & label, bool * var, bool readOnly=false ) { return (BoolVarControl*)guiAddParam(label, var, readOnly); }
+		
 		// structure controls
 		void				guiAddSeparator();
 		LabelControl*		guiAddText( const std::string & label, bool wrap=false );
@@ -161,6 +164,9 @@ namespace cinder {
 		Control*	guiAddParamX(int id, const std::string & label="", int precision=-1)	{ return this->guiAddParamPrivate(id,  0, label, precision); }
 		Control*	guiAddParamY(int id, const std::string & label="", int precision=-1)	{ return this->guiAddParamPrivate(id,  1, label, precision); }
 		Control*	guiAddParamZ(int id, const std::string & label="", int precision=-1)	{ return this->guiAddParamPrivate(id,  2, label, precision); }
+		// typed shortcuts
+		BoolVarControl*		guiAddParamBool(int id, const std::string & label="") { return (BoolVarControl*)guiAddParam(id,label); }
+		FloatVarControl*	guiAddParamFLoat(int id, const std::string & label="", int precision=-1) { return (FloatVarControl*)guiAddParam(id,label,precision); }
 
 		// SimpleGui Params
 		SimpleGUI* mGui;

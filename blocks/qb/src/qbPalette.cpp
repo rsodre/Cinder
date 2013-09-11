@@ -32,10 +32,10 @@ namespace cinder { namespace qb {
 	}
 	
 	// virtual
-	void qbSourcePalette::updateFrame( bool _force )
+	bool qbSourcePalette::updateFrame( bool _force )
 	{
 		if ( ! bPlaying && ! _force )
-			return;
+			return false;
 		
 		// update data
 		_palette.update();
@@ -48,6 +48,7 @@ namespace cinder { namespace qb {
 		std::stringstream os;
 		os << "qbPalette: " << (int)mSize.x << " x " << (int)mSize.y;
 		mDesc = os.str();
+		return true;
 	}
 	
 	

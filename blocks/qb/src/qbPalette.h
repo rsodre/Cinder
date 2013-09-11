@@ -20,6 +20,8 @@
 
 namespace cinder { namespace qb {
 	
+#define QB_SOURCE_PALETTE	"qbPalette"
+
 	class qbPalette {
 	public:
 		
@@ -93,7 +95,7 @@ namespace cinder { namespace qb {
 		~qbSourcePalette();
 		
 		// virtuals
-		void	updateFrame( bool _force=false );
+		bool	updateFrame( bool _force=false );
 		
 	private:
 

@@ -28,11 +28,13 @@ namespace cinder { namespace qb {
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
 
 		bInited					= false;
+		bRenderToFbo			= true;
 		bAutoResizeFbos			= false;
 		bDrawGui				= true;
 		bVerbose				= true;
 		bSyphonControls			= true;
 		bRenderControls			= true;
+		bPaletteControls		= false;
 		mFarThrowMultiplyer		= 2.1;
 		mDefaultCamera			= CAMERA_TYPE_PERSP;
 		mCameraNear				= 1.0f;		// Nao baixar muito para eviar Z-Fight
@@ -71,9 +73,10 @@ namespace cinder { namespace qb {
 	// Keep Metric aspect
 	void qbMain::init()
 	{
+		bRenderToFbo = false;
+		bAutoResizeFbos = true;
 		Vec2i sz = app::getWindowSize();
 		this->init( sz.x, sz.y );
-		bAutoResizeFbos = true;
 	}
 	
 	//
@@ -282,8 +285,12 @@ namespace cinder { namespace qb {
 	}
 	
 	// Use file dropped on palette
-	void qbMain::onFileDrop( FileDropEvent & event )
+	void qbMain::onFileDrop( ci::app::FileDropEvent & event )
 	{
+		if ( event.getNumFiles() == 0 )
+			return;
+		std::string theFile = event.getFile( 0 ).string();
+		
 		/*
 		 stringstream ss;
 		 ss << "You dropped files @ " << event.getPos() << " and the files were: " << endl;
@@ -292,12 +299,30 @@ namespace cinder { namespace qb {
 		 console() << ss.str() << endl;
 		 */
 		
-		if ( event.getNumFiles() > 0 )
+		// Reduce palette?
+		if ( bPaletteControls )
 		{
-			mPalette.reduce( event.getFile( 0 ).string() );
+			mPalette.reduce( theFile );
 			mConfig->set( QBCFG_PALETTE_FLAG, true );
 			event.setHandled();
+			return;
 		}
+		
+		// Send to sources
+		/*
+		for ( auto it = mSources.begin() ; it != mSources.end(); it++ )
+		{
+			int i = it->first;
+			if (this->source(i))
+			{
+				if (this->source(i).isCatchingFiles())
+				{
+					this->source(i).load(theFile);
+					return;
+				}
+			}
+		}
+		 */
 	}
 
 
@@ -312,7 +337,7 @@ namespace cinder { namespace qb {
 		mRenderHeight = h;
 		mRenderAspect = (mRenderWidth / (float)mRenderHeight);
 		mRenderSize = Vec2i( w, h );
-		mRenderBounds = Rectf( 0, 0, mRenderWidth, mRenderHeight );
+		mRenderBounds = Area( 0, 0, mRenderWidth, mRenderHeight );
 		if ( mDomeMaster.isEnabled() )
 			mDomeMaster.setup( mRenderWidth, mRenderHeight );
 
@@ -394,7 +419,7 @@ namespace cinder { namespace qb {
 			mFittingBounds += mRenderSize * (mPreviewScale-1.0) * 0.5f;
 			mPreviewScale = 1.0;
 		}
-		mFittingArea = Area( mRenderBounds );
+		mFittingArea = mRenderBounds;
 		
 		// Zoomed preview?
 		if ( ! mConfig->getBool(QBCFG_PREVIEW_DOWNSCALE) && mPreviewScale < 1.0 )
@@ -474,14 +499,14 @@ namespace cinder { namespace qb {
 		float fovV = atanf((mMetricHeight/2.0f)/mMetricThrow) * 2.0f;
 		float fovH = atanf((mMetricWidth/2.0f)/mMetricThrow) * 2.0f;
 		float fovGl = toDegrees(fovV);		// SE A ESCALA ESTIVER ESQUISITA, TROCAR W POR H
-		printf(">>>> QB::CAMERA throw [%.1f] near [%.1f] far [%.1f] fovV [%.1f] fovH [%.1f] aspect [%.2f]\n",mMetricThrow,mCameraNear,mCameraFar,toDegrees(fovV),toDegrees(fovH),mMetricAspect);
+		//printf(">>>> QB::CAMERA throw [%.1f] near [%.1f] far [%.1f] fovV [%.1f] fovH [%.1f] aspect [%.2f]\n",mMetricThrow,mCameraNear,mCameraFar,toDegrees(fovV),toDegrees(fovH),mMetricAspect);
 		//
 		// Orthographic (parallel)
 		// BIZARRO!! Nao entendi porque precisa voltar QB_CENTER.xy()
 		//Rectf o = mMetricBounds + mCameraOffset.xy();
 		Rectf o = mMetricBounds - QB_CENTER.xy();
 		mCameraOrtho = CameraOrtho( o.x1, o.x2, o.y1, o.y2, mCameraNear, mCameraFar );
-		printf(">>>> QB::CAMERA left [%.1f] right [%.1f] top [%.1f] bottom [%.1f]\n",o.x1,o.x2,o.y1,o.y2);
+		//printf(">>>> QB::CAMERA left [%.1f] right [%.1f] top [%.1f] bottom [%.1f]\n",o.x1,o.x2,o.y1,o.y2);
 		//
 		// Fisheye Camera
 		//mCameraDome = CameraOrtho( -1, +1, -1, +1, 0.0, 1000.0 );
@@ -597,8 +622,14 @@ namespace cinder { namespace qb {
 		mCameraActive->lookAt( e, t );
 		//printf("__LOOKAT  %.1f %.1f %.1f  >  %.1f %.1f %.1f\n",e.x,e.y,e.z,t.x,t.y,t.z);
 		gl::setMatrices( *mCameraActive );
-		gl::setViewport( mFboRender.getBounds() );
+		gl::setViewport( mRenderBounds );
 		gl::scale(mCameraScale);
+		// need to flip Y to UL when not using SetMatricesWindow()
+		if ( ! bRenderToFbo )
+		{
+			glScalef( 1.0f, -1.0f, 1.0f );
+			glTranslatef( 0.0f, -mMetricHeight, 0.0f );
+		}
 	}
 	// place WINDOW camera to draw final FBO preview
 	void qbMain::placeCameraWindow()
@@ -623,11 +654,16 @@ namespace cinder { namespace qb {
 		//fmt.enableMipmapping();
 
 		// Make Render FBO
-		mFboRender = gl::Fbo( mRenderWidth, mRenderHeight, fmt );
-		//mFboRender.getTexture().setFlipped();
-		mFboRender.bindFramebuffer();
-		gl::clear( ColorA(0,0,0,this->getAlpha()) );
-		mFboRender.unbindFramebuffer();
+		if ( bRenderToFbo )
+		{
+			mFboRender = gl::Fbo( mRenderWidth, mRenderHeight, fmt );
+			//mFboRender.getTexture().setFlipped();
+			mFboRender.bindFramebuffer();
+			gl::clear( ColorA(0,0,0,this->getAlpha()) );
+			mFboRender.unbindFramebuffer();
+		}
+		else
+			gl::clear( ColorA(0,0,0,this->getAlpha()) );
 		
 		// Stereo FBOs
 		if ( this->isCameraStereo() || mFboLeft || mFboRight )
@@ -651,7 +687,7 @@ namespace cinder { namespace qb {
 			// make new
 			//mFbos[i] = gl::Fbo( mRenderWidth, mRenderHeight, true, true, true );
 			mFbos[i] = gl::Fbo( mRenderWidth, mRenderHeight, fmt );
-			//mFbos[i].getTexture().setFlipped();
+			mFbos[i].getTexture().setFlipped();
 			// clear FBO
 			mFbos[i].bindFramebuffer();
 			gl::clear( ColorA(0,0,0,this->getAlpha()) );
@@ -678,7 +714,8 @@ namespace cinder { namespace qb {
 	// PRIVATE
 	void qbMain::bindFramebuffer( gl::Fbo & fbo )
 	{
-		fbo.bindFramebuffer();
+		if ( fbo )
+			fbo.bindFramebuffer();
 		if ( _cfg.getInt(QBCFG_MODUL8_INPUT) == MODUL8_BELOW )
 			this->drawModul8( QB_BOUNDS );
 	}
@@ -692,7 +729,8 @@ namespace cinder { namespace qb {
 	}
 	void qbMain::bindFramebuffer( gl::Fbo & fbo, ColorA c )
 	{
-		fbo.bindFramebuffer();
+		if ( fbo )
+			fbo.bindFramebuffer();
 		gl::clear(c);
 		if ( _cfg.getInt(QBCFG_MODUL8_INPUT) == MODUL8_BELOW )
 			this->drawModul8( QB_BOUNDS );
@@ -808,11 +846,16 @@ namespace cinder { namespace qb {
 		mConfig->update();
 		mConfig->set(DUMMY_CURRENT_FPS, App::get()->getAverageFps());
 		
-		// Changed tab?
+		// Changed tab from file
 		if ( _cfg.isFresh(QBCFG_CURRENT_TAB) )
 			_cfg.guiSetTab( _cfg.getInt( QBCFG_CURRENT_TAB ) );
+		// changed on the GUI
 		else if ( _cfg.getInt( QBCFG_CURRENT_TAB ) != _cfg.guiGetTabId() )
 			_cfg.set( QBCFG_CURRENT_TAB, _cfg.guiGetTabId() );
+		// avoid QB tab when QB tab is disabled
+		if ( _cfg.getInt( QBCFG_CURRENT_TAB ) == 0 && ! mConfig->tabQB->enabled && mConfig->mGui->shouldDrawTabs() )
+			_cfg.guiSetTab( 1 );
+
 
 		// Get mouse preview pan
 		Vec2f m = AppBasic::get()->getMousePosMainWindow();
@@ -857,8 +900,7 @@ namespace cinder { namespace qb {
 		mPlayhead.update();
 		
 		// Update Sources
-		std::map<int,qbSourceSelector>::const_iterator it;
-		for ( it = mSources.begin() ; it != mSources.end(); it++ )
+		for ( auto it = mSources.begin() ; it != mSources.end(); it++ )
 		{
 			int i = it->first;
 			if (this->source(i))
@@ -886,8 +928,8 @@ namespace cinder { namespace qb {
 		this->bindFbo();
 		
 		this->placeCamera( CAMERA_TYPE_ORTHO );
-		//gl::setMatricesWindow( mFboRender.getSize() );
-		//gl::setViewport( mFboRender.getBounds() );
+		//gl::setMatricesWindow( mRenderSize );
+		//gl::setViewport( mRenderBounds );
 		
 		gl::clear( Color::black() );
 		gl::color( Color::white() );
@@ -899,7 +941,7 @@ namespace cinder { namespace qb {
 		mShaderStereo.uniform( "u_delta", (float) (mStereoDelta / mMetricWidth) );
 		glPushMatrix();
 		gl::translate(mCameraOffset);		// BIZARRO!! Nao entendi porque esta deslocado
-		//glTranslatef(0,mFboRender.getSize().y,0);
+		//glTranslatef(0,mRenderHeight,0);
 		//glScalef(1,-1,1);
 		gl::drawSolidRect( mMetricBounds );	// render quad
 		glPopMatrix();
@@ -943,12 +985,12 @@ namespace cinder { namespace qb {
 		if ( _cfg.getInt(QBCFG_MODUL8_INPUT) == MODUL8_ABOVE )
 		{
 			this->bindFbo();
-			gl::setMatricesWindow( mFboRender.getSize() );
-			gl::setViewport( mFboRender.getBounds() );
+			gl::setMatricesWindow( mRenderSize );
+			gl::setViewport( mRenderBounds );
 			glPushMatrix();
-			glTranslatef(0,mFboRender.getHeight(),0);
+			glTranslatef(0,mRenderHeight,0);
 			glScalef(1.0, -1.0, 1.0);
-			this->drawModul8( mFboRender.getBounds() );
+			this->drawModul8( mRenderBounds );
 			glPopMatrix();
 			this->unbindFbo();
 		}
@@ -957,17 +999,23 @@ namespace cinder { namespace qb {
 		gl::Texture tex;
 		if ( bSyphonControls && mConfig->getBool(QBCFG_SYPHON_OUTPUT) )
 		{
-			if ( ! tex )
-				tex = mFboRender.getTexture();
 			if ( ! mSyphonServer.isRunning() )
 				mSyphonServer.setName("Render");
-			mSyphonServer.publishTexture( tex );
+			if ( bRenderToFbo )
+			{
+				if ( ! tex )
+					tex = mFboRender.getTexture();
+				mSyphonServer.publishTexture( tex );
+			}
+			else
+				mSyphonServer.publishScreen();
 		}
 		else if ( mSyphonServer.isRunning() )
 			mSyphonServer.shutdown();
 		
 		// Add to render
-		if ( mRenderer.isRendering() )
+		// TODO:: Render sem FBO
+		if ( mRenderer.isRendering() && bRenderToFbo )
 		{
 			if ( ! tex )
 				tex = mFboRender.getTexture();
@@ -977,13 +1025,16 @@ namespace cinder { namespace qb {
 
 		//
 		// Draw FBO preview to Window
-		glEnable( GL_TEXTURE_2D );
-		glDisable( GL_DEPTH_TEST );
-		glDisable( GL_LIGHTING );
-		gl::clear( mBackgroundColor );
-		gl::color( Color::white() );
-		this->placeCameraWindow();
-		this->drawFbo( mFittingBounds, this->getFittingArea() );
+		if ( bRenderToFbo )
+		{
+			glEnable( GL_TEXTURE_2D );
+			glDisable( GL_DEPTH_TEST );
+			glDisable( GL_LIGHTING );
+			gl::clear( mBackgroundColor );
+			gl::color( Color::white() );
+			this->placeCameraWindow();
+			this->drawFbo( mFittingBounds, this->getFittingArea() );
+		}
 		
 		// GUI Elements
 		if ( bDrawGui && ! AppBasic::get()->isMinimized() )

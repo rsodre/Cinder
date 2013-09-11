@@ -59,6 +59,7 @@ namespace cinder { namespace sgui {
 	Font SimpleGUI::textFont = Font();
 	
 	ColorA SimpleGUI::darkColor = ColorA(0.3, 0.3, 0.3, 1);
+	ColorA SimpleGUI::lockedColor = ColorA(0.5, 0.5, 0.5, 1);
 	ColorA SimpleGUI::lightColor = ColorA(1, 1, 1, 1);
 	ColorA SimpleGUI::bgColor = ColorA(0, 0, 0, 0.75);
 	ColorA SimpleGUI::textColor = ColorA(1,1,1,1);
@@ -116,7 +117,6 @@ namespace cinder { namespace sgui {
 		droppedList = NULL;
 		bDisplayFps = true;
 		mCurrentFps = 0;
-		tabsHeight = 0;
 		// FBO
 		bUsingFbo = true;
 		bShouldResize = true;
@@ -330,6 +330,8 @@ namespace cinder { namespace sgui {
 				control->visible = false;
 			// force update
 			if (control->visible) {
+				//printf("control->hasChanged() [%d]\n",control->hasChanged());
+				//printf("control->hasChanged() [%d]\n",control->controlHasResized());
 				if (control->hasChanged() || control->controlHasResized()) {
 					control->updateFbo();	// update fbo before GUI drawing
 					control->mustRefresh = true;
@@ -432,6 +434,7 @@ namespace cinder { namespace sgui {
 		// Draw tabs first
 		if (this->shouldDrawTabs())
 		{
+			mTabsBounds = Rectf( position - SimpleGUI::padding, position + SimpleGUI::separatorSize + SimpleGUI::padding*2 );
 			// offset like a column
 			position.x += SimpleGUI::padding.x*2;
 			position.y = SimpleGUI::spacing.y + SimpleGUI::padding.y*2;
@@ -455,6 +458,8 @@ namespace cinder { namespace sgui {
 							position = this->drawControl(position, tab);
 						else
 							position += control->drawOffset;
+						if (tab->blocking)
+							break;
 					}
 				}
 			}
@@ -470,14 +475,14 @@ namespace cinder { namespace sgui {
 					ss.setf(std::ios::fixed);
 					ss.precision(1);
 					ss << mCurrentFps;
-					position = this->drawLabel(position,"Current Framerate",ss.str());
+					position = this->drawLabel(position,"Framerate",ss.str());
 				}
 				else
 					position.y += (SimpleGUI::sliderSize + SimpleGUI::padding*2).y;
 			}
 			if ( position.y > mSize.y )
 				mSize.y = position.y;
-			tabsHeight = position.y;
+			mTabsBounds.y2 = position.y;
 		}
 		
 		position += mOffset;
@@ -488,12 +493,20 @@ namespace cinder { namespace sgui {
 			mSize.x = 0;
 			for (std::vector<Control*>::iterator it = controls.begin() ; it != controls.end() ; it++) {
 				Control* control = *it;
+				TabControl* tab = NULL;
 				gl::disableAlphaBlending();
 				// Tabs already drawn
 				if (control->type == Control::TAB)
+				{
+					if (tab)
+						if (tab->blocking)
+							break;
+					tab = (TabControl*) control;
 					continue;
+				}
 				// Draw new column
-				if (control->type == Control::COLUMN) {
+				if (control->type == Control::COLUMN)
+				{
 					if (currColumn == NULL && !this->shouldDrawTabs()) { //first column
 						//each column moves everything to the right so we want compensate that
 						position.x -= SimpleGUI::labelSize.x;
@@ -531,7 +544,10 @@ namespace cinder { namespace sgui {
 				if (control->type == Control::COLUMN)
 				{
 					if (control->visible)
+					{
 						position = this->drawControl(position, control);
+						currColumn->backArea = Rectf( position - SimpleGUI::padding * 2, position + SimpleGUI::separatorSize + SimpleGUI::padding );
+					}
 					else
 						this->drawControl(position, control);
 					continue;
@@ -551,7 +567,11 @@ namespace cinder { namespace sgui {
 				else
 					position += control->drawOffset;
 				
-				// ROGER
+				// Resize column
+				if (currColumn)
+					currColumn->backArea.y2 = position.y;
+				
+				// Resize GUI
 				if ( position.y > mSize.y )
 					mSize.y = position.y;
 				if ( position.x > mSize.x )
@@ -562,6 +582,22 @@ namespace cinder { namespace sgui {
 			// ROGER
 			// Finish size by adding the same a column adds
 			mSize.x += SimpleGUI::labelSize.x + SimpleGUI::spacing.x + SimpleGUI::padding.x*2;
+		}
+		
+		// COLUMN BORDERS DEBUG
+		if (bBlink)
+		{
+			for (std::vector<Control*>::iterator it = controls.begin() ; it != controls.end() ; it++)
+			{
+				Control* control = *it;
+				if ( control->type == Control::COLUMN && control->visible )
+				{
+					gl::color( mouseColumn == control ? Color::yellow() : Color::cyan() );
+					gl::drawStrokedRect( ((ColumnControl*)control)->backArea );
+				}
+			}
+			gl::color( mouseTabs ? Color::yellow() : Color::cyan() );
+			gl::drawStrokedRect( mTabsBounds );
 		}
 		
 		gl::disableAlphaBlending();
@@ -743,7 +779,8 @@ namespace cinder { namespace sgui {
 	// MOUSE
 	//
 	Control * SimpleGUI::getMouseOverControl( Vec2i mousePos ) {
-		for (std::vector<Control*>::iterator it = controls.begin() ; it != controls.end() ; it++) {
+		for (std::vector<Control*>::iterator it = controls.begin() ; it != controls.end() ; it++)
+		{
 			Control* control = *it;
 			if (!control->visible)
 				continue;
@@ -753,13 +790,26 @@ namespace cinder { namespace sgui {
 		}
 		return NULL;
 	}
+	ColumnControl * SimpleGUI::getMouseOverColumn( Vec2i mousePos ) {
+		for (std::vector<Control*>::iterator it = controls.begin() ; it != controls.end() ; it++)
+		{
+			Control* col = *it;
+			if ( col->type == Control::COLUMN && col->visible && col->enabled )
+				if (((ColumnControl*)col)->backArea.contains(mousePos))
+					return (ColumnControl*) col;
+		}
+		return NULL;
+	}
 	void SimpleGUI::onMouseMove(app::MouseEvent & event) {
-		// save control with mouse over
 		mouseControl = this->getMouseOverControl( event.getPos() );
+		mouseColumn = this->getMouseOverColumn( event.getPos() );
+		mouseTabs = mTabsBounds.contains( event.getPos() );
 	}
 	void SimpleGUI::onMouseDown(app::MouseEvent & event) {
-		if (!enabled) return;
-		
+		if (!enabled)
+			return;
+		// update mouse over
+		this->onMouseMove( event );
 		// ROGER - pass on mouse event
 		if ( mouseControl ) {
 			selectedControl = mouseControl;
@@ -786,10 +836,16 @@ namespace cinder { namespace sgui {
 			droppedList->close();
 			droppedList = NULL;
 		}
+		// block events thru GUI
+		if (mouseColumn || mouseTabs)
+			event.setHandled();
 	}
 	void SimpleGUI::onMouseUp(app::MouseEvent & event) {
 		if (!enabled)
 			return;
+		// update mouse over
+		this->onMouseMove( event );
+		// pass event
 		if (selectedControl != NULL) {
 			selectedControl->onMouseUp(event);
 			selectedControl->mustRefresh = true;
@@ -800,14 +856,23 @@ namespace cinder { namespace sgui {
 				mouseControl->mustRefresh = true;
 			event.setHandled();
 		}
+		// block events thru GUI
+		if (mouseColumn || mouseTabs)
+			event.setHandled();
 	}
 	void SimpleGUI::onMouseDrag(app::MouseEvent & event) {
 		if (!enabled)
 			return;
+		// update mouse over
+		//this->onMouseMove( event );
+		// pass event
 		if (selectedControl) {
 			selectedControl->onMouseDrag(event);
 			event.setHandled();
 		}
+		// block events thru GUI
+		if (mouseColumn || mouseTabs)
+			event.setHandled();
 	}
 	void SimpleGUI::onFileDrop(FileDropEvent & event) {
 		if (!enabled)
@@ -1020,8 +1085,9 @@ namespace cinder { namespace sgui {
 
 	
 	Vec2f FloatVarControl::draw(Vec2f pos) {
-		
 		this->lastValue = *var;
+		if (!enabled)
+			return pos;
 		
 		activeArea = activeAreaBase + pos;
 		
@@ -1199,6 +1265,8 @@ namespace cinder { namespace sgui {
 	
 	Vec2f IntVarControl::draw(Vec2f pos) {
 		this->lastValue = *var;
+		if (!enabled)
+			return pos;
 		
 		activeArea = activeAreaBase + pos;
 		
@@ -1326,6 +1394,8 @@ namespace cinder { namespace sgui {
 	
 	Vec2f ByteVarControl::draw(Vec2f pos) {
 		this->lastValue = *var;
+		if (!enabled)
+			return pos;
 		
 		activeArea = activeAreaBase + pos;
 		
@@ -1440,7 +1510,9 @@ namespace cinder { namespace sgui {
 	
 	Vec2f FlagVarControl::draw(Vec2f pos) {
 		this->lastValue = *var;
-		
+		if (!enabled)
+			return pos;
+
 		activeArea = activeAreaBase + pos;
 		
 		gl::color(SimpleGUI::bgColor);
@@ -1561,7 +1633,9 @@ namespace cinder { namespace sgui {
 	
 	Vec2f BoolVarControl::draw(Vec2f pos) {
 		this->lastValue = *var;
-		
+		if (!enabled)
+			return pos;
+
 		activeArea = activeAreaBase + pos;
 		
 		gl::color(SimpleGUI::bgColor);
@@ -1721,6 +1795,8 @@ namespace cinder { namespace sgui {
 			this->lastValueA = *varA;
 		else
 			this->lastValue = *var;
+		if (!enabled)
+			return pos;
 		for (int i = 0 ; i < channelCount ; i++)
 			activeAreas[i] = activeAreasBase[i] + pos;
 		
@@ -1935,7 +2011,9 @@ namespace cinder { namespace sgui {
 	
 	Vec2f VectorVarControl::draw(Vec2f pos) {
 		this->lastValue = *var;
-		
+		if (!enabled)
+			return pos;
+
 		activeArea = activeAreaBase + pos;
 		for (int i = 0 ; i < vecCount ; i++)
 			activeAreas[i] = activeAreasBase[i] + pos;
@@ -2102,6 +2180,8 @@ namespace cinder { namespace sgui {
 	
 	Vec2f XYVarControl::draw(Vec2f pos) {
 		this->lastValue = *var;
+		if (!enabled)
+			return pos;
 		//printf("XY  %.3f / %.3f\n",var->x,var->y);
 		activeArea = activeAreaBase + pos;
 		
@@ -2271,6 +2351,8 @@ namespace cinder { namespace sgui {
 	
 	Vec2f ArcballVarControl::draw(Vec2f pos) {
 		this->lastValue = *var;
+		if (!enabled)
+			return pos;
 		printf("ARCBALL DRAW = %.4f %.4f %.4f %.4f\n",var->x,var->y,var->z,var->w);
 
 		mArcball.setCenter( pos + backArea.getSize() * 0.5f );
@@ -2419,6 +2501,8 @@ namespace cinder { namespace sgui {
 		activeArea = activeAreaBase + pos;
 		refreshTime = getElapsedSeconds();
 		resized = false;
+		if (!enabled)
+			return pos;
 		
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect(backArea+pos);
@@ -2467,7 +2551,7 @@ namespace cinder { namespace sgui {
 		//dragging = activeArea.contains(event.getPos());
 	}
 	void TextureVarControl::onFileDrop(FileDropEvent & event) {
-		dragging = activeArea.contains(event.getPos());
+		//dragging = activeArea.contains(event.getPos());
 	}
 
 	
@@ -2574,6 +2658,8 @@ namespace cinder { namespace sgui {
 	}
 	
 	Vec2f ListVarControl::draw(Vec2f pos) {
+		if (!enabled)
+			return pos;
 		// Update active area
 		activeArea = activeAreaBase + pos;
 		
@@ -2649,6 +2735,8 @@ namespace cinder { namespace sgui {
 	
 	Vec2f DropDownVarControl::draw(Vec2f pos) {
 		this->lastDropped = dropped;
+		if (!enabled)
+			return pos;
 		activeArea = activeAreaBase + pos;
 		dropButtonActiveArea = dropButtonActiveAreaBase + pos;
 		
@@ -2759,6 +2847,8 @@ namespace cinder { namespace sgui {
 	Vec2f ButtonControl::draw(Vec2f pos) {
 		lastName2 = name2;
 		lastPressed = pressed;
+		if (!enabled)
+			return pos;
 		activeArea = activeAreaBase + pos;
 		
 		gl::color(SimpleGUI::bgColor);
@@ -2861,6 +2951,8 @@ namespace cinder { namespace sgui {
 		this->update();
 		if (var)
 			lastVar = (*var);
+		if (!enabled)
+			return pos;
 		
 		if ( backArea.getHeight() == 0 )	// hidden
 			return pos;
@@ -2879,6 +2971,7 @@ namespace cinder { namespace sgui {
 			}
 			else
 			{
+				//printf("name[%s] sz %d\n",name.c_str(),(int)name.length());
 				gl::drawString(name, pos, c, SimpleGUI::textFont);
 				if (var)
 					gl::drawStringRight((*var), pos+Vec2f(SimpleGUI::sliderSize.x,0), c, SimpleGUI::textFont);
@@ -2927,6 +3020,7 @@ namespace cinder { namespace sgui {
 		this->lastName = tabName;
 		this->nameOff = tabName;
 		this->selected = false;
+		this->blocking = false;
 		this->defaultSelected = false;
 		// Bool
 		this->tabId = parentGui->theTabs.size();
@@ -2964,6 +3058,7 @@ namespace cinder { namespace sgui {
 	
 	Vec2f TabControl::draw(Vec2f pos) {
 		this->lastSelected = selected;
+		this->lastSwitchable = switchable;
 		this->lastLocked = locked;
 		if (var)
 			this->lastValue = *var;
@@ -2975,7 +3070,7 @@ namespace cinder { namespace sgui {
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect(backArea + pos);
 		
-		gl::color(selected ? SimpleGUI::lightColor : SimpleGUI::darkColor);
+		gl::color( locked ? SimpleGUI::lockedColor : (selected ? SimpleGUI::lightColor : SimpleGUI::darkColor) );
 		gl::drawSolidRect(activeArea);
 		
 		gl::enableAlphaBlending();
@@ -2988,10 +3083,10 @@ namespace cinder { namespace sgui {
 			gl::drawSolidRect(boolArea);
 			if (*var)
 			{
-				gl::color( locked ? SimpleGUI::darkColor : SimpleGUI::lightColor );
+				gl::color( locked ? SimpleGUI::lockedColor : (switchable ? SimpleGUI::darkColor : SimpleGUI::lightColor) );
 				gl::drawSolidRect(boolAreaIn);
 			}
-			else if (locked)
+			else if (switchable)
 			{
 				gl::color( SimpleGUI::darkColor );
 				gl::drawStrokedRect(boolAreaIn);
@@ -3018,13 +3113,15 @@ namespace cinder { namespace sgui {
 	}
 
 	void TabControl::onMouseDown(app::MouseEvent & event) {
+		if (locked)
+			return;
 		// enable tab
 		if (!selected) {
 			selected = true;
 			parentGui->theTab = this;
 		}
 		// bool var
-		if (var && boolArea.contains(event.getPos()) && !locked)
+		if (var && boolArea.contains(event.getPos()) && !switchable)
 			*var = ! *var;
 	}
 
@@ -3037,7 +3134,7 @@ namespace cinder { namespace sgui {
 	}
 	
 	Vec2f ColumnControl::draw(Vec2f pos) {
-		this->lastLocked = locked;
+		this->lastSwitchable = switchable;
 		if (enabled)
 		{
 			pos.x += SimpleGUI::labelSize.x + SimpleGUI::spacing.x + SimpleGUI::padding.x*2;
@@ -3055,7 +3152,7 @@ namespace cinder { namespace sgui {
 	}	
 	
 	Vec2f PanelControl::draw(Vec2f pos) {
-		this->lastLocked = locked;
+		this->lastSwitchable = switchable;
 		return pos;
 	}
 	

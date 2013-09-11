@@ -244,6 +244,32 @@ namespace cinder { namespace qb {
 		gl::draw( mMaskTexture, QB_BOUNDS );
 		gl::disableAlphaBlending();
 	}
+	void qbDomeMaster::drawBorder()
+	{
+		// make?
+		glLineWidth( 1 );
+		gl::color( Color::gray(0.5f) );
+		if ( ! mMeshBorder )
+		{
+			mMeshBorder = gl::DisplayList( GL_COMPILE );
+			mMeshBorder.newList();
+			{
+				// horizontais (Latitude)
+				int lat = 0;
+				glBegin( GL_LINE_STRIP );
+				for ( int lng = 0 ; lng <= 360 ; lng += mMeshStep )
+				{
+					Vec3f p = LATLNG_TO_XYZ( lat, lng );
+					glVertex3f( p );
+				}
+				glEnd();
+			}
+			mMeshBorder.endList();
+		}
+		
+		// draw!
+		mMeshBorder.draw();
+	}
 	void qbDomeMaster::drawGrid( bool esfera )
 	{
 		// make?
@@ -259,7 +285,7 @@ namespace cinder { namespace qb {
 					if ( lng % mGridStep != 0 )
 						continue;
 					bool yellow = (lng % 30 == 0);
-					gl::color( yellow ? Color::yellow()*0.9f : Color::white()*0.5f );
+					gl::color( yellow ? Color::yellow()*0.9f : Color::gray(0.5f) );
 					glBegin( GL_LINE_STRIP );
 					for ( int lat = ( esfera ? -90 : 0 ) ; lat <= 90 ; lat += mMeshStep )
 					{
@@ -288,7 +314,7 @@ namespace cinder { namespace qb {
 			}
 			mMeshGrid[esfera].endList();
 		}
-
+		
 		// draw!
 		mMeshGrid[esfera].draw();
 		
@@ -356,11 +382,11 @@ namespace cinder { namespace qb {
 	// st (Texel coord):	0.0 .. 1.0
 	// dc (Dome coord):		-1.0 .. 1.0
 	//
-	Vec2f qbDomeMaster::texelToDome( Vec2f st )
+	Vec2f qbDomeMaster::texelToUnit( Vec2f st )
 	{
 		return Vec2f( st.x * 2.0f - 1.0f, (1.0-st.y) * 2.0f - 1.0f );
 	}
-	Vec2f qbDomeMaster::domeToTexel( Vec2f st )
+	Vec2f qbDomeMaster::unitToTexel( Vec2f st )
 	{
 		return Vec2f( (st.x + 1.0f) * 0.5f, 1.0f - ((st.y + 1.0f) * 0.5f) );
 	}
@@ -374,7 +400,7 @@ namespace cinder { namespace qb {
 		float phi = atan2f(pos.y, pos.x);
 		float r = theta / M_HALF_PI;
 		Vec2f dc = Vec2f( r * cos(phi), r * sin(phi) );
-		return qbDomeMaster::domeToTexel( dc );
+		return qbDomeMaster::unitToTexel( dc );
 	}
 	
 	// Equirectangular projection

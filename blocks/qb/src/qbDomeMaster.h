@@ -52,6 +52,7 @@ namespace cinder { namespace qb {
 		void			drawNormals();
 		void			drawNormals( Rectf bounds );
 		void			drawMask();
+		void			drawBorder();
 		void			drawGrid( bool esfera=false );
 		void			drawMesh( Vec2f uv=Vec2f::one(), bool esfera=false );
 		
@@ -66,8 +67,8 @@ namespace cinder { namespace qb {
 		// Static
 		static Vec3f	getPosFromLatLng( float lat, float lng );
 		static Vec3f	getPosFromLatLngRad( float lat, float lng );
-		static Vec2f	texelToDome( Vec2f st );
-		static Vec2f	domeToTexel( Vec2f dc );
+		static Vec2f	texelToUnit( Vec2f st );
+		static Vec2f	unitToTexel( Vec2f dc );
 		static Vec2f	domeToTexel( Vec3f pos );
 		static Vec2f	domeToGeo( Vec3f pos );
 		static float	domeRadius( Vec2f dc );
@@ -89,6 +90,7 @@ namespace cinder { namespace qb {
 		gl::Texture			mMaskTexture;
 		gl::Texture			mNormalTexture;
 	
+		gl::DisplayList		mMeshBorder;		// the dome border
 		gl::DisplayList		mMeshGrid[2];		// 2 for dome/esfera
 		gl::DisplayList		mMeshDome[2];		// 2 for dome/esfera
 

@@ -82,6 +82,7 @@ namespace cinder { namespace sgui {
 	public:
 		static ColorA darkColor;
 		static ColorA lightColor;
+		static ColorA lockedColor;
 		static ColorA bgColor;
 		static ColorA textColor;
 		static ColorA mouseOverColor;
@@ -120,6 +121,7 @@ namespace cinder { namespace sgui {
 		std::vector<Control*>& getControls()	{ return controls; }
 		
 		Control	*getMouseOverControl( Vec2i mousePos );
+		ColumnControl *getMouseOverColumn( Vec2i mousePos );
 		
 		void	updateControls();
 		bool	shouldDrawTabs()		{ return (theTabs.size() > 1); }
@@ -167,7 +169,8 @@ namespace cinder { namespace sgui {
 		int					getColumnWidth()	{ return SimpleGUI::sliderSize.x; }
 		Vec2f				getSize()			{ return mSize; }
 		int					getTabId();
-		void				setTab(int t)		{ if (theTabs.size()) theTab = theTabs[t]; }
+		void				setTab(int t)			{ if (theTabs.size()) theTab = theTabs[t]; }
+		void				setTab(TabControl *t)	{ theTab = t; }
 		
 		std::vector<TabControl*>	theTabs;
 		TabControl					* theTab;			// The current active tab
@@ -176,13 +179,14 @@ namespace cinder { namespace sgui {
 		Vec2f				mFinalPosition;
 		Vec2f				mOffset;
 		Vec2f				mSize;
-		float				tabsHeight;
-		
+		Rectf				mTabsBounds;
+
+		bool		bForceRedraw;
+
 	private:
 		// ROGER
 		std::string	appName;
 		bool		bBlink;				// blink controls (debug)
-		bool		bForceRedraw;
 		bool		bDisplayFps;
 		float		mCurrentFps;
 		// FBO
@@ -200,8 +204,10 @@ namespace cinder { namespace sgui {
 		void		onResize();
 
 	public:
-		Control		*mouseControl;		// control with mouse over NOW
-		Control		*selectedControl;	// control being manipulated now
+		bool			mouseTabs;			// Mouse is over the tabs column?
+		ColumnControl	*mouseColumn;		// column with mouse over NOW
+		Control			*mouseControl;		// control with mouse over NOW
+		Control			*selectedControl;	// control being manipulated now
 
 	};
 	
@@ -336,10 +342,11 @@ namespace cinder { namespace sgui {
 		void addSwitchPanel(const std::string & name)		{ panelToSwitch = parentGui->addPanel(name); invertSwitch = false; }	// Panel to switch ON/OFF with my value
 		void addSwitchPanelInv(const std::string & name)	{ panelToSwitch = parentGui->addPanel(name); invertSwitch = true; }		// Panel to switch ON/OFF with my value
 		void setSuffix(const std::string & s)				{ suffix = s; }
-		void setName(const std::string & newName)			{ name = newName; mustRefresh = true; }
+		void setName(const std::string & newName)			{ if (name != newName) mustRefresh = true; name = newName; }
 		bool hasChanged()							{ if (unitControl) if (unitControl->valueHasChanged()) mustRefresh = true; return this->valueHasChanged() || this->mustRefresh; }
 		bool controlHasResized()					{ return (this->hasResized() || enabled != lastEnabled); }
 		bool isHighlighted(int ch=0)				{ return (channelOver == ch && parentGui->selectedControl == NULL) || (this->isActiveChannel(ch) && parentGui->selectedControl == this); }
+		bool isInteracting()						{ return (parentGui->selectedControl == this); }
 		void setUnitControl(Control *c)				{ unitControl = c; }
 		Control* setReadOnly(bool b=true);			// chained setters
 		Control* setImportant(bool b=true)			{ important = b; return this; }						// chained setters
@@ -823,11 +830,15 @@ namespace cinder { namespace sgui {
 	// ROGER
 	class AreaControl : public Control {
 	public:
-		AreaControl(SimpleGUI *parent, const std::string & name) : locked(false), lastLocked(false), Control(parent,name) {}
-		bool valueHasChanged()		{ return (locked != lastLocked); }
-		bool hasResized()			{ return this->valueHasChanged(); }
-		void lock(bool b=true)		{ locked = b; }
+		AreaControl(SimpleGUI *parent, const std::string & name) : switchable(false), lastSwitchable(false), locked(false), lastLocked(false), Control(parent,name) {}
+		bool valueHasChanged()			{ return (switchable != lastSwitchable || locked != lastLocked); }
+		bool hasResized()				{ return this->valueHasChanged(); }
+		void setSwitchable(bool b=true)	{ switchable = b; }
+		void lock(bool b=true)			{ locked = b; }
+		Rectf backArea;
 	protected:
+		bool switchable;
+		bool lastSwitchable;
 		bool locked;
 		bool lastLocked;
 	};
@@ -843,6 +854,7 @@ namespace cinder { namespace sgui {
 		bool selected;
 		bool lastSelected;
 		bool defaultSelected;
+		bool blocking;
 		int tabId;
 		Rectf boolAreaBase;
 		Rectf boolArea;
@@ -860,6 +872,7 @@ namespace cinder { namespace sgui {
 		bool valueHasChanged()			{ return (var ? (*var != lastValue) : false ) || lastSelected != selected || this->AreaControl::valueHasChanged(); }
 		bool hasResized()				{ return false; };
 		float getValue()				{ return (float)*var; }
+		void setBlocking(bool b=true)	{ if (b != blocking) { blocking = b ; parentGui->bForceRedraw = true; } }
 	};
 	
 	//-----------------------------------------------------------------------------

@@ -44,7 +44,9 @@ void qbConfig::setup() {
 	this->addBool(QBCFG_PREVIEW_DOWNSCALE, "QBCFG_PREVIEW_DOWNSCALE", true);
 	this->addBool(QBCFG_PREVIEW_UPSCALE, "QBCFG_PREVIEW_UPSCALE", false);
 	this->addFloat(QBCFG_CURRENT_TIME, "QBCFG_CURRENT_TIME", 0.0);
-	//this->setDummy(QBCFG_CURRENT_TIME);
+	this->addFloat(QBCFG_CURRENT_PROG, "QBCFG_CURRENT_PROG", 0.0, 0.0, 1.0);
+	this->setDummy(QBCFG_CURRENT_PROG);
+	this->setReadOnly(QBCFG_CURRENT_PROG,false);
 	// Render
 	this->addBool(QBCFG_RENDER_OPTIONS, "QBCFG_RENDER_OPTIONS", false);
 	this->setDummy(QBCFG_RENDER_OPTIONS);
@@ -218,11 +220,12 @@ void qbConfig::setup() {
 	columnRender = (ColumnControl*) this->guiAddGroup("> QB ANIMATION");
 	//
 	// Animation
-	cf = (FloatVarControl*) this->guiAddParam(QBCFG_CURRENT_TIME,	"Current Time", 2 );
+	cf = this->guiAddParamFLoat(QBCFG_CURRENT_TIME,	"Current Time", 2 );
 	cf->setFormatAsTimecode()->setReadOnly();
 	this->guiAddParam(DUMMY_CURRENT_FRAME,			"Current Frame" );
 	// play/pause panels
 	this->guiAddSeparator();
+	this->guiAddParamFLoat(QBCFG_CURRENT_PROG,	"Playhead", 3 )->setFormatAsPercentage();
 	buttonPlaySwitch = this->guiAddButton("Pause", "space",	this, &qbConfig::cbPlaySwitch);
 	this->guiAddButton("Rewind", "/",						this, &qbConfig::cbRewind);
 	// info
@@ -238,8 +241,7 @@ void qbConfig::setup() {
 	this->guiAddParam(QBCFG_PRESERVE_ALPHA,			"Preserve Alpha");
 	this->guiAddParam(QBCFG_RENDER_PNG_SEQUENCE,	"PNG Sequence");
 	this->guiAddParam(QBCFG_RENDER_FRAMERATE,		"Render Framerate");
-	cf = (FloatVarControl*) this->guiAddParam(QBCFG_RENDER_QUALITY,			"Render Quality", 2);
-	cf->setFormatAsPercentage();
+	this->guiAddParamFLoat(QBCFG_RENDER_QUALITY,			"Render Quality", 2)->setFormatAsPercentage();
 	//
 	// Render
 	this->mGui->addPanel("renderControls");
