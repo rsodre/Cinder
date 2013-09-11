@@ -422,12 +422,12 @@ void rotate( const Quatf &quat )
 	void transformToFit( Area src, Area dst, bool upscale )
 	{
 		glTranslatef( dst.x1, dst.y1, 0 );
-		transformToFit( Vec2i(src.getWidth(), src.getHeight()), Vec2i(dst.getWidth(), dst.getHeight()) );
+		transformToFit( Vec2i(src.getWidth(), src.getHeight()), Vec2i(dst.getWidth(), dst.getHeight()), upscale );
 	}
 	void transformToFit( Rectf src, Rectf dst, bool upscale )
 	{
 		glTranslatef( dst.x1, dst.y1, 0 );
-		transformToFit( Vec2i(src.getWidth(), src.getHeight()), Vec2i(dst.getWidth(), dst.getHeight()) );
+		transformToFit( Vec2i(src.getWidth(), src.getHeight()), Vec2i(dst.getWidth(), dst.getHeight()), upscale );
 	}
 	void transformToFit( Vec2f src, Vec2f dst, bool upscale )
 	{
