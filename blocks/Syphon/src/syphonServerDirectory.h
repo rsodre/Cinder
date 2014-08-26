@@ -66,7 +66,7 @@ public:
 	bool		hasChanged();
 	int			getServerIndexByName( std::string _name );
 	
-	int			getServerCount()					{ return servers.size(); };
+	int			getServerCount()					{ return (int) servers.size(); };
 	syphonServerDescription & getServer(int i)		{ return *(servers[i]); } ;
 	
 protected:

@@ -30,6 +30,7 @@ qbConfig::qbConfig() : ciConfigGui()
 void qbConfig::setup() {
 	// View
 	this->addInt(QBCFG_CURRENT_TAB, "QBCFG_CURRENT_TAB", 0, 0, 50 );
+	this->addInt(QBCFG_CURRENT_DEFAULT, "QBCFG_CURRENT_DEFAULT", 0, 0, MAX_DEFAULTS );
 	// Camera
 	this->addFloat(QBCFG_OPACITY, "QBCFG_OPACITY", 1.0f, 0.0f, 1.0f );
 	this->addFloat(QBCFG_SCALE, "QBCFG_SCALE", 1.0f, 0.0f, 2.0f );
@@ -37,6 +38,7 @@ void qbConfig::setup() {
 	this->addInt(QBCFG_CAMERA_TYPE, "QBCFG_CAMERA_TYPE", _qb.mDefaultCamera, 0, CAMERA_TYPE_COUNT-1);
 	this->addBool(QBCFG_CAMERA_GROUND, "QBCFG_CAMERA_GROUND", false);
 	this->addFloat(QBCFG_METRIC_THROW, "QBCFG_METRIC_THROW", 1.0f, 0.1f, 1.2f);
+	this->addFloat(QBCFG_PERSPECTIVE_PROG, "QBCFG_PERSPECTIVE_PROG", 1.0f, 0.0f, 1.0f);
 	// Animation
 	this->addBool(QBCFG_PLAYING, "QBCFG_PLAYING", true);
 	this->addBool(QBCFG_PLAY_BACKWARDS, "QBCFG_PLAY_BACKWARDS", false);
@@ -85,6 +87,7 @@ void qbConfig::setup() {
 	this->setDummy( QBCFG_PALETTE_REDUCE_TIME );
 	
 	// Readonly
+	this->addString(DUMMY_APP_VERSION, "DUMMY_APP_VERSION", QB_APP_VERSION_LONG);
 	this->addString(DUMMY_GPU, "DUMMY_GPU", std::string((const char*)glGetString(GL_RENDERER)));
 	this->addString(DUMMY_GL_VERSION, "DUMMY_GL_VERSION", std::string((const char*)glGetString(GL_VERSION)));
 	this->addString(DUMMY_GLSL_VERSION, "DUMMY_GLSL_VERSION", std::string((const char*)glGetString(GL_SHADING_LANGUAGE_VERSION)));
@@ -104,6 +107,7 @@ void qbConfig::setup() {
 	this->addString(DUMMY_RENDER_FRAMES, "DUMMY_RENDER_FRAMES", "");
 	this->addString(DUMMY_RENDER_STATUS, "DUMMY_RENDER_STATUS", "");
 	//
+	this->setDummy(DUMMY_APP_VERSION);
 	this->setDummy(DUMMY_GPU);
 	this->setDummy(DUMMY_GL_VERSION);
 	this->setDummy(DUMMY_GLSL_VERSION);
@@ -194,6 +198,7 @@ void qbConfig::setup() {
 	this->setValueLabels(QBCFG_CAMERA_TYPE, LABELS_CAMERA_TYPE);
 	//this->setFlag(QBCFG_CAMERA_TYPE, CFG_FLAG_DROP_DOWN);
 	this->guiAddParam(QBCFG_CAMERA_TYPE,			"> CAMERA" );
+	this->guiAddParam(QBCFG_PERSPECTIVE_PROG,		"Perspective Scale", 2 );
 	this->guiAddParam(QBCFG_METRIC_THROW,			"Camera Throw", 2 );
 	this->guiAddParam(QBCFG_CAMERA_GROUND,			"Camera on Ground" );
 	this->guiAddParam(QBCFG_SCALE,					"Scale", 2 );
@@ -211,7 +216,7 @@ void qbConfig::setup() {
 	this->mGui->addPanel("fps");
 	this->guiAddSeparator();
 	this->guiAddParam(DUMMY_CURRENT_FPS,			"Current FPS", 1 );
-	
+
 	/////////////
 	//
 	// ANIMATION + RENDER Column
@@ -312,25 +317,25 @@ void qbConfig::setup() {
 	cc = (ColorVarControl*) this->guiAddParam(QBCFG_PALETTE_1,	"Color 1");
 	cc->displayValue = true;
 	// color 2
-	this->guiAddButton("swap down", this, &qbConfig::cbPalette2Switch);
+	this->guiAddButton("vv swap down vv", this, &qbConfig::cbPalette2Switch);
 	cc = (ColorVarControl*) this->guiAddParam(QBCFG_PALETTE_2,	"Color 2");
 	cc->displayValue = true;
 	// color 3
 	pc3 = this->mGui->addPanel("panel_palette_3");
 	//pc3->column = true;
-	this->guiAddButton("swap down", this, &qbConfig::cbPalette3Switch);
+	this->guiAddButton("vv swap down vv", this, &qbConfig::cbPalette3Switch);
 	cc = (ColorVarControl*) this->guiAddParam(QBCFG_PALETTE_3,	"Color 3");
 	cc->displayValue = true;
 	// color 4
 	pc4 = this->mGui->addPanel("panel_palette_4");
 	//pc4->column = true;
-	this->guiAddButton("swap down", this, &qbConfig::cbPalette4Switch);
+	this->guiAddButton("vv swap down vv", this, &qbConfig::cbPalette4Switch);
 	cc = (ColorVarControl*) this->guiAddParam(QBCFG_PALETTE_4,	"Color 4");
 	cc->displayValue = true;
 	// color 5
 	pc5 = this->mGui->addPanel("panel_palette_5");
 	//pc5->column = true;
-	this->guiAddButton("swap down", this, &qbConfig::cbPalette5Switch);
+	this->guiAddButton("vv swap down vv", this, &qbConfig::cbPalette5Switch);
 	cc = (ColorVarControl*) this->guiAddParam(QBCFG_PALETTE_5,	"Color 5");
 	cc->displayValue = true;
 	
@@ -464,13 +469,15 @@ void qbConfig::postSetCallback(int id, int i)
 {
 	switch (id)
 	{
+		case QBCFG_CURRENT_DEFAULT:
+			this->setCurrentDefault( this->getInt(QBCFG_CURRENT_DEFAULT) );
+			break;
 		case QBCFG_CAMERA_TYPE:
 			_qb.setCameraType( this->get(QBCFG_CAMERA_TYPE) );
 			break;
 		case QBCFG_CAMERA_GROUND:
-			_qb.resizeCameras();
-			break;
 		case QBCFG_METRIC_THROW:
+		case QBCFG_PERSPECTIVE_PROG:
 			_qb.resizeCameras();
 			break;
 		case QBCFG_PREVIEW_DOWNSCALE:

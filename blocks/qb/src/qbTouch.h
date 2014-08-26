@@ -32,7 +32,7 @@ namespace cinder { namespace qb {
 		void	touchesMoved( app::TouchEvent & event );
 		void	touchesEnded( app::TouchEvent & event );
 		
-		int		getCount()			{ return mPoints.size(); }	// Number of touches
+		int		getCount()			{ return (int) mPoints.size(); }	// Number of touches
 		Vec2f	getPos()			{ return mPos; }			// Average pos from all touches
 		Vec2f	getPosPrev()		{ return mPosPrev; }		// Average pos from all touches
 		Vec2f	getPanDelta()		{ return mPanDelta; }

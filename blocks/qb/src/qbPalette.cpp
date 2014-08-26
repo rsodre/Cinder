@@ -148,7 +148,8 @@ namespace cinder { namespace qb {
 	Color qbPalette::getColorFromPalette( float v )
 	{
 		Color c1, c2;
-		float l1, l2;
+		float l1 = 0.0;
+		float l2 = 0.0;
 		int colorCount = _cfg.getInt(QBCFG_PALETTE_COUNT);
 		// 2 values
 		if ( colorCount == 2 )

@@ -556,7 +556,7 @@ namespace cinder { namespace qb {
 			}
 			glDrawElements( GL_LINE_LOOP, 3, GL_UNSIGNED_SHORT, (const GLvoid*)indices );
 #else
-			glDrawRangeElements( GL_LINE_LOOP, 0, mesh.getNumVertices(), 3, GL_UNSIGNED_INT, &(mesh.getIndices()[t*3]) );
+			glDrawRangeElements( GL_LINE_LOOP, 0, (GLuint) mesh.getNumVertices(), 3, GL_UNSIGNED_INT, &(mesh.getIndices()[t*3]) );
 #endif
 		}
 		glDisableClientState( GL_VERTEX_ARRAY );
@@ -595,7 +595,7 @@ namespace cinder { namespace qb {
 			}
 			glDrawElements( GL_LINE_LOOP, 3, GL_UNSIGNED_SHORT, (const GLvoid*)indices );
 #else
-			glDrawRangeElements( GL_LINE_LOOP, 0, mesh.getNumVertices(), 3, GL_UNSIGNED_INT, &(mesh.getIndices()[t*3]) );
+			glDrawRangeElements( GL_LINE_LOOP, 0, (GLuint) mesh.getNumVertices(), 3, GL_UNSIGNED_INT, &(mesh.getIndices()[t*3]) );
 #endif
 		}
 		glDisableClientState( GL_VERTEX_ARRAY );
@@ -677,7 +677,7 @@ namespace cinder { namespace qb {
 	//
 	// QB POLYS
 	// 
-	void drawSolidPoly( qbPoly & poly, float depth )
+	void drawSolidPoly( qbPoly & poly, float depth, int faces )
 	{
 		if ( depth == 0 )
 			gl::draw( poly.getTrisFront() );
@@ -685,11 +685,14 @@ namespace cinder { namespace qb {
 		{
 			glPushMatrix();
 			glScalef( 1, 1, depth );
-			gl::draw( poly.getTrisExtrude() );
+			if ( faces == POLY_FACES_SIDES || faces == POLY_FACES_ALL )
+				gl::draw( poly.getTrisExtrude() );
 			glTranslatef( 0, 0, 0.5 );
-			gl::draw( poly.getTrisFront() );
+			if ( faces == POLY_FACES_FRONT || faces == POLY_FACES_ALL )
+				gl::draw( poly.getTrisFront() );
 			glTranslatef( 0, 0, -1 );
-			gl::draw( poly.getTrisBack() );
+			if ( faces == POLY_FACES_BACK || faces == POLY_FACES_ALL )
+				gl::draw( poly.getTrisBack() );
 			glPopMatrix();
 		}
 	}
@@ -839,7 +842,7 @@ namespace cinder { namespace qb {
 		}
 		glEnableClientState( GL_VERTEX_ARRAY );
 		glVertexPointer( 3, GL_FLOAT, 0, vertices );
-		glDrawArrays( GL_LINES, 0, ps.size() );
+		glDrawArrays( GL_LINES, 0, (GLsizei) ps.size() );
 		delete [] vertices;
 	}
 

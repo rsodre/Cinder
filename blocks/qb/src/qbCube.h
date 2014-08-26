@@ -46,6 +46,16 @@ namespace cinder { namespace qb {
 		CUBE_FACE_COUNT
 	} enumCubeFaces;
 	
+	// Faces de um poly
+	// Deve estar alinhado com cubeVertex[]
+	typedef enum {
+		POLY_FACES_ALL = -1,
+		POLY_FACES_FRONT,
+		POLY_FACES_BACK,
+		POLY_FACES_SIDES,
+		POLY_FACES_COUNT
+	} enumPolyFaces;
+	
 	//
 	// Public drawers
 	//
@@ -100,7 +110,7 @@ namespace cinder { namespace qb {
 	void drawStrokedPoly( const std::vector<qbPolyVertex> & vs, bool closed );
 	//
 	// QB Polys
-	void drawSolidPoly( qbPoly & poly, float depth=0.0f );
+	void drawSolidPoly( qbPoly & poly, float depth=0.0f, int faces=POLY_FACES_ALL );
 	void drawSolidPoly( qbPoly & poly, gl::GlslProg & shader, const int unit=0 );
 	void drawSolidPoly( qbSourceSelector & src, qbPoly & poly, const int unit=0 );
 	void drawSolidPoly( qbSourceSelector & src, qbPoly & poly, gl::GlslProg & shader, const int unit=0 );

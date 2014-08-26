@@ -15,9 +15,44 @@
 
 #define DXYI(X,Y)					((Y)*mSize.x+(X))
 
-#define LATLNG_TO_XYZ(lat,lng)		(qbDomeMaster::getPosFromLatLng(lat,lng))
+#define LATLNG_TO_XYZ(lat,lng)		(qbDomeMaster::getPosFromLatLng((lat),(lng)))
+#define LATLNG_TO_XYZ_DEG(lat,lng)	(qbDomeMaster::getPosFromLatLngDeg((lat),(lng)))
+
+// Returns azimuth (longitude) of a dome position: 0 .. TWOPI
+// dc = dome coordinates ( -1.0 .. +1.0 )
+#define getAzimuth(dc)				( clampRadians(atan2(dc.y,dc.x)) )
+
+// Returns altitude (latitude) of a dome position: -QUARTERPI .. +QUARTERPI
+// dc = dome coordinates ( -1.0 .. +1.0 )
+#define getAltitude(dc)				( asin( dc.z / 1.0 ) )
+#define horizonToAltitude(h)		( M_HALF_PI - ((h) * 0.5) )
+#define horizonToAltitudeDeg(h)		( 90.0 - ((h) * 0.5) )
+
+#define ceil_power_of_x(n,x)		( (x) * ceil( log(n, x)) )
+
 
 namespace cinder { namespace qb {
+	
+	class qbDomeMesh {
+	public:
+		
+		bool start( float h ) {
+			bool isNew = ( ! mMesh || h != mHorizon );
+			if ( isNew )
+			{
+				mMesh = gl::DisplayList( GL_COMPILE );
+				mMesh.newList();
+				mHorizon = h;
+			}
+			return isNew;
+		}
+		void end()		{ mMesh.endList(); }
+		void draw()		{ mMesh.draw(); }
+		
+	private:
+		gl::DisplayList	mMesh;
+		float			mHorizon;
+	};
 	
 	class qbDomeMaster {
 	public:
@@ -41,9 +76,10 @@ namespace cinder { namespace qb {
 		void			drawLineSegmented( const Vec3f & p0, const Vec3f & p1, int segments );
 		void			drawLineSegmented2D( const Vec3f & p0, const Vec3f & p1, int segments );
 
-		Vec3f			getIntersectionFrom( const Vec3f & p0, const Vec3f & p1, bool closest=false );
-		void			drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest=false );
-		void			drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, const Vec3f & op0, const Vec3f & op1, int segments, bool closest=false );
+		static Vec3f	getIntersectionFrom( const Vec3f & p0, const Vec3f & p1, bool closest=false );
+		static Vec3f	rayIntersectSphere( Vec3f p1, Vec3f p0, Vec3f center, float r );
+		static void		drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest=false );
+		static void		drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, const Vec3f & op0, const Vec3f & op1, int segments, bool closest=false );
 
 		
 		gl::Texture &	getMaskTexture()					{ return mMaskTexture; }
@@ -52,9 +88,9 @@ namespace cinder { namespace qb {
 		void			drawNormals();
 		void			drawNormals( Rectf bounds );
 		void			drawMask();
-		void			drawBorder();
-		void			drawGrid( bool esfera=false );
-		void			drawMesh( Vec2f uv=Vec2f::one(), bool esfera=false );
+		void			drawHorizonLine( float horizon=180.0 );
+		void			drawGrid( float horizon=180.0 );
+		void			drawMesh( Vec2f uv=Vec2f::one(), float horizon=180.0 );
 		
 		Vec2i			mSize;
 		Vec2i			mCenter;
@@ -66,10 +102,10 @@ namespace cinder { namespace qb {
 		
 		// Static
 		static Vec3f	getPosFromLatLng( float lat, float lng );
-		static Vec3f	getPosFromLatLngRad( float lat, float lng );
+		static Vec3f	getPosFromLatLngDeg( float lat, float lng );
 		static Vec2f	texelToUnit( Vec2f st );
 		static Vec2f	unitToTexel( Vec2f dc );
-		static Vec2f	domeToTexel( Vec3f pos );
+		static Vec2f	domeToTexel( Vec3f pos, float horizon=M_PI );
 		static Vec2f	domeToGeo( Vec3f pos );
 		static float	domeRadius( Vec2f dc );
 		static float	getPixelAngle( Vec2f dc );
@@ -90,9 +126,9 @@ namespace cinder { namespace qb {
 		gl::Texture			mMaskTexture;
 		gl::Texture			mNormalTexture;
 	
-		gl::DisplayList		mMeshBorder;		// the dome border
-		gl::DisplayList		mMeshGrid[2];		// 2 for dome/esfera
-		gl::DisplayList		mMeshDome[2];		// 2 for dome/esfera
+		qb::qbDomeMesh		mMeshBorder;	// mesh for dome border
+		qb::qbDomeMesh		mMeshGrid;		// mesh for grid
+		qb::qbDomeMesh		mMeshDome;		// mesh for dome
 
 	};
 	

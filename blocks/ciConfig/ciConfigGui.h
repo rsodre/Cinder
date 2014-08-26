@@ -65,18 +65,22 @@ namespace cinder {
 		// Getters
 		Control*	guiGetControl(int id)			{ return (Control*)( params[id] ? params[id]->guiControl : NULL ); }
 		int			guiGetColumnWidth()				{ return mGui->getColumnWidth(); }
-		bool		guiIsVisible()					{ return mGui->isEnabled(); };
 		bool		guiHasChanged()					{ return mGui->anythingChanged(); }
+		float		guiGetAlpha()					{ return mGui->getAlpha(); }
 		Vec2f		guiGetSize()					{ return mGui->getSize(); }
 		int			guiGetTabId()					{ return mGui->getTabId(); }
 		void		guiSetTab(int t)				{ return mGui->setTab(t); }
 		bool		guiIsInteracting(int id)		{ return ( params[id] ? ((Control*)(params[id]->guiControl))->isInteracting() : false ); }
 		
 		// Wrappers
-		void		guiHide()						{ this->guiShow(false); }
+		void		guiShowHide()					{ if (mGui->isEnabled()) this->guiHide(); else this->guiShow(); }
+		void		guiHide()						{ mGui->setEnabled(false);  }
 		void		guiShow( bool b = true )		{ mGui->setEnabled(b); }
-		void		guiShowHide()					{ this->guiShow( !this->guiIsVisible() ); }
-		
+		bool		guiIsVisible()					{ return mGui->isEnabled(); };
+
+		// virtuals
+		void		setCurrentDefault(int def);
+
 		// variable controls
 		LabelControl*		guiAddParam( const std::string & label, std::string * var, bool wrap=false );
 		BoolVarControl*		guiAddParam( const std::string & label, bool * var, bool readOnly=false );

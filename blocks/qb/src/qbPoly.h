@@ -244,9 +244,9 @@ namespace cinder { namespace qb {
 		Vec2f			& getScale()				{ return mScale; }
 		MatrixAffine2f	& getTransformMatrix()		{ return mTransMatrix; }
 		float			getPointDepth( Vec2f p )	{ std::map<Vec2f,float>::iterator it=mVerticesDepth.find(p); return ( it != mVerticesDepth.end() ? (*it).second : 0.0f ); }
-		int				getLayerCount()				{ return mLayers.size(); }
+		int				getLayerCount()				{ return (int) mLayers.size(); }
 		float			getPerimeter()				{ return mPerimeter; }
-		int				getPolyCount()				{ return mPolys.size(); }
+		int				getPolyCount()				{ return (int) mPolys.size(); }
 		qbPoly &		getPoly( int n )			{ return mPolys[n]; }
 		
 	protected:

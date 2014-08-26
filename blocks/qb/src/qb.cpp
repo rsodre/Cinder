@@ -69,7 +69,7 @@ namespace cinder { namespace qb {
 		float currFPS = math<float>::clamp( app::App::get()->getAverageFps(), 0, 1000 );
 		char str[20];
 		sprintf(str, "%.1f", currFPS);
-		int x = app::getWindowWidth() - strlen(str)*8;
+		int x = app::getWindowWidth() - (int)strlen(str) * 8;
 		int y = app::getWindowHeight() - 10;
 		qb::writeStuff(str, x, y);
 	}

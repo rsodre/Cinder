@@ -29,9 +29,10 @@
  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "syphonServer.h"
-
+#import <Foundation/Foundation.h>
+#import <OpenGL/OpenGL.h>
 #import <Syphon/Syphon.h>
+#include "syphonServer.h"
 
 syphonServer::syphonServer()
 {
@@ -41,22 +42,25 @@ syphonServer::syphonServer()
 syphonServer::~syphonServer()
 {
     NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-
 	this->shutdown();
-
 	[pool drain];
+}
+
+NSDictionary * syphonServer::getDescription()
+{
+	return ( mSyphon ? mSyphon.serverDescription : nil );
 }
 
 
 void syphonServer::shutdown()
 {
-    [(SyphonServer *)mSyphon stop];
-    [(SyphonServer *)mSyphon release];
+    [mSyphon stop];
+    [mSyphon release];
 	mSyphon = nil;
 }
 
 
-void syphonServer::setName(std::string n)
+void syphonServer::setName(std::string n, bool privateServer)
 {
     NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
     
@@ -65,11 +69,15 @@ void syphonServer::setName(std::string n)
 	
 	if (!mSyphon)
 	{
-		mSyphon = [[SyphonServer alloc] initWithName:title context:CGLGetCurrentContext() options:nil];
+		NSDictionary *options = nil;
+		if ( privateServer )
+			// http://rypress.com/tutorials/objective-c/data-types/nsdictionary.html
+			options = @{ SyphonServerOptionIsPrivate : [NSNumber numberWithBool:TRUE] };
+		mSyphon = [[SyphonServer alloc] initWithName:title context:CGLGetCurrentContext() options:options];
 	}
 	else
 	{
-		[(SyphonServer *)mSyphon setName:title];
+		[mSyphon setName:title];
 	}
     
     [pool drain];
@@ -81,16 +89,21 @@ std::string syphonServer::getName()
 	if (mSyphon)
 	{
 		NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-		
-		name = [[(SyphonServer *)mSyphon name] cStringUsingEncoding:[NSString defaultCStringEncoding]];
-		
+		name = [[mSyphon name] cStringUsingEncoding:[NSString defaultCStringEncoding]];
 		[pool drain];
 	}
-	else
-	{
-		name = "Untitled";
-	}
 	return name;
+}
+
+std::string syphonServer::getUUID()
+{
+	if (!mSyphon)
+		return "";
+	NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+	NSString * u = [mSyphon.serverDescription objectForKey:SyphonServerDescriptionUUIDKey];
+	std::string uuid = std::string( [u UTF8String] );
+	[pool drain];
+	return uuid;
 }
 
 void syphonServer::publishScreen()
@@ -109,7 +122,7 @@ void syphonServer::publishTexture( ci::gl::Texture & inputTexture )
 		{
 			mSyphon = [[SyphonServer alloc] initWithName:@"Untitled" context:CGLGetCurrentContext() options:nil];
 		}
-		[(SyphonServer *)mSyphon publishFrameTexture:texID 
+		[mSyphon publishFrameTexture:texID
 									   textureTarget:inputTexture.getTarget()
 										 imageRegion:NSMakeRect(0, 0, inputTexture.getWidth(), inputTexture.getHeight())
 								   textureDimensions:NSMakeSize(inputTexture.getWidth(), inputTexture.getHeight()) 

@@ -285,7 +285,7 @@
 
     struct timeval now;
 	gettimeofday(&now, NULL);
-	unsigned int millisNow = (now.tv_sec * 1000 + now.tv_usec / 1000);
+	unsigned int millisNow = (unsigned int) (now.tv_sec * 1000 + now.tv_usec / 1000);
 	unsigned int elapsed = millisNow - millisStart;
 	if (elapsed > 1000)
 	{

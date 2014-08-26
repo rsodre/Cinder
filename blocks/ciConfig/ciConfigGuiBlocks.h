@@ -76,7 +76,7 @@ namespace cinder { namespace sgui {
 	class ciGuiBlockSyphonDirectory;
 	class ciGuiBlockQBSourceTab : public ciConfigGuiBlock {
 	public:
-		ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName );
+		ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha=-1 );
 		~ciGuiBlockQBSourceTab() {}
 		
 		// virtuals
@@ -90,12 +90,18 @@ namespace cinder { namespace sgui {
 		PanelControl				* mPanelMovie;
 		PanelControl				* mPanelPlayhead;
 
-		int					cfgName, cfgFileName;
+		int					cfgName;
+		int					cfgFileName;
+		int					cfgIgnoreAlpha;
 		std::string			mSelectedPath;
+		bool				bTemplateEnabled;
 		bool				bMovieEnabled;
+		bool				bSyphonEnabled;
 		bool				bLastMovieEnabled;
 		bool				bLastMoviePlaying;
-		
+		bool				bIgnoreAlpha;
+		int					iii;
+
 		// gui
 		gl::Texture			mTexture;
 		std::string			mType;
@@ -112,7 +118,7 @@ namespace cinder { namespace sgui {
 		void cbPlay( ci::app::MouseEvent & event );
 		void cbRewind( ci::app::MouseEvent & event );
 		void onFileDrop( ci::app::FileDropEvent & event );
-		void loadFile( const std::string & f );
+		bool loadFile( const std::string & f );
 	};
 } } // namespace cinder::sgui
 #endif

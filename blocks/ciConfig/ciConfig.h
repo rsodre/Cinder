@@ -81,6 +81,8 @@ namespace cinder {
 #define CONFIG_PRESET_COUNT		10
 #define PRESET_KEY(i)			(i<CONFIG_PRESET_COUNT-1?'1'+i:(i==CONFIG_PRESET_COUNT-1?'0':0))
 
+#define MAX_DEFAULTS			8
+
 //
 // Types
 enum enumConfigFlags
@@ -89,6 +91,7 @@ enum enumConfigFlags
 	CFG_FLAG_DROP_DOWN,
 	CFG_FLAG_ARCBALL,
 	CFG_FLAG_XY,
+	CFG_FLAG_XY_VECTOR,
 	// count
 	CFG_FLAG_COUNT
 };
@@ -119,8 +122,8 @@ enum enumConfigTypes
 //
 class ciConfigValue {
 public:
-	bool	freshness;			// fresh value to read?
 	bool	preserveProg;		// priority is prog
+	bool	freshness;			// fresh value to read?
 	short	midiChannel, midiNote, midiInc, midiDec, midiSwitch;
 	char	keyInc[20], keyDec[20], keySwitch[20];
 	
@@ -140,7 +143,8 @@ public:
 		this->setLimits(0.0f,1.0f);
 		this->set(0.0f);
 		this->updateLastValue();
-		initialValue = 0.0;
+		for (int d = 0 ; d < MAX_DEFAULTS ; d++)
+			initialValue[d] = 0.0;
 	}
 	
 	// Setters
@@ -173,15 +177,16 @@ public:
 			this->set(value);		// re-calc prog
 	}
 	void updateLastValue()	{ lastValue = value; }
-	void init()				{ initialValue = value; }
-	
+	void init()				{ for (int d = 0 ; d < MAX_DEFAULTS ; d++) initialValue[d] = value; }
+	void setInitialValue(int def, float v)	{ initialValue[def] = v; }
+
 	// Getters
-	float get()				{ return value; }
-	float getProg()			{ return prog; }
-	float getMin()			{ return min; }
-	float getMax()			{ return max; }
-	float getLastValue()	{ return lastValue; }
-	float getInitialValue()	{ return initialValue; }
+	float get()							{ return value; }
+	float getProg()						{ return prog; }
+	float getMin()						{ return min; }
+	float getMax()						{ return max; }
+	float getLastValue()				{ return lastValue; }
+	float getInitialValue(int def=0)	{ return initialValue[def]; }
 	bool getTrigger()
 	{
 		bool t = trigger;
@@ -216,8 +221,8 @@ public:
 	
 private:
 	float	value;
-	float	lastValue;		// managed by ciConfig
-	float	initialValue;	// managed by ciConfig
+	float	lastValue;						// managed by ciConfig
+	float	initialValue[MAX_DEFAULTS];		// managed by ciConfig
 	float	prog;
 	float	min;
 	float	max;
@@ -235,13 +240,15 @@ public:
 	short						vecCount;
 	std::string					name;
 	std::map<int,std::string>	valueLabels;
-	bool						dummy;		// does not load/save
+	bool						dummy;			// does not load/save
 	bool						editable;
-	char						flag;
 	bool						quater;
+	char						flag;
+	char						changeGroups;	// group flags
+	bool						changed;
 	// Values
 	std::string					strval;
-	std::string					strvalInitial;
+	std::string					strvalInitial[MAX_DEFAULTS];
 	std::string					strvalLast;
     union {	// share same memory, so vector[0] = value
 		struct {
@@ -269,6 +276,9 @@ public:
 		quater = false;
 		editable = true;
 		guiControl = NULL;
+		changed = false;
+		changeGroups = 0x00;
+		flag = 0x00;
 		// vector value count
 		switch (_type)
 		{
@@ -296,8 +306,9 @@ public:
 	{
 		for (int i = 0 ; i < 4 ; i++)
 			vec[i].init();
-		strvalInitial = strval;
 		strvalLast = strval;
+		for (int d = 0 ; d < MAX_DEFAULTS ; d++)
+			strvalInitial[d] = strval;
 	}
 
 	// return current freshness - automatic UNFRESH
@@ -322,6 +333,7 @@ public:
 	}
 
 	// return current freshness - automatic UNFRESH
+	bool isFloat()			{ return ( type == CFG_TYPE_FLOAT ); }
 	bool isBool()			{ return ( type == CFG_TYPE_BOOLEAN ); }
 	bool isColor()			{ return ( type == CFG_TYPE_COLOR ); }
 	bool isColorVector()	{ return ( type == CFG_TYPE_COLOR || this->isVector() );	}
@@ -380,14 +392,17 @@ public:
 	virtual void update();			// Update state from OSC
 	virtual void draw() {}			// Draw GUI
 	void onKeyDown( app::KeyEvent & event );
-	
+	void onFileDrop( app::FileDropEvent & event );
+
 	// Virtual callbacks
 	virtual void postSetCallback(int id, int i) {}		// After a set()
 	virtual void preSaveCallback() {}					// Before a save()
 	virtual void postLoadCallback() {}					// After a load()
-	virtual void setPostSetCallbackFunction(void(*f)(ciConfig*,int,int)) { postSetCallback_fn = f; }
+	virtual void setPostSetCallbackFunction(void(*f)(ciConfig*,int,int))	{ postSetCallback_fn = f; }
+	virtual void setPostResetCallbackFunction(void(*f)(ciConfig*))			{ postResetCallback_fn = f; }
 	void(*postSetCallback_fn)(ciConfig*,int,int);
-	
+	void(*postResetCallback_fn)(ciConfig*);
+
 	char errmsg[256];
 	
 	// KEYBOARD
@@ -446,9 +461,19 @@ public:
 	void addVector4(short id, const std::string name, Vec4f p=Vec4f::zero(), float vmin=0.0f, float vmax=1.0f);
 	void addVector4(short id, const std::string name, float x, float y, float z, float w, float vmin=0.0f, float vmax=1.0f);
 	void addQuater(short id, const std::string name, Vec4f p=Quatf::identity().getVec4()) { this->addVector4(id,name,p,-1.0f,M_TWO_PI); params[id]->quater=true; };
+
+	// Defaults
 	void init(int id);
-	void reset();
-	void reset(int id);
+	void setDefault(int def, int id, float v);
+	void setDefault(int def, int id, Vec2f v);
+	void setDefault(int def, int id, Vec3f v);
+	void setDefault(int def, int id, Vec4f v);
+	void setDefault(int def, int id, int i, float v);
+	void resetDefault(int def);
+	void resetDefault(int id, int def);
+	void reset()			{ this->resetDefault(0); }
+	void reset(int id)		{ this->resetDefault(id,0); }
+	virtual void setCurrentDefault(int def)	{ if (def < MAX_DEFAULTS ) mCurrentDefault = def; };
 
 	// Setters
 	void updateLastValue(int id, int i)				{ params[id]->vec[i].updateLastValue(); }
@@ -519,6 +544,7 @@ public:
 	void setValueLabels(short id, const char *val0, ...);
 	void setValueLabels(short id, const char labels[][64]);
 	void setValueLabels(short id, const std::map<int,std::string> & labels);
+	void setValueLabels(short id, const std::vector<std::string> & labels);
 	void setValueLabel(short id, int key, std::string label, bool indexToo=false);
 	const std::map<int,std::string> & getValueLabels(short id)	{ return params[id]->valueLabels; };
 	std::string getValueLabel(short id)							{ return this->getValueLabel( id, this->getInt(id) ); };
@@ -530,6 +556,10 @@ public:
 	bool testFlag(int id, char f)	{ return (params[id]->flag == f); }
 	char getFlag(int id)			{ return params[id]->flag; }
 
+	// Changed Flags
+	void setChangeGroup(char f, int id)		{ if (params[id]) params[id]->changeGroups |= f; }
+	bool testChangedGroup(char f)			{ return ( changedGroups & f ); }
+
 	// Getters
 	short getParamCount()					{ return paramCount; }
 	ciConfigParam* getParamPtr(short i)		{ return params[i]; }
@@ -537,6 +567,7 @@ public:
 	std::string getLastValueString(int id)	{ return params[id]->getLastValueString(); }
 	const std::string& getName(int id)		{ return params[id]->name; }
 	short getType(int id)		{ return params[id]->type; }
+	bool isFloat(int id)		{ return params[id]->isFloat(); }
 	bool isBool(short id)		{ return params[id]->isBool(); }			// bool type?
 	bool isByte(short id)		{ return params[id]->isByte(); }			// byte type?
 	bool isInt(short id)		{ return params[id]->isInt(); }				// integer type?
@@ -564,8 +595,8 @@ public:
 	unsigned char* getPointerByte(int id)	{ return (params[id]->getPointerByte()); }
 	int* getPointerInt(int id)				{ return (params[id]->getPointerInt()); }
 	Color* getPointerColor(int id)			{ return (params[id]->getPointerColor()); }
-	Vec2f* getPointerVector2(int id)		{return (params[id]->getPointerVector2()); }
-	Vec4f* getPointerVector(int id)			{return (params[id]->getPointerVector()); }
+	Vec2f* getPointerVector2(int id)		{ return (params[id]->getPointerVector2()); }
+	Vec4f* getPointerVector(int id)			{ return (params[id]->getPointerVector()); }
 	std::string* getPointerString(int id)	{ return (params[id]->getPointerString()); }
 	// Get limits
 	float getMin(int id)	{ return this->getMin(id, 0); }
@@ -699,13 +730,14 @@ public:
 	void setFileExtension(const std::string e);
 	bool import();
 	bool exportas();
+	void setFile(const std::string & filename);
 	virtual int useFile(const std::string & filename, const std::string & path="");
 	virtual int load()	{ return this->load(NULL); }
 	virtual int save()	{ return this->save(NULL); }
 	int load(char preset);
 	int save(char preset);
 	
-	std::string		mAppName;				// The app name (Myapp.app)
+	std::string		mAppName;				// The app name
 	
 protected:
 	// Parameter index
@@ -721,8 +753,10 @@ protected:
 	std::string		mCurrentFileName;		// Full path of the file being used
 	std::string		mDisplayFileName;		// Short filename for display
 	std::string		saveTime;
+	int				mCurrentDefault;
 	short			paramCount;
-	bool			freshness;
+	bool			freshness;				// global freshness (anything fresh?)
+	char			changedGroups;			// changed group flags
 	bool			inPostSetCallback;		// flag not to fall into a callback loop
 	bool			bStarted;
 	std::vector<std::string>	mFolderList;		// The save path folders, in order of preference
@@ -753,7 +787,6 @@ protected:
 	
 	//
 	// Methods
-	void setFile(const std::string & filename);
 	int saveFile(const std::string & filename, char preset=0);
 	int readFile(const std::string & filename, char preset=0);
 	int readFile_old(const std::string & filename, char preset=0);
@@ -764,7 +797,7 @@ protected:
 	bool isNumber(int id);
 	bool isVector(int id);
 	int getVectorCount(int id)			{ return params[id]->vecCount; };
-	
+
 	// Channel access
 	// i=channel(RGB)/axis(XYZ)
 	void updateLimitsByValueLabels(short id);

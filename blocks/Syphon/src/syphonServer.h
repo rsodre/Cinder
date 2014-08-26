@@ -34,6 +34,14 @@
 #include "cinder/app/AppBasic.h"
 #include "cinder/gl/Texture.h"
 
+#ifdef __OBJC__
+@class SyphonServer;
+@class NSDictionary;
+#else
+class SyphonServer;
+class NSDictionary;
+#endif
+
 class syphonServer {
 	public:
 	syphonServer();
@@ -42,14 +50,16 @@ class syphonServer {
 	bool isRunning()	{return (bool)mSyphon; }
 	void shutdown();
 	
-	void setName (std::string n);
+	void setName (std::string n, bool privateServer=false);
 	std::string getName();
-	
+	std::string getUUID();
+	NSDictionary * getDescription();
+
 	void publishScreen();
     void publishTexture(ci::gl::Texture & inputTexture);
 	
     
 protected:
-	void *mSyphon;
+	SyphonServer	*mSyphon;
 
 };

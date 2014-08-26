@@ -40,15 +40,8 @@ namespace cinder { namespace qb {
 		mCameraNear				= 1.0f;		// Nao baixar muito para eviar Z-Fight
 		mCameraScale			= Vec3f::one();
 		
-		mScreenName				= "QB";
-		mAppName				= [[[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleNameKey] UTF8String];
-		mAppVersion				= [[[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey] UTF8String];
-		std::stringstream os;
-		//os << "__" << mAppName;
-		os << mAppName << " v" << mAppVersion;
-		mScreenName = os.str();
-		printf("----- QB   app name [%s]   screen name [%s]\n",mAppName.c_str(),mScreenName.c_str());
-		
+		mScreenName		= "QB";
+
 		for (int u = 0 ; u < QB_MAX_UNITS ; u++ )
 			mBoundSource[u]	= -1;
 		
@@ -83,6 +76,17 @@ namespace cinder { namespace qb {
 	// Fized sizes
 	void qbMain::init( int _w, int _h, bool _autoWindowSize )
 	{
+		// Screen name
+		//mAppVersion	= std::string( [[[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey] UTF8String] );
+		mAppVersion		= std::string( [[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] UTF8String] );
+		mAppVersionLong	= mAppVersion + " (" + std::string( [[[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey] UTF8String] ) + ")";
+		mAppName		= std::string( [[[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleNameKey] UTF8String] );
+		std::stringstream os;
+		//os << "__" << mAppName;
+		os << mAppName << " v" << mAppVersion;
+		mScreenName = os.str();
+		printf("----- QB   app name [%s]   screen name [%s]\n",mAppName.c_str(),mScreenName.c_str());
+
 		// Make Config
 		mConfig = new qbConfig();
 		mConfig->setup();
@@ -130,7 +134,7 @@ namespace cinder { namespace qb {
 		this->resizeCameras();
 		
 		// Renderer file names
-		std::stringstream os;
+		os.clear();
 		//os << "__" << mAppName;
 		os << mAppName;
 		mRenderer.setFileNameBase( os.str() );
@@ -210,8 +214,7 @@ namespace cinder { namespace qb {
 			case 'H':
 			case 'g':
 			case 'G':
-				bDrawGui = ! mConfig->guiIsVisible();
-				mConfig->guiShow( bDrawGui );
+				mConfig->guiShowHide();
 				this->hideCursorOrNot();
 				break;
 			case 'r':
@@ -492,7 +495,7 @@ namespace cinder { namespace qb {
 	//
 	void qbMain::resizeCameras()
 	{
-		mMetricThrow = math<float>::max(mMetricWidth,mMetricHeight) * mConfig->get(QBCFG_METRIC_THROW);
+		mMetricThrow = math<float>::max(mMetricWidth,mMetricHeight) * mConfig->get( QBCFG_METRIC_THROW );
 		mCamTarget = mMetricCenter;
 		mCamEye = Vec3f( mCamTarget.x, mCamTarget.y, mCamTarget.z+mMetricThrow );
 		mCameraFar = (mMetricThrow * mFarThrowMultiplyer);
@@ -515,6 +518,12 @@ namespace cinder { namespace qb {
 		// Perspective
 		mCameraPersp = CameraPersp( mMetricBounds.getWidth(), mMetricBounds.getHeight(), fovGl );
 		mCameraPersp.setPerspective( fovGl, mMetricAspect, mCameraNear, mCameraFar );
+		float p = mConfig->get( QBCFG_PERSPECTIVE_PROG );
+		if ( p != 1.0 )
+		{
+			mCameraPersp.lerpProjection( p, mCameraOrtho );
+			mCameraPersp.lerpModelView( p, mCameraOrtho );
+		}
 		//
 		// Stereo Cameras
 		// From: http://paulbourke.net/miscellaneous/stereographics/stereorender/
@@ -532,9 +541,9 @@ namespace cinder { namespace qb {
 		// Ground perspective
 		if ( this->isCameraGround() )
 		{
-			mCameraPersp.calcProjectionFromGroundLevel();
-			mCameraLeft.calcProjectionFromGroundLevel();
-			mCameraRight.calcProjectionFromGroundLevel();
+			mCameraPersp.setLensShift( 0, -1 );
+			mCameraLeft.setLensShift(  0, -1 );
+			mCameraRight.setLensShift( 0, -1 );
 		}
 		//
 		// Select active camera
@@ -1037,36 +1046,41 @@ namespace cinder { namespace qb {
 		}
 		
 		// GUI Elements
-		if ( bDrawGui && ! AppBasic::get()->isMinimized() )
+		if ( ! AppBasic::get()->isMinimized() )
 		{
-			// preview stereo
-			if ( this->isCameraStereo() )
+			// GUI
+			mConfig->draw();	// if needed
+			bDrawGui = mConfig->guiIsVisible();
+			if ( bDrawGui )
 			{
-				float h = 200;
-				float w = h * mRenderAspect;
-				Rectf b(0,0,w,h);
-				glPushMatrix();
-				glTranslatef(0,getWindowHeight()-h,0);
+				// preview stereo
+				if ( this->isCameraStereo() )
+				{
+					float h = 200;
+					float w = h * mRenderAspect;
+					Rectf b(0,0,w,h);
+					glPushMatrix();
+					glTranslatef(0,getWindowHeight()-h,0);
+					gl::enableAlphaBlending();
+					gl::color(Color::red());
+					gl::draw( mFboLeft.getTexture(), b );
+					glTranslatef( w,0,0);
+					gl::color(Color::cyan());
+					gl::draw( mFboRight.getTexture(), b );
+					gl::disableAlphaBlending();
+					glPopMatrix();
+				}
+
+				// Resize corner
+				gl::color( Color::white() );
 				gl::enableAlphaBlending();
-				gl::color(Color::red());
-				gl::draw( mFboLeft.getTexture(), b );
-				glTranslatef( w,0,0);
-				gl::color(Color::cyan());
-				gl::draw( mFboRight.getTexture(), b );
-				gl::disableAlphaBlending();
-				glPopMatrix();
+				if ( App::get()->getSettings().isResizable() && !App::get()->isFullScreen() )
+					gl::draw( mCorner, Vec2f(getWindowWidth()-mCorner.getWidth(), getWindowHeight()-mCorner.getHeight()) );
+				// Syphon Icon
+				if ( mConfig->getBool(QBCFG_SYPHON_OUTPUT) )
+					gl::draw( mSyphonIcon, Rectf( getWindowWidth()-mSyphonIcon.getWidth(), 0, getWindowWidth(), mSyphonIcon.getHeight()) );
 			}
 
-			// GUI
-			mConfig->draw();
-			// Resize corner
-			gl::color( Color::white() );
-			gl::enableAlphaBlending();
-			if ( App::get()->getSettings().isResizable() && !App::get()->isFullScreen() )
-				gl::draw( mCorner, Vec2f(getWindowWidth()-mCorner.getWidth(), getWindowHeight()-mCorner.getHeight()) );
-			// Syphon Icon
-			if ( mConfig->getBool(QBCFG_SYPHON_OUTPUT) )
-				gl::draw( mSyphonIcon, Rectf( getWindowWidth()-mSyphonIcon.getWidth(), 0, getWindowWidth(), mSyphonIcon.getHeight()) );
 			gl::disableAlphaBlending();
 		}
 	}

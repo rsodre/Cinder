@@ -37,10 +37,10 @@ namespace cinder { namespace qb {
 		bool	sendOsc( int colorNum=-1 );
 		bool	receiveOsc();
 		
-		int				getSamplesCount()	{ return mSamples.size(); }
+		int				getSamplesCount()	{ return (int) mSamples.size(); }
 		Color &			getSample( int n )	{ return mSamples[n]; }
 		
-		int				getColorCount()		{ return mColors.size(); }
+		int				getColorCount()		{ return (int) mColors.size(); }
 		Color &			getColor( int n )	{ return mColors[n]; }
 		
 		Vec2i			getSize()			{ return mSourceSize; }

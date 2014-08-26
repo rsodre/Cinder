@@ -101,6 +101,7 @@ namespace cinder { namespace qb {
 		// Open target file
 		if ( ! _cfg.get(QBCFG_RENDER_PNG_SEQUENCE) )
 		{
+#ifndef QT64
 			// codecs: https://developer.apple.com/library/mac/#documentation/QuickTime/Reference/QTRef_Constants/Reference/reference.html
 			MovieWriter::Format format = MovieWriter::Format();
 			format.setDefaultDuration( QB_FRAME_DURATION );
@@ -113,6 +114,7 @@ namespace cinder { namespace qb {
 			std::ostringstream os;
 			os << "RENDER OPEN [" << mFileName << "] "<<mMovieWriter.getWidth()<<" x "<<mMovieWriter.getHeight();
 			printf("%s\n",os.str().c_str());
+#endif
 		}
 		else
 		{
@@ -199,8 +201,10 @@ namespace cinder { namespace qb {
 			printf("NO FRAMES TO FINISH!!!\n");
 			return;
 		}
+#ifndef QT64
 		if ( ! _cfg.get(QBCFG_RENDER_PNG_SEQUENCE) )
 			mMovieWriter.finish();
+#endif
 		mStatus = "SAVED!";
 		mProgString = "";
 		mFramesString = "";
@@ -267,8 +271,10 @@ namespace cinder { namespace qb {
 	{
 		if ( _cfg.get(QBCFG_RENDER_PNG_SEQUENCE) )
 			this->takeScreenshot( _aframe, this->makeFileNameSerial() );
+#ifndef QT64
 		else
 			mMovieWriter.addFrame( _aframe, QB_FRAME_DURATION );
+#endif
 	}
 	
 	void qbRenderer::updateStatus()

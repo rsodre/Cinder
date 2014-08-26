@@ -25,7 +25,7 @@ namespace cinder { namespace qb {
 		mRadius = h * 0.5;
 		mGridStep = 10;
 		mMeshStep = 5;
-
+		
 		// Make Length of each pixel to the center
 		mLength = (float*) realloc( mLength, sizeof(float) * w * h );
 		for ( int y = 0 ; y < h ; y++ )
@@ -150,6 +150,8 @@ namespace cinder { namespace qb {
 	// http://en.wikipedia.org/wiki/Line%E2%80%93sphere_intersection
 	Vec3f qbDomeMaster::getIntersectionFrom( const Vec3f & lp1, const Vec3f & lp2, bool closest )
 	{
+		return rayIntersectSphere( lp1, lp2, Vec3f::zero(), 1.0 );
+		/*
 		Vec3f res = Vec3f::zero();
 		float R = 1.0f;					// Radius
 		Vec3f m = Vec3f::zero();		// dome center
@@ -177,14 +179,41 @@ namespace cinder { namespace qb {
 				res = ( (p1 - lp1).length() > (p2 - lp1).length() ? p1 : p2 );	// return farthest
 		}
 		return res;
+		 */
 	}
+	// Intersects ray r = p + td, |d| = 1, with sphere s and, if intersecting,
+	// returns t value of intersection and intersection point q
+	// From: Real-Time Collision Detection, p. 178
+	// in:	p1 = origin, p0 = dest, BIZRRO -- invertido!?
+	// out: intersection point, or center if does not intersect
+	Vec3f qbDomeMaster::rayIntersectSphere( Vec3f p1, Vec3f p0, Vec3f center, float r )
+	{
+		Vec3f d = (p1 - p0).normalized();		// direction
+		Vec3f m = p0 - center;
+		float b = m.dot(d);
+		float c = m.dot(m) - r * r;
+		// Exit if r’s origin outside s (c > 0) and r pointing away from s (b > 0)
+		if (c > 0.0 && b > 0.0) return center;	// no intersection
+		float discr = b * b - c;
+		// A negative discriminant corresponds to ray missing sphere
+		if (discr < 0.0) return center;	// no intersection
+		// Ray now found to intersect sphere, compute smallest t value of intersection
+		float t = -b - sqrt(discr);
+		// If t is negative, ray started inside sphere so clamp t to zero
+		if (t < 0.0) t = 0.0;
+		Vec3f q = p0 + t * d;
+		return q;
+	}
+	
+	
+	
 	void qbDomeMaster::drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest )
 	{
 		glBegin( GL_LINE_STRIP );
 		for (int i = 0 ; i <= segments ; i++)
 		{
 			float prog = (i / (float)segments);
-			Vec3f mid = this->getIntersectionFrom( from, p0.lerp( prog, p1 ), closest );
+			Vec3f mid = getIntersectionFrom( from, p0.lerp( prog, p1 ), closest );
 			if ( mid != Vec3f::zero() )
 				glVertex3f( mid );
 		}
@@ -197,7 +226,7 @@ namespace cinder { namespace qb {
 		{
 			float prog = (i / (float)segments);
 			Vec3f pp = p0.lerp( prog, p1 );
-			Vec3f mid = this->getIntersectionFrom( from, pp, closest );
+			Vec3f mid = getIntersectionFrom( from, pp, closest );
 			/*if ( mid == Vec3f::zero() )
 			{
 				Vec3f opp = op0.lerp( prog, op1 );
@@ -244,96 +273,93 @@ namespace cinder { namespace qb {
 		gl::draw( mMaskTexture, QB_BOUNDS );
 		gl::disableAlphaBlending();
 	}
-	void qbDomeMaster::drawBorder()
+	void qbDomeMaster::drawHorizonLine( float horizon )
 	{
 		// make?
 		glLineWidth( 1 );
 		gl::color( Color::gray(0.5f) );
-		if ( ! mMeshBorder )
+		//glLineWidth( 2 );
+		//gl::color( Color::red() );
+		if ( mMeshBorder.start( horizon ) )
 		{
-			mMeshBorder = gl::DisplayList( GL_COMPILE );
-			mMeshBorder.newList();
+			// horizontais altitude (Latitude)
+			//int lat = 0;
+			float lat_h = horizonToAltitudeDeg( horizon );
+			glBegin( GL_LINE_STRIP );
+			for ( float lng = 0 ; lng <= 360 ; lng += mMeshStep )
 			{
-				// horizontais (Latitude)
-				int lat = 0;
-				glBegin( GL_LINE_STRIP );
-				for ( int lng = 0 ; lng <= 360 ; lng += mMeshStep )
-				{
-					Vec3f p = LATLNG_TO_XYZ( lat, lng );
-					glVertex3f( p );
-				}
-				glEnd();
+				Vec3f p = LATLNG_TO_XYZ_DEG( lat_h, lng );
+				glVertex3f( p );
 			}
-			mMeshBorder.endList();
+			glEnd();
+			mMeshBorder.end();
+			//printf("HORIZON %.1f  lat %.1f\n",horizon,lat);
 		}
-		
 		// draw!
 		mMeshBorder.draw();
 	}
-	void qbDomeMaster::drawGrid( bool esfera )
+	void qbDomeMaster::drawGrid( float horizon )
 	{
 		// make?
 		glLineWidth( 1 );
-		if ( ! mMeshGrid[esfera] )
+		if ( mMeshGrid.start( horizon ) )
 		{
-			mMeshGrid[esfera] = gl::DisplayList( GL_COMPILE );
-			mMeshGrid[esfera].newList();
+			float lat_h = horizonToAltitudeDeg( horizon );
+			// verticais (Longitude)
+			for ( int lng = 0 ; lng <= 360 ; lng += mGridStep )
 			{
-				// verticais (Longitude)
+				bool yellow = (lng % 30 == 0);
+				gl::color( yellow ? Color::yellow()*0.9f : Color::gray(0.5f) );
+				glBegin( GL_LINE_STRIP );
+				for ( float lat = lat_h ; lat <= 90.0 ; lat += mMeshStep )
+				{
+					Vec3f p = LATLNG_TO_XYZ_DEG( lat, lng );
+					glVertex3f( p );
+					// 1st time, adjust altitude (Latitude) to step
+					float diff = fmod( (lat + 360.0), mMeshStep );
+					if ( diff != 0.0 )
+						lat -= diff;
+				}
+				glEnd();
+			}
+			// horizontais altitude (Latitude)
+			for ( float lat = lat_h ; lat < 90 ; lat += mGridStep )
+			{
+				bool yellow = fmod(lat, 30.0) == 0.0;
+				gl::color( yellow ? Color::yellow()*0.9f : Color::white()*0.5f );
+				glBegin( GL_LINE_STRIP );
 				for ( int lng = 0 ; lng <= 360 ; lng += mMeshStep )
 				{
-					if ( lng % mGridStep != 0 )
-						continue;
-					bool yellow = (lng % 30 == 0);
-					gl::color( yellow ? Color::yellow()*0.9f : Color::gray(0.5f) );
-					glBegin( GL_LINE_STRIP );
-					for ( int lat = ( esfera ? -90 : 0 ) ; lat <= 90 ; lat += mMeshStep )
-					{
-						Vec3f p = LATLNG_TO_XYZ( lat, lng );
-						glVertex3f( p );
-					}
-					glEnd();
-					
+					Vec3f p = LATLNG_TO_XYZ_DEG( lat, lng );
+					glVertex3f( p );
 				}
-				// horizontais (Latitude)
-				gl::color( Color::white()*0.75 );
-				for ( int lat = (esfera ? -80 : 0) ; lat < 90 ; lat += mMeshStep )
-				{
-					if ( lat % mGridStep != 0 )
-						continue;
-					bool yellow = (lat % 30 == 0);
-					gl::color( yellow ? Color::yellow()*0.9f : Color::white()*0.5f );
-					glBegin( GL_LINE_STRIP );
-					for ( int lng = 0 ; lng <= 360 ; lng += mMeshStep )
-					{
-						Vec3f p = LATLNG_TO_XYZ( lat, lng );
-						glVertex3f( p );
-					}
-					glEnd();
-				}
+				glEnd();
+				// 1st time, adjust altitude (Latitude) to step
+				float diff = fmod( (lat + 360.0), mGridStep );
+				if ( diff != 0.0 )
+					lat -= diff;
 			}
-			mMeshGrid[esfera].endList();
+			mMeshGrid.end();
 		}
-		
 		// draw!
-		mMeshGrid[esfera].draw();
-		
+		gl::color( ColorA(1,1,1,_cfg.guiGetAlpha()) );
+		mMeshGrid.draw();
 	}
-	void qbDomeMaster::drawMesh( Vec2f uv, bool esfera )
+	void qbDomeMaster::drawMesh( Vec2f uv, float horizon )
 	{
-		// Make?
-		if ( ! mMeshDome[esfera] )
+		// Make displaylist?
+		if ( mMeshDome.start( horizon ) )
 		{
-			mMeshDome[esfera] = gl::DisplayList( GL_COMPILE );
-			mMeshDome[esfera].newList();
-			// horizontais (Latitude)
-			for ( float lat = ( esfera ? -90.0 : 0.0f ) ; lat < 90.0f ; lat += mMeshStep )
+			// horizontais altitude (Latitude)
+			bool esfera = (horizon == 360.0);
+			float lat_h = horizonToAltitudeDeg( horizon );
+			for ( float lat = lat_h ; lat < 90.0f ; lat += mMeshStep )
 			{
 				glBegin( GL_TRIANGLE_STRIP );
-				for ( float lng = 0.0f ; lng <= 360.0 ; lng += mMeshStep )
+				for ( int lng = 0 ; lng <= 360 ; lng += mMeshStep )
 				{
-					Vec3f p0 = LATLNG_TO_XYZ( lat, lng );
-					Vec3f p1 = LATLNG_TO_XYZ( lat+mMeshStep, lng );
+					Vec3f p0 = LATLNG_TO_XYZ_DEG( lat, lng );
+					Vec3f p1 = LATLNG_TO_XYZ_DEG( lat+mMeshStep, lng );
 					Vec3f n0 = ( esfera ? p0 : -p0 );
 					Vec3f n1 = ( esfera ? p1 : -p1 );
 					// TODO:: TESTAR SEM SHADER !!! - vai dar problema no displaylist
@@ -349,12 +375,15 @@ namespace cinder { namespace qb {
 					glVertex3f( p1 );
 				}
 				glEnd();
+				// 1st time, adjust altitude (Latitude) to step
+				float diff = fmod( (lat + 360.0), mMeshStep );
+				if ( diff != 0.0 )
+					lat -= diff;
 			}
-			mMeshDome[esfera].endList();
+			mMeshDome.end();
 		}
-
 		// Draw!
-		mMeshDome[esfera].draw();
+		mMeshDome.draw();
 	}
 	
 	/////////////////////////////////////////////////////////////////////
@@ -364,11 +393,11 @@ namespace cinder { namespace qb {
 	// lat = horizontal = -90  .. +90
 	// lng = vertical   = -180 .. +180
 	// Returns -1.0 .. 1.0
-	Vec3f qbDomeMaster::getPosFromLatLng( float lat, float lng )
+	Vec3f qbDomeMaster::getPosFromLatLngDeg( float lat, float lng )
 	{
-		return qbDomeMaster::getPosFromLatLngRad( toRadians(lat), toRadians(lng) );
+		return qbDomeMaster::getPosFromLatLng( toRadians(lat), toRadians(lng) );
 	}
-	Vec3f qbDomeMaster::getPosFromLatLngRad( float lat, float lng )
+	Vec3f qbDomeMaster::getPosFromLatLng( float lat, float lng )
 	{
 		float r = cos( lat );
 		float x = cos( lng ) * r;
@@ -384,25 +413,27 @@ namespace cinder { namespace qb {
 	//
 	Vec2f qbDomeMaster::texelToUnit( Vec2f st )
 	{
-		return Vec2f( st.x * 2.0f - 1.0f, (1.0-st.y) * 2.0f - 1.0f );
+		//return Vec2f( st.x * 2.0f - 1.0f, (1.0-st.y) * 2.0f - 1.0f );
+		return st * 2.0 - Vec2f::one();
 	}
 	Vec2f qbDomeMaster::unitToTexel( Vec2f st )
 	{
-		return Vec2f( (st.x + 1.0f) * 0.5f, 1.0f - ((st.y + 1.0f) * 0.5f) );
+		//return Vec2f( (st.x + 1.0f) * 0.5f, 1.0f - ((st.y + 1.0f) * 0.5f) );
+		return ( st + Vec2f::one() ) * 0.5f;
 	}
 	// pbourke bangalore.pdf pg 14
 	// http://paulbourke.net/miscellaneous/domefisheye/fisheye/
 	// From:	Dome 3D coordinates (-1.0 .. 1.0, -1.0 .. 1.0, 0.0 .. 1.0)
 	// To:		Texel (0.0 .. 1.0)
-	Vec2f qbDomeMaster::domeToTexel( Vec3f pos )
+	Vec2f qbDomeMaster::domeToTexel( Vec3f pos, float horizon )
 	{
 		float theta = atan2f( sqrt( pos.x * pos.x + pos.y * pos.y ), pos.z);
 		float phi = atan2f(pos.y, pos.x);
-		float r = theta / M_HALF_PI;
+		float r = theta / (horizon * 0.5);
 		Vec2f dc = Vec2f( r * cos(phi), r * sin(phi) );
 		return qbDomeMaster::unitToTexel( dc );
 	}
-	
+
 	// Equirectangular projection
 	// https://github.com/Flightphase/ofxPuffersphere
 	// https://github.com/Flightphase/ofxPuffersphere/blob/master/spinningSquareExample/bin/data/shaders/offaxis.frag

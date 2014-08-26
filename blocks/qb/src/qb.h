@@ -68,7 +68,8 @@ namespace cinder { namespace qb {
 #define QB_VERBOSE				(_qb.bVerbose)
 #define QB_APP_NAME				(_qb.getAppName())
 #define QB_APP_VERSION			(_qb.getAppVersion())
-#define QB_CAPTURE_FOLDER		"/Users/Roger/Desktop/CAPTURE/"
+#define QB_APP_VERSION_LONG		(_qb.getAppVersionLong())
+#define QB_CAPTURE_FOLDER		"/Volumes/HDD/CAPTURE/"
 #define QB_FONT					(_qb.mFont)
 
 // Flags

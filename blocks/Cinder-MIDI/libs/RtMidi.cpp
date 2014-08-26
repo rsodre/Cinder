@@ -347,7 +347,7 @@ void RtMidiIn :: openPort( unsigned int portNumber, const std::string portName )
     return;
   }
 
-  unsigned int nSrc = MIDIGetNumberOfSources();
+  unsigned int nSrc = (unsigned int) MIDIGetNumberOfSources();
   if (nSrc < 1) {
     errorString_ = "RtMidiIn::openPort: no MIDI input sources found!";
     error( RtError::NO_DEVICES_FOUND );
@@ -436,7 +436,7 @@ RtMidiIn :: ~RtMidiIn()
 
 unsigned int RtMidiIn :: getPortCount()
 {
-  return MIDIGetNumberOfSources();
+  return (int) MIDIGetNumberOfSources();
 }
 
 // This function was submitted by Douglas Casey Tucker and apparently
@@ -526,7 +526,7 @@ static CFStringRef ConnectedEndpointName( MIDIEndpointRef endpoint )
   if ( connections != NULL ) {
     // It has connections, follow them
     // Concatenate the names of all connected devices
-    nConnected = CFDataGetLength( connections ) / sizeof(MIDIUniqueID);
+    nConnected = (int) CFDataGetLength( connections ) / (int)sizeof(MIDIUniqueID);
     if ( nConnected ) {
       const SInt32 *pid = (const SInt32 *)(CFDataGetBytePtr(connections));
       for ( i=0; i<nConnected; ++i, ++pid ) {
@@ -594,7 +594,7 @@ std::string RtMidiIn :: getPortName( unsigned int portNumber )
 
 unsigned int RtMidiOut :: getPortCount()
 {
-  return MIDIGetNumberOfDestinations();
+  return (unsigned int) MIDIGetNumberOfDestinations();
 }
 
 std::string RtMidiOut :: getPortName( unsigned int portNumber )
@@ -644,7 +644,7 @@ void RtMidiOut :: openPort( unsigned int portNumber, const std::string portName 
     return;
   }
 
-  unsigned int nDest = MIDIGetNumberOfDestinations();
+  unsigned int nDest = (unsigned int) MIDIGetNumberOfDestinations();
   if (nDest < 1) {
     errorString_ = "RtMidiOut::openPort: no MIDI output destinations found!";
     error( RtError::NO_DEVICES_FOUND );
@@ -733,7 +733,7 @@ void RtMidiOut :: sendMessage( std::vector<unsigned char> *message )
   // The CoreMidi documentation indicates a maximum PackList size of
   // 64K, so we may need to break long sysex messages into pieces and
   // send via separate lists.
-  unsigned int nBytes = message->size();
+  unsigned int nBytes = (unsigned int) message->size();
   if ( nBytes == 0 ) {
     errorString_ = "RtMidiOut::sendMessage: no data in message argument!";      
     error( RtError::WARNING );

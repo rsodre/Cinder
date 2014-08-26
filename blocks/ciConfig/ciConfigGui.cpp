@@ -37,6 +37,8 @@ namespace cinder {
 
 	void ciConfigGui::draw()
 	{
+		mGui->update();
+
 		if ( !this->guiIsVisible() )
 			return;
 		
@@ -66,8 +68,43 @@ namespace cinder {
 				c->update( params[id]->valueLabels );
 		}
 	}
-	
-	
+
+	// virtuals
+	void ciConfigGui::setCurrentDefault(int def)
+	{
+		this->ciConfig::setCurrentDefault(def);
+		for (int id = 0 ; id < params.size() ; id++)
+		{
+			ciConfigParam *p = params[id];
+			if (p == NULL)
+				continue;
+			if (p->guiControl == NULL)
+				continue;
+			if (this->isFloat(id))
+			{
+				float v = p->vec[0].getInitialValue(def);
+				FloatVarControl *c = (FloatVarControl*) p->guiControl;
+				c->setDefaultValue(&v);
+			}
+			else if (this->isInt(id))
+			{
+				int v = (int) p->vec[0].getInitialValue(def);
+				IntVarControl *c = (IntVarControl*) p->guiControl;
+				c->setDefaultValue(&v);
+			}
+			else if (this->isVector(id))
+			{
+				Vec4f v;
+				for (int i = 0 ; i < 4 ; i++)
+					v[i] = p->vec[i].getInitialValue(def);
+				VectorVarControl *c = (VectorVarControl*) p->guiControl;
+				c->setDefaultValue(&v);
+			}
+		}
+	}
+
+
+
 	//////////////////////////////
 	//
 	// VARIABLE PARAMS
@@ -129,7 +166,7 @@ namespace cinder {
 	{
 		ColumnControl * c = mGui->addColumn();
 		if ( _name.length() )
-			mGui->addLabel(_name);
+			c->label = mGui->addLabel(_name);
 		mGroupCount++;
 		return c;
 	}
@@ -144,7 +181,8 @@ namespace cinder {
 	//
 	Control* ciConfigGui::guiAddParamPrivate( int id, int i, const std::string & label, int precision )
 	{
-		if ( params[id] == NULL )
+		ciConfigParam *p = params[id];
+		if ( p == NULL )
 			return NULL;
 		
 		Control *c = NULL;
@@ -156,21 +194,25 @@ namespace cinder {
 			if (precision >= 0)
 				((FloatVarControl*)c)->setPrecision( precision );
 		}
-		else if (params[id]->valueLabels.size() > 0)
+		else if (p->valueLabels.size() > 0)
 		{
 			if ( this->testFlag(id,CFG_FLAG_DROP_DOWN) )
-				c = mGui->addParamDropDown(label, this->getPointerInt(id), params[id]->valueLabels );
+				c = mGui->addParamDropDown(label, this->getPointerInt(id), p->valueLabels );
 			else
-				c = mGui->addParamList(label, this->getPointerInt(id), params[id]->valueLabels );
+				c = mGui->addParamList(label, this->getPointerInt(id), p->valueLabels );
 		}
 		else if (this->isColor(id))
 			c = mGui->addParam(label, this->getPointerColor(id), Color( this->getColor(id) ));
 		else if (this->isVector(id))
 		{
-			if ( this->isVector4(id) && ( params[id]->quater || this->testFlag(id,CFG_FLAG_ARCBALL)) )
+			if ( this->isVector4(id) && ( p->quater || this->testFlag(id,CFG_FLAG_ARCBALL)) )
 				c = mGui->addParam(label, this->getPointerVector(id), 4, this->getMin(id), this->getMax(id), this->getVector4(id) );
-			else if ( this->isVector2(id) && this->testFlag(id,CFG_FLAG_XY) )
+			else if ( this->isVector2(id) && (this->testFlag(id,CFG_FLAG_XY) || this->testFlag(id,CFG_FLAG_XY_VECTOR)) )
+			{
 				c = mGui->addParamXY(label, this->getPointerVector2(id), this->getMin(id), this->getMax(id), this->getVector2(id) );
+				if ( this->testFlag(id,CFG_FLAG_XY_VECTOR) )
+					((XYVarControl*)c)->setDrawAsVector();
+			}
 			else
 			{
 				c = mGui->addParam(label, this->getPointerVector(id), this->getVectorCount(id), this->getMin(id), this->getMax(id), this->getVector4(id) );
@@ -184,7 +226,7 @@ namespace cinder {
 			c = mGui->addParam(label, this->getPointerString(id), this->getString(id));
 		else if (this->isByte(id))
 		{
-			c = mGui->addParamFlag(label, this->getPointerByte(id), 8, this->getByte(id));
+			c = mGui->addParamFlag(label, this->getPointerByte(id), (precision==-1?8:precision), this->getByte(id));
 			((IntVarControl*)c)->setDisplayValue();
 		}
 		else if (this->isInt(id))
@@ -200,16 +242,16 @@ namespace cinder {
 				((FloatVarControl*)c)->setPrecision( precision );
 		}
 		// TODO...
-		//options << "key='" << params[id]->vec[i].keySwitch << "' ";
-		//options << "keyincr='" << params[id]->vec[i].keyInc << "' ";
-		//options << "keydecr='" << params[id]->vec[i].keyDec << "' ";
+		//options << "key='" << p->vec[i].keySwitch << "' ";
+		//options << "keyincr='" << p->vec[i].keyInc << "' ";
+		//options << "keydecr='" << p->vec[i].keyDec << "' ";
 		
 		// readonly
-		if ( ! params[id]->editable )
+		if ( ! p->editable )
 			c->setReadOnly( true );
 
 		// Save reference
-		params[id]->guiControl = (void*) c;
+		p->guiControl = (void*) c;
 		
 		return c;
 	}

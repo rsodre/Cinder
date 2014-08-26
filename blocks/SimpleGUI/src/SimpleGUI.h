@@ -43,6 +43,7 @@
 #include "cinder/gl/Texture.h"
 #include "cinder/gl/Fbo.h"
 #include "cinder/Camera.h"
+#include "cinder/Timeline.h"
 
 using namespace cinder;
 
@@ -125,6 +126,7 @@ namespace cinder { namespace sgui {
 		
 		void	updateControls();
 		bool	shouldDrawTabs()		{ return (theTabs.size() > 1); }
+		void	update();
 		void	draw();
 		void	drawGui();	// FBO
 		Vec2f	drawControl(Vec2f pos, Control *control);
@@ -133,9 +135,10 @@ namespace cinder { namespace sgui {
 		void	save(std::string fileName = "");
 		void	load(std::string fileName = "");
 		
-		bool	isEnabled();
 		void	setEnabled(bool state);
-		
+		float	getAlpha()				{ return mAlpha.value(); }
+		bool	isEnabled()				{ return enabled; }
+
 		FloatVarControl* 	addParam(const std::string& paramName, float* var, float min=0, float max=1, float defaultValue = 0);
 		IntVarControl*		addParam(const std::string& paramName, int* var, int min=0, int max=1, int defaultValue = 0);
 		ByteVarControl*		addParam(const std::string& paramName, unsigned char* var, unsigned char defaultValue = 0);
@@ -169,7 +172,7 @@ namespace cinder { namespace sgui {
 		int					getColumnWidth()	{ return SimpleGUI::sliderSize.x; }
 		Vec2f				getSize()			{ return mSize; }
 		int					getTabId();
-		void				setTab(int t)			{ if (theTabs.size()) theTab = theTabs[t]; }
+		void				setTab(int t)			{ if (theTabs.size()) theTab = theTabs[t]; bForceRedraw = true; }
 		void				setTab(TabControl *t)	{ theTab = t; }
 		
 		std::vector<TabControl*>	theTabs;
@@ -189,6 +192,7 @@ namespace cinder { namespace sgui {
 		bool		bBlink;				// blink controls (debug)
 		bool		bDisplayFps;
 		float		mCurrentFps;
+		Anim<float>	mAlpha;
 		// FBO
 		gl::Fbo		mFbo;
 		bool		bUsingFbo;
@@ -309,6 +313,7 @@ namespace cinder { namespace sgui {
 		bool	important;
 		bool	displayValue;
 		bool	pregap, postgap;				// Y gap at beginning / end
+		bool	slim;
 		Vec2f	drawOffset;
 		Rectf	backArea;
 		Rectf	activeAreaBase;
@@ -317,6 +322,7 @@ namespace cinder { namespace sgui {
 		Rectf	activeAreas[4];
 		PanelControl *panelToSwitch;
 		Control	*unitControl;
+		LabelControl *label;
 		bool	invertSwitch;
 		bool	mouseMoved;
 		int		channelOver;
@@ -336,24 +342,26 @@ namespace cinder { namespace sgui {
 		virtual void onMouseDown(app::MouseEvent & event) {};
 		virtual void onMouseUp(app::MouseEvent & event) {};
 		virtual void onMouseDrag(app::MouseEvent & event) {};
-		virtual void onFileDrop(app::FileDropEvent & event) {};
+		virtual bool fileDrop(app::FileDropEvent & event) { return false; };
 		virtual void onResize() {};
 		// ROGER
-		void addSwitchPanel(const std::string & name)		{ panelToSwitch = parentGui->addPanel(name); invertSwitch = false; }	// Panel to switch ON/OFF with my value
-		void addSwitchPanelInv(const std::string & name)	{ panelToSwitch = parentGui->addPanel(name); invertSwitch = true; }		// Panel to switch ON/OFF with my value
+		PanelControl* addSwitchPanel(const std::string & name)		{ panelToSwitch = parentGui->addPanel(name); invertSwitch = false; return panelToSwitch; }		// Panel to switch ON/OFF with my value
+		PanelControl* addSwitchPanelInv(const std::string & name)	{ panelToSwitch = parentGui->addPanel(name); invertSwitch = true; return panelToSwitch; }		// Panel to switch ON/OFF with my value
 		void setSuffix(const std::string & s)				{ suffix = s; }
 		void setName(const std::string & newName)			{ if (name != newName) mustRefresh = true; name = newName; }
+		void setMustRefresh()								{ mustRefresh = true; }
 		bool hasChanged()							{ if (unitControl) if (unitControl->valueHasChanged()) mustRefresh = true; return this->valueHasChanged() || this->mustRefresh; }
 		bool controlHasResized()					{ return (this->hasResized() || enabled != lastEnabled); }
 		bool isHighlighted(int ch=0)				{ return (channelOver == ch && parentGui->selectedControl == NULL) || (this->isActiveChannel(ch) && parentGui->selectedControl == this); }
 		bool isInteracting()						{ return (parentGui->selectedControl == this); }
 		void setUnitControl(Control *c)				{ unitControl = c; }
 		Control* setReadOnly(bool b=true);			// chained setters
-		Control* setImportant(bool b=true)			{ important = b; return this; }						// chained setters
+		Control* setImportant(bool b=true);
 		Control* setDisplayValue(bool b=true)		{ displayValue = b; this->update(); return this; }	// chained setters
 		Control* setPreGap(bool b)					{ pregap = b; this->update(); return this; }		// chained setters
 		Control* setPostGap(bool b)					{ postgap = b; this->update(); return this; }		// chained setters
 		Control* setNameOff(const std::string & n)	{ nameOff = n; return this; }						// chained setters
+		Control* setSlim(bool b=true)				{ slim = b; this->update(); return this; }	// chained setters
 		virtual void updateFbo()					{}
 		virtual void update()						{}
 		virtual void reset()						{}
@@ -369,6 +377,7 @@ namespace cinder { namespace sgui {
 		virtual void incY(bool shifted)				{ return this->inc(shifted); }	// keyboard inc (Y)
 		virtual void decY(bool shifted)				{ return this->dec(shifted); }	// keyboard dec (Y)
 		virtual float getValue()					{ return 0.0; }			// basic float value (when available)
+		virtual void setDefaultValue(void *v)		{}
 		// draw functions
 		void drawBackArea(Rectf a);
 		// generic float slider
@@ -386,6 +395,7 @@ namespace cinder { namespace sgui {
 		float* var;
 		float min;
 		float max;
+		float complement;
 		// ROGER
 		float defaultValue;
 		float lastValue;
@@ -400,6 +410,7 @@ namespace cinder { namespace sgui {
 	public:
 		FloatVarControl(SimpleGUI *parent, const std::string & name, float* var, float min=0, float max=1, float defaultValue = 0);
 		void setNormalizedValue(float value);
+		void setComplement(float c);
 		Vec2f draw(Vec2f pos);
 		std::string toString();
 		void fromString(std::string& strValue);
@@ -415,13 +426,14 @@ namespace cinder { namespace sgui {
 		FloatVarControl* setFormatAsTime(bool b=true)		{ formatAsTime=b; return this; }		// chamed setters
 		FloatVarControl* setFormatAsTimecode(bool b=true)	{ formatAsTimecode=b; return this; }	// chamed setters
 		FloatVarControl* setFormatAsPercentage(bool b=true)	{ percentage=b; return this; }			// chamed setters
-		bool isOn()								{ return ( *var != 0.0 ); }		// used to switch panel
-		bool keyboardEnabled()					{ return true; }				// used to inc/dec values
-		bool valueHasChanged()					{ return ( this->displayedValue(*var,step) != this->displayedValue(lastValue,step) ); };
-		void inc(bool shifted)					{ *var = math<float>::clamp( (*var)+(step*(shifted?10:1)), min, max ); }		// keyboard inc
-		void dec(bool shifted)					{ *var = math<float>::clamp( (*var)-(step*(shifted?10:1)), min, max ); }		// keyboard dec
-		float getValue()						{ return *var; }
-	private:	
+		bool isOn()						{ return ( *var != 0.0 ); }		// used to switch panel
+		bool keyboardEnabled()			{ return true; }				// used to inc/dec values
+		bool valueHasChanged()			{ return ( this->displayedValue(*var,step) != this->displayedValue(lastValue,step) ); };
+		void inc(bool shifted)			{ *var = math<float>::clamp( (*var)+(step*(shifted?10:1)), min, max ); }		// keyboard inc
+		void dec(bool shifted)			{ *var = math<float>::clamp( (*var)-(step*(shifted?10:1)), min, max ); }		// keyboard dec
+		float getValue()				{ return *var; }
+		void setDefaultValue(void *v)	{ defaultValue = *((float*)v); }
+	private:
 	};
 	
 	//-----------------------------------------------------------------------------
@@ -456,6 +468,8 @@ namespace cinder { namespace sgui {
 		void inc(bool shifted)		{ *var = math<int>::clamp( (*var)+(step*(shifted?10:1)), min, max ); }		// keyboard inc
 		void dec(bool shifted)		{ *var = math<int>::clamp( (*var)-(step*(shifted?10:1)), min, max ); }		// keyboard dec
 		float getValue()			{ return (float)*var; }
+		void setLimits(float vmin, float vmax)	{ min = vmin; max = vmax; this->update(); mustRefresh = true; }
+		void setDefaultValue(void *v)	{ defaultValue = *((int*)v); }
 	};
 	
 	//-----------------------------------------------------------------------------
@@ -488,6 +502,7 @@ namespace cinder { namespace sgui {
 		bool keyboardEnabled()		{ return true; }			// used to inc/dec values
 		void inc(bool shifted)		{ *var = math<int>::clamp( (*var)+(shifted?8:1), min, max ); }		// keyboard inc
 		void dec(bool shifted)		{ *var = math<int>::clamp( (*var)-(shifted?8:1), min, max ); }		// keyboard dec
+		void setDefaultValue(void *v)	{ defaultValue = *((unsigned char*)v); }
 	};
 	
 	//-----------------------------------------------------------------------------
@@ -534,6 +549,7 @@ namespace cinder { namespace sgui {
 		float getValue()				{ return (float)*var; }
 		BoolVarControl* setAsButton(bool b=true)	{ asButton=b; this->update(); return this; }	// chained setters
 		BoolVarControl* setDontGoOff(bool b=true)	{ dontGoOff=b; this->update(); return this; }	// chained setters
+		void setDefaultValue(void *v)	{ defaultValue = *((bool*)v); }
 		bool asButton;
 		bool dontGoOff;
 	};
@@ -608,6 +624,7 @@ namespace cinder { namespace sgui {
 		bool valueHasChanged()			{ return (*var!=lastValue); };
 		bool keyboardEnabled()			{ return true; }		// used to inc/dec values
 		bool isActiveChannel(int ch)	{ return (activeTrack == ch); }		// is this the active channel?
+		void setDefaultValue(void *v)	{ defaultValue = *((Vec4f*)v); }
 		bool updateMouse();
 		void inc(bool shifted);
 		void dec(bool shifted);
@@ -626,6 +643,7 @@ namespace cinder { namespace sgui {
 		int		precision;
 		float	step;
 		bool	over;
+		bool	drawAsVector;
 		Vec2f	defaultValue;
 		Vec2f	lastValue;
 		Rectf	previewArea;
@@ -639,11 +657,13 @@ namespace cinder { namespace sgui {
 		void onMouseDrag(app::MouseEvent & event);
 		// ROGER
 		void update();
-		void reset()					{ *var = defaultValue; }
+		void reset()						{ *var = defaultValue; }
 		void setPrecision(int p);
-		bool valueHasChanged()			{ return (*var!=lastValue); };
-		bool keyboardEnabled()			{ return true; }		// used to inc/dec values
-		bool isActiveChannel(int ch)	{ return true; }		// is this the active channel?
+		bool valueHasChanged()				{ return (*var!=lastValue); };
+		bool keyboardEnabled()				{ return true; }		// used to inc/dec values
+		bool isActiveChannel(int ch)		{ return true; }		// is this the active channel?
+		void setDefaultValue(void *v)		{ defaultValue = *((Vec2f*)v); }
+		void setDrawAsVector(bool b=true)	{ drawAsVector = b; }
 		bool updateMouse();
 		void inc(bool shifted);
 		void dec(bool shifted);
@@ -675,6 +695,7 @@ namespace cinder { namespace sgui {
 		bool	keyboardEnabled()			{ return true; }					// used to inc/dec values
 		bool	isActiveChannel(int ch)		{ return (activeTrack == ch); }		// is this the active channel?
 		void	setCameraScale(Vec3f s)		{ cameraScale = s; }
+		void	setDefaultValue(void *v)	{ defaultValue = *((Vec4f*)v); }
 		void	onMouseDown(app::MouseEvent & event);
 		void	onMouseDrag(app::MouseEvent & event);
 		void	onMouseUp(app::MouseEvent & event);
@@ -692,7 +713,7 @@ namespace cinder { namespace sgui {
 		TextureVarControl(SimpleGUI *parent, const std::string & name, gl::Texture* var, float refreshRate, bool flipVert = false);
 		Vec2f draw(Vec2f pos);
 		void onMouseMove(app::MouseEvent & event);
-		void onFileDrop(app::FileDropEvent & event);
+		bool fileDrop(app::FileDropEvent & event);
 		// ROGER
 		bool resized;
 		double refreshTime;
@@ -709,6 +730,7 @@ namespace cinder { namespace sgui {
 		bool dragging;
 		float refreshRate;
 		Vec2i texSize;
+		gl::Texture lastValue;
 	};
 	
 	
@@ -749,7 +771,8 @@ namespace cinder { namespace sgui {
 		bool hasResized()		{ return (this->ListVarControl::hasResized() || lastDropped!=dropped); }
 		void open()				{ dropped = true; this->resize(); }
 		void close()			{ dropped = false; this->resize(); }
-		
+		void setDefaultValue(void *v)	{ defaultValue = *((int*)v); }
+
 		bool dropped;
 		bool lastDropped;
 		Vec2f dropButtonGap;
@@ -855,6 +878,7 @@ namespace cinder { namespace sgui {
 		bool lastSelected;
 		bool defaultSelected;
 		bool blocking;
+		bool asRadio;
 		int tabId;
 		Rectf boolAreaBase;
 		Rectf boolArea;
@@ -873,6 +897,7 @@ namespace cinder { namespace sgui {
 		bool hasResized()				{ return false; };
 		float getValue()				{ return (float)*var; }
 		void setBlocking(bool b=true)	{ if (b != blocking) { blocking = b ; parentGui->bForceRedraw = true; } }
+		void setRadio(bool b=true)		{ asRadio = b ; parentGui->bForceRedraw = true; }
 	};
 	
 	//-----------------------------------------------------------------------------
@@ -890,6 +915,7 @@ namespace cinder { namespace sgui {
 	public:
 		PanelControl(SimpleGUI *parent, const std::string & panelName="");
 		Vec2f draw(Vec2f pos);
+		PanelControl* setColumn(bool b=true)	{ column=b; return this; }
 		bool column;		// affects whole column
 	};
 	

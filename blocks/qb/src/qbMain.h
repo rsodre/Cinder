@@ -113,6 +113,7 @@ public:
 	// Misc
 	std::string & getAppName()			{ return mAppName; }
 	std::string & getAppVersion()		{ return mAppVersion; }
+	std::string & getAppVersionLong()	{ return mAppVersionLong; }
 	std::string & getScreenName()		{ return mScreenName; }
 	std::string getFilePath( const std::string & _f );
 	Vec2f &		getMousePos()			{ return mMousePos; }
@@ -246,6 +247,7 @@ private:
 	bool						bPaletteControls;
 	std::string					mAppName;
 	std::string					mAppVersion;
+	std::string					mAppVersionLong;
 	std::string					mScreenName;
 	std::vector<std::string>	mPathList;
 	

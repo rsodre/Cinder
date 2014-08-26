@@ -44,20 +44,28 @@ namespace cinder { namespace sgui {
 		event.setHandled();
 	}
 	void ciGuiBlockLoadSave::cbLoadDefault( ci::app::MouseEvent & event ) {
+#ifndef NO_SAVE
 		mCfg->load();
 		event.setHandled();
+#endif	// NO_SAVE
 	}
 	void ciGuiBlockLoadSave::cbSaveDefault( ci::app::MouseEvent & event ) {
+#ifndef NO_SAVE
 		mCfg->save();
 		event.setHandled();
+#endif	// NO_SAVE
 	}
 	void ciGuiBlockLoadSave::cbImportConfig( ci::app::MouseEvent & event ) {
+#ifndef NO_SAVE
 		mCfg->import();
 		event.setHandled();
+#endif	// NO_SAVE
 	}
 	void ciGuiBlockLoadSave::cbExportConfig( ci::app::MouseEvent & event ) {
+#ifndef NO_SAVE
 		mCfg->exportas();
 		event.setHandled();
+#endif	// NO_SAVE
 	}
 } } // namespace cinder::sgui
 #endif
@@ -83,8 +91,11 @@ namespace cinder { namespace sgui {
 		if ( label.length() )
 			mCfg->guiAddText(label);
 		mTextureControl = mCfg->guiAddTexture( "", &mTexture, 0.1 );
+		mName = "<name>";
+		mDesc = "<desc>";
 		mCfg->guiAddText( "", &mName );		// use label dor desc
-		
+		mCfg->guiAddText( "", &mDesc );
+
 		// make selector
 		if ( _cfgSelector >= 0 )
 		{
@@ -95,7 +106,6 @@ namespace cinder { namespace sgui {
 		// dummy param
 		else
 		{
-			mCfg->guiAddText( "", &mDesc );
 			int min = (int)mCfg->getMin(_cfgSelector);
 			int max = (int)mCfg->getMin(_cfgSelector);
 			if ( max - min >= 1 )
@@ -120,16 +130,18 @@ namespace cinder { namespace sgui {
 	//
 	// QB Source TAB
 	//
-	ciGuiBlockQBSourceTab::ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName ) : ciConfigGuiBlock(cfg)
+	ciGuiBlockQBSourceTab::ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha ) : ciConfigGuiBlock(cfg)
 	{
 		mSource = src;
 		cfgName = _cfgName;
 		cfgFileName = _cfgFileName;
+		cfgIgnoreAlpha = _cfgIgnoreAlpha;
 		mFPS = mWidth = mHeight = 0;
 		bMovieEnabled = false;
 		bLastMovieEnabled = false;
 		bLastMoviePlaying = true;
-		
+		bIgnoreAlpha = false;
+
 		// set callbacks
 		app::getWindow()->connectFileDrop( & ciGuiBlockQBSourceTab::onFileDrop, this );
 		src->useConfigSelector( _cfgSelector, cfg, false );
@@ -150,6 +162,16 @@ namespace cinder { namespace sgui {
 			// panel: movie
 			mPanelMovie = mCfg->guiAddPanel("mPanelMovie");
 			mCfg->guiAddParam("Framerate",			&mFPS, 1, true );
+			mCfg->guiAddPanel("");
+			cfg->guiAddSeparator();
+			mCfg->guiAddParam(cfgIgnoreAlpha,		"Ignore Alpha" );
+		}
+		// COLUMN
+		mCfg->guiAddGroup( std::string("> TEMPLATES") );
+		{
+			mCfg->setValueLabels(_cfgSelector,	src->getList());
+			mSelectorControl = (IntVarControl*) mCfg->guiAddParam( _cfgSelector, "" );
+			mSelectorControl->setDisplayValue(false);
 		}
 		// COLUMN
 		mCfg->guiAddGroup( std::string("> FILE") );
@@ -175,13 +197,6 @@ namespace cinder { namespace sgui {
 			mDir = new ciGuiBlockSyphonDirectory( cfg, _cfgName );
 			_cfg.guiAddBlock( mDir );
 			mCfg->guiAddParam("Client Framerate",	&mCurrFPSSyphon, 1, true );
-		}
-		// COLUMN
-		mCfg->guiAddGroup( std::string("> TEMPLATES") );
-		{
-			mCfg->setValueLabels(_cfgSelector,	src->getList());
-			mSelectorControl = (IntVarControl*) mCfg->guiAddParam( _cfgSelector, "" );
-			mSelectorControl->setDisplayValue(false);
 		}
 	}
 	void ciGuiBlockQBSourceTab::update()
@@ -296,21 +311,20 @@ namespace cinder { namespace sgui {
 	void ciGuiBlockQBSourceTab::onFileDrop( ci::app::FileDropEvent & event )
 	{
 		if ( event.getNumFiles() > 0 )
-		{
-			this->loadFile( event.getFile( 0 ).string() );
-			event.setHandled();
-		}
+			if ( this->loadFile( event.getFile( 0 ).string() ) )
+				event.setHandled();
 	}
 	// Generic load
-	void ciGuiBlockQBSourceTab::loadFile( const std::string & f )
+	bool ciGuiBlockQBSourceTab::loadFile( const std::string & f )
 	{
 		if ( std::find( qb::_qbSourceExt.begin(), qb::_qbSourceExt.end(), getPathExtension(f) ) == qb::_qbSourceExt.end() )
-			return;
+			return false;
 		//mSource->play( _qb.isPlaying );
 		mCfg->set( cfgName, f );
 		mCfg->set( cfgFileName, f );
 		mFileName = getPathFileName( f );
 		mSelectedPath = f;
+		return true;
 	}
 } } // namespace cinder::sgui
 #endif
@@ -376,7 +390,7 @@ namespace cinder { namespace sgui {
 			}
 			// Update list
 			mListControl->update( valueLabels );
-			mServerCount = valueLabels.size();
+			mServerCount = (int) valueLabels.size();
 			// Unselect / Select
 			this->reselect( current );
 		}

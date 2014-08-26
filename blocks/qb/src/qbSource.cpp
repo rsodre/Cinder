@@ -84,6 +84,7 @@ namespace cinder { namespace qb {
 			// Load by extension
 			if ( this->isMovieFile(_f) )
 			{
+#ifndef QT64
 				qbSourceMovie *newSrc = new qbSourceMovie();
 				if ( newSrc->load(_f,mFlags) == false )
 				{
@@ -91,6 +92,7 @@ namespace cinder { namespace qb {
 					return false;
 				}
 				this->setSource(newSrc);
+#endif	// QT64
 			}
 			else if ( this->isImageFile(_f) )
 			{
@@ -126,8 +128,8 @@ namespace cinder { namespace qb {
 		if ( bCatchingFiles && event.getNumFiles() > 0 )
 		{
 			std::string theFile = event.getFile( 0 ).string();
-			this->load(theFile);
-			event.setHandled();
+			if ( this->load(theFile) )
+				event.setHandled();
 		}
 	}
 	
@@ -389,6 +391,7 @@ namespace cinder { namespace qb {
 	//
 	// MOVIE
 	//
+#ifndef QT64
 	bool qbSourceMovie::load( const std::string & _f, char _flags )
 	{
 		std::string theFile = _qb.getFilePath( _f );
@@ -401,13 +404,21 @@ namespace cinder { namespace qb {
 			
 			if ( TEST_FLAG( _flags, QBFAG_SURFACE) )
 			{
+#ifdef QT64
+				mMovieGl = qtime::MovieGl();
+#else
 				mMovieGl = qtime::MovieGlHap();
+#endif
 				mMovieSurface = qtime::MovieSurface( theFile );
 				mMovie = & mMovieSurface;
 			}
 			else
 			{
+#ifdef QT64
+				mMovieGl = qtime::MovieGl( theFile );
+#else
 				mMovieGl = qtime::MovieGlHap( theFile );
+#endif
 				mMovieSurface = qtime::MovieSurface();
 				mMovie = & mMovieGl;
 			}
@@ -549,7 +560,8 @@ namespace cinder { namespace qb {
 
 		return newFrame;
 	}
-	
+#endif	// QT64
+
 	
 	
 	///////////////////////////////////////////

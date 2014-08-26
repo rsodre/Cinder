@@ -96,7 +96,7 @@ namespace cinder { namespace qb {
 		{
 			svg::Node* node = *it;
 			bool isGroup = ( typeid(*node) == typeid(svg::Group) );
-			int numContours = node->getShape().getNumContours();
+			int numContours = (int) node->getShape().getNumContours();
 			
 			printf("## SVG %d |",level);
 			for (int n=0;n<level;n++)
@@ -259,6 +259,7 @@ namespace cinder { namespace qb {
 		}
 		
 		// make center
+		/*
 		int pc = 0;
 		mCenter = Vec3f::zero();
 		for( int c = 0 ; c < mContours.size() ; c++ )
@@ -270,6 +271,7 @@ namespace cinder { namespace qb {
 			}
 		}
 		mCenter /= pc;
+		 */
 		
 		// Fill vertices
 		for( int c = 0 ; c < mContours.size() ; c++ )
@@ -297,7 +299,7 @@ namespace cinder { namespace qb {
 		Vec3f nv[3];	// vertice for normals
 		for (int i = 0 ; i < tris.getNumIndices() ; i++)
 		{
-			int ix = tris.getIndices()[i];
+			int ix = (int) tris.getIndices()[i];
 #ifdef QB_TRIANGULATOR
 			Vec2f point = tris.getVertices()[ix].xy();		// paul bourke
 #else
@@ -404,7 +406,7 @@ namespace cinder { namespace qb {
 					if ( ps[i0] == ps[i1] )
 						continue;
 					// Indices
-					int i = mTrisExtrude.getNumVertices();
+					int i = (int) mTrisExtrude.getNumVertices();
 					mTrisExtrude.appendTriangle( i+0, i+1, i+2 );
 					mTrisExtrude.appendTriangle( i+1, i+2, i+3 );
 					// Vertices
@@ -431,7 +433,7 @@ namespace cinder { namespace qb {
 						Vec3f n;
 						int i0, i1;
 						// face point 1
-						i0 = ( face > 0 ? face-1 : ( bClosed ? normals.size()-1 : face ) );
+						i0 = (int) ( face > 0 ? face-1 : ( bClosed ? normals.size()-1 : face ) );
 						i1 = face;
 						n = normals[i0].lerp( 0.5, normals[i1] ).normalized();
 						mTrisExtrude.appendNormal( n );
@@ -490,11 +492,11 @@ namespace cinder { namespace qb {
 			// good triangle
 			if ( shape.contains( c ) )
 			{
-				tri.appendIndex( tri.getNumVertices() );
+				tri.appendIndex( (uint32_t) tri.getNumVertices() );
 				tri.appendVertex( p0 );
-				tri.appendIndex( tri.getNumVertices() );
+				tri.appendIndex( (uint32_t) tri.getNumVertices() );
 				tri.appendVertex( p1 );
-				tri.appendIndex( tri.getNumVertices() );
+				tri.appendIndex( (uint32_t) tri.getNumVertices() );
 				tri.appendVertex( p2 );
 			}
 		}

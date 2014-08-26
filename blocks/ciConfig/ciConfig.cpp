@@ -60,7 +60,9 @@ namespace cinder {
 		saveTime = "using defaults";
 		inPostSetCallback = false;
 		postSetCallback_fn = NULL;
+		postResetCallback_fn = NULL;
 		bStarted = false;
+		mCurrentDefault = 0;
 		mAppName = AppBasic::get()->getAppName();
 		mAppVersion = AppBasic::get()->getAppVersion();
 		mFolderApp = getPathDirectory( app::getAppPath().string() );
@@ -92,7 +94,10 @@ namespace cinder {
 #ifdef CFG_CATCH_LOOP_EVENTS
 		// not for presets
 		if (parent == NULL)
-			getWindow()->connectKeyDown( & ciConfig::onKeyDown, this );
+		{
+			app::getWindow()->connectKeyDown( & ciConfig::onKeyDown, this );
+			app::getWindow()->connectFileDrop( & ciConfig::onFileDrop, this );
+		}
 #endif
 		
 		// init MIDI
@@ -162,61 +167,78 @@ namespace cinder {
 	void ciConfig::update()
 	{
 		bStarted = true;
-		
+
 		// Watch if Params updated var pointers
-		for (int id = 0 ; id < params.size() ; id++)
+		//for (int id = 0 ; id < params.size() ; id++)
+		for ( auto iter = params.begin(); iter != params.end(); ++iter )
 		{
-			ciConfigParam *p = params[id];
-			if (p == NULL)
-				continue;
-			if (p->isColor())
+			//ciConfigParam *p = params[id];
+			if ( ciConfigParam *p = *iter )
 			{
-				for (int i = 0 ; i < 3 ; i++)
+				int id = (int) (iter - params.begin());
+				if (p->isColor())
 				{
-					if ( (p->watchColor[i] * 255.0f) != this->get(id, i))
+					for (int i = 0 ; i < 3 ; i++)
 					{
-						//printf("WATCH COLOR %d %.3f  old %.3f\n",i,(float)p->watchColor[i],this->get(id, i));
-						this->set( id, i, p->watchColor[i] * 255.0f );
+						if ( (p->watchColor[i] * 255.0f) != this->get(id, i))
+						{
+							//printf("WATCH COLOR %d %.3f  old %.3f\n",i,(float)p->watchColor[i],this->get(id, i));
+							this->set( id, i, p->watchColor[i] * 255.0f );
+						}
 					}
 				}
-			}
-			else if (p->isVector2() && this->testFlag(id,CFG_FLAG_XY))
-			{
-				for (int i = 0 ; i < 2 ; i++)
-					if (p->watchVector2[i] != this->get(id, i))
-						this->set( id, i, p->watchVector2[i] );
-			}
-			else if (p->isVector())
-			{
-				for (int i = 0 ; i < 4 ; i++)
-					if (p->watchVector[i] != this->get(id, i))
-						this->set( id, i, p->watchVector[i] );
-			}
-			else if (p->isBool())
-			{
-				if (p->watchBool != (bool) this->get(id))
-					this->set( id, p->watchBool );
-			}
-			else if (p->isByte())
-			{
-				if (p->watchByte != (char) this->get(id))
-					this->set( id, p->watchByte );
-			}
-			else if (p->isInt())
-			{
-				if (p->watchInt != (int) this->get(id))
-					this->set( id, p->watchInt );
-			}
-			else if (p->isString())
-			{
-			}
-			else
-			{
-				if (p->watchFloat[0] != this->get(id))
-					this->set( id, p->watchFloat[0] );
+				else if (p->isVector2() && (this->testFlag(id,CFG_FLAG_XY) || this->testFlag(id,CFG_FLAG_XY_VECTOR)))
+				{
+					for (int i = 0 ; i < 2 ; i++)
+						if (p->watchVector2[i] != this->get(id, i))
+							this->set( id, i, p->watchVector2[i] );
+				}
+				else if (p->isVector())
+				{
+					for (int i = 0 ; i < 4 ; i++)
+						if (p->watchVector[i] != this->get(id, i))
+							this->set( id, i, p->watchVector[i] );
+				}
+				else if (p->isBool())
+				{
+					if (p->watchBool != (bool) this->get(id))
+						this->set( id, p->watchBool );
+				}
+				else if (p->isByte())
+				{
+					if (p->watchByte != (char) this->get(id))
+						this->set( id, p->watchByte );
+				}
+				else if (p->isInt())
+				{
+					if (p->watchInt != (int) this->get(id))
+						this->set( id, p->watchInt );
+				}
+				else if (p->isString())
+				{
+				}
+				else
+				{
+					if (p->watchFloat[0] != this->get(id))
+						this->set( id, p->watchFloat[0] );
+				}
 			}
 		}
-		
+
+		//
+		// Set changed flags
+		changedGroups = 0x00;
+		for ( auto iter = params.begin(); iter != params.end(); ++iter )
+		{
+			if ( ciConfigParam *p = *iter )
+			{
+				if ( p->changed && p->changeGroups )
+					changedGroups |= p->changeGroups;
+				p->changed = false;
+			}
+		}
+
+
 		//
 		// MIDI
 #ifdef CFG_USE_MIDI
@@ -243,15 +265,16 @@ namespace cinder {
 		char c = event.getChar();
 		//printf("EVENT>> ciConfig::keyDown [%d] [%c]\n",c,c);
 		switch( c ) {
-				/*
+#ifndef CICONFIG_DISABLE_RESET
 			case 'r':
 			case 'R':
 				if (event.isMetaDown()) // COMMAND
 				{
 					this->reset();
-					return false;
+					return;
 				}
-				 */
+#endif
+#ifndef NO_SAVE
 			case 'l':
 			case 'L':
 				if (event.isMetaDown()) // COMMAND
@@ -283,6 +306,7 @@ namespace cinder {
 					this->exportas();
 					return;
 				}
+#endif	// NO_SAVE
 			case '1' :
 			case '2' :
 			case '3' :
@@ -312,7 +336,12 @@ namespace cinder {
 				}
 		}
 	}
-	
+	void ciConfig::onFileDrop(FileDropEvent & event) {
+		if ( event.getNumFiles() > 0 )
+			if ( this->readFile( event.getFile( 0 ).string() ) )
+				event.setHandled();
+	}
+
 	
 	/////////////////////////////////////////////////////////////////////////
 	//
@@ -984,13 +1013,50 @@ namespace cinder {
 		if (params[id] != NULL)
 			params[id]->init();
 	}
-	void ciConfig::reset()
+	void ciConfig::setDefault(int def, int id, float v)
 	{
-		for ( short id = 0 ; id < params.size() ; id++ )
-			this->reset(id);
-		mDisplayFileName = "< reset >";
+		for (int i = 0 ; i < 4 ; i++)
+			this->setDefault(def, id, i, v);
 	}
-	void ciConfig::reset(int id)
+	void ciConfig::setDefault(int def, int id, Vec2f v )
+	{
+		this->setDefault(def, id, 0, v[0]);
+		this->setDefault(def, id, 1, v[1]);
+	}
+	void ciConfig::setDefault(int def, int id, Vec3f v )
+	{
+		this->setDefault(def, id, 0, v[0]);
+		this->setDefault(def, id, 1, v[1]);
+		this->setDefault(def, id, 2, v[2]);
+	}
+	void ciConfig::setDefault(int def, int id, Vec4f v )
+	{
+		this->setDefault(def, id, 0, v[0]);
+		this->setDefault(def, id, 1, v[1]);
+		this->setDefault(def, id, 2, v[2]);
+		this->setDefault(def, id, 3, v[3]);
+	}
+	void ciConfig::setDefault(int def, int id, int i, float v)
+	{
+		ciConfigParam *p = params[id];
+		p->vec[i].setInitialValue(def,v);
+	}
+	void ciConfig::resetDefault(int def)
+	{
+		if (def >= MAX_DEFAULTS)
+		{
+			printf("INVALID CONFIG DEFAULT %d\n",def);
+			return;
+		}
+		for ( short id = 0 ; id < params.size() ; id++ )
+			this->resetDefault(id, def);
+		mDisplayFileName = "< reset >";
+		if ( postResetCallback_fn )
+			postResetCallback_fn(this);
+		// virtual to update gui
+		this->setCurrentDefault(def);
+	}
+	void ciConfig::resetDefault(int id, int def)
 	{
 		ciConfigParam *p = params[id];
 		if (p != NULL)
@@ -998,10 +1064,9 @@ namespace cinder {
 			for (int i = 0 ; i < 4 ; i++)
 			{
 				if (this->isString(id))
-					p->strval = p->strvalInitial;
+					p->strval = p->strvalInitial[def];
 				else
-					this->set( id, i, p->vec[i].getInitialValue() );
-				
+					this->set( id, i, p->vec[i].getInitialValue(def) );
 			}
 		}
 	}
@@ -1061,11 +1126,12 @@ namespace cinder {
 	}
 	void ciConfig::post_set(int id, int i, bool doCB)
 	{
+		ciConfigParam *p = params[id];
 		// update Param pointers
-		params[id]->updatePointers(i);
+		p->updatePointers(i);
 		// Set freshness
 		bool f = false;
-		switch (params[id]->type)
+		switch (p->type)
 		{
 			case CFG_TYPE_FLOAT:
 			case CFG_TYPE_DOUBLE:
@@ -1095,13 +1161,19 @@ namespace cinder {
 		if (f)
 		{
 			// Mark file as read
+			//if ( ! p->dummy )
+			//	printf("BREAKPOINT\n");
+			//if ( p->name.compare( "PROJ0_LENS_SHIFT_H" ) == 0 )
+			//	printf("BREAKPOINT\n");
+
 			if (mDisplayFileName[0] != '*')
 				mDisplayFileName.insert(0, "*");
 			// set as fresh
 			freshness = true;
-			params[id]->vec[i].freshness = true;
+			p->changed = true;
+			p->vec[i].freshness = true;
 			// save current value
-			if (params[id]->isString())
+			if (p->isString())
 				this->updateLastValueString(id);
 			else
 				this->updateLastValue(id, i);
@@ -1111,8 +1183,8 @@ namespace cinder {
 				inPostSetCallback = true;
 				if ( postSetCallback_fn )
 					postSetCallback_fn(this, id, i);
-				else
-					this->postSetCallback(id, i);
+				//else
+				this->postSetCallback(id, i);
 				inPostSetCallback = false;
 			}
 #ifdef CFG_USE_OSC
@@ -1319,6 +1391,15 @@ namespace cinder {
 		// virtual
 		this->guiUpdateValueLabels(id);
 	}
+	void ciConfig::setValueLabels(short id, const std::vector<std::string> & labels)
+	{
+		int count = 0;
+		for ( auto it = labels.begin() ; it != labels.end(); it++, count++ )
+			params[id]->valueLabels[count] = *it;
+		this->updateLimitsByValueLabels(id);
+		// virtual
+		this->guiUpdateValueLabels(id);
+	}
 	// SETTER / GETER
 	void ciConfig::setValueLabel(short id, int key, string label, bool indexToo)
 	{
@@ -1425,6 +1506,11 @@ namespace cinder {
 	float ciConfig::get(int id, int i)		// Private
 	{
 		ciConfigParam *p = params[id];
+		if ( p == NULL )
+		{
+			printf("config GET NULL [%d,%d]\n",id,i);
+			return 0.0;
+		}
 		switch (p->type)
 		{
 			case CFG_TYPE_FLOAT:
@@ -1622,9 +1708,11 @@ namespace cinder {
 	// Make names
 	std::string ciConfig::makeFileName(const std::string & path, char preset)
 	{
-		std::string f = path + "/" + mAppName;
+		// WARNING :: BLENDY VJ IS USING THIS...
+		//std::string f = path + "/" + mAppName;
+		std::string f = path + "/DEFAULT";
 		if ( preset )
-			f += std::string("_preset_") + preset;
+			f += std::string("_preset") + preset;
 		f += "." + fileExt;
 		return f;
 	}
@@ -1648,6 +1736,9 @@ namespace cinder {
 				doc = XmlTree( loadFile( f ) );
 		} catch (std::exception e) {
 			// Not XML! try old format...
+			console() << "---------------------------------------------" << std::endl;
+			console() << " XML exception: " << e.what() << std::endl;
+			console() << "---------------------------------------------" << std::endl;
 			return readFile_old( f, preset );
 		}
 		//
@@ -1708,7 +1799,7 @@ namespace cinder {
 		this->setDisplayFilename( f, preset );
 
 		// return param count
-		return params.size();
+		return (int) params.size();
 	}
 	//
 	// SAVE to file on data folder
@@ -1804,7 +1895,7 @@ namespace cinder {
 		this->setDisplayFilename( f, preset );
 		
 		// return param count
-		return params.size();
+		return (int) params.size();
  
 	}
 	//
@@ -1936,7 +2027,7 @@ namespace cinder {
 		this->setDisplayFilename( f, preset );
 		
 		// return param count
-		return params.size();
+		return (int) params.size();
 	}
 
 	

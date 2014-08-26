@@ -26,7 +26,7 @@ namespace cinder { namespace midi {
 	
 	void Input::listPorts(){
 		std::cout << "MidiIn: " << mNumPorts << " available." << std::endl;
-		for (size_t i = 0; i < mNumPorts; ++i){
+		for (int i = 0; i < mNumPorts; ++i){
 			std::cout << i << ": " << mMidiIn.getPortName(i).c_str() << std::endl;
 			mPortNames.push_back(mMidiIn.getPortName(i));
 		}
@@ -56,7 +56,7 @@ namespace cinder { namespace midi {
 	}
 	
 	void Input::processMessage(double deltatime, std::vector<unsigned char> *message){
-		unsigned int numBytes = message->size();
+		unsigned int numBytes = (unsigned int) message->size();
 		 
 		if (numBytes > 0){
 			Message* msg = new Message();
