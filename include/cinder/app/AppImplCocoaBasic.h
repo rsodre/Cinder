@@ -81,6 +81,8 @@
 - (std::string)getAppName;
 - (std::string)getAppVersion;
 - (std::string)getApplicationSupportFolder:(bool)create;
+// ROGER -- Handle double click to open file as onFileDrop() event
+- (BOOL)application:(NSApplication *)theApplication openFile:(NSString *)filename;
 
 @end
 
@@ -143,5 +145,8 @@
 - (cinder::app::WindowRef)getWindowRef;
 
 + (WindowImplBasicCocoa*)instantiate:(cinder::app::Window::Format)winFormat withAppImpl:(AppImplCocoaBasic*)appImpl withRetina:(BOOL)retinaEnabled;
+
+// ROGER
+- (void)catchAllNotifications:(NSNotification *)aNotification;
 
 @end

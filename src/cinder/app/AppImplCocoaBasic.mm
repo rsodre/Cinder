@@ -139,7 +139,7 @@
 	
 	// ROGER -- Remember window pos
 	// https://developer.apple.com/library/mac/#documentation/Cocoa/Conceptual/WinPanel/Tasks/SavingWindowPosition.html#//apple_ref/doc/uid/20000229
-	if (mApp->getElapsedFrames() == 0)
+	if (mApp->getElapsedFrames() == 0 && mApp->getSettings().getRememberMainWindowPos())
 	{
 		WindowImplBasicCocoa *winImpl = [mWindows objectAtIndex:0];
 		NSString * frameName = [NSString stringWithFormat:@"mainWindow"];
@@ -434,6 +434,21 @@
 	}
 	return result;
 }
+//
+// ROGER -- Handle double click to open file as onFileDrop() event
+// To make finder send files to me, add CFBundleDocumentTypes / <configure type> / LSHandlerRank = Owner
+- (BOOL)application:(NSApplication *)theApplication openFile:(NSString *)filename
+{
+	while( [mWindows count] == 0 )
+		return false;
+	std::vector<cinder::fs::path> paths;
+	paths.push_back( cinder::fs::path( [filename UTF8String] ) );
+	WindowImplBasicCocoa *w = [mWindows objectAtIndex:0];
+	cinder::app::FileDropEvent fileDropEvent( w->mWindowRef, 0, 0, paths );
+	[w fileDrop:&fileDropEvent];
+	return true;
+}
+
 
 @end
 
@@ -457,7 +472,9 @@
 	if( fullScreen == [mCinderView isFullScreen] )
 		return;
 
+	//NSLog(@"FRAME > %@",NSStringFromRect(mCinderView.frame));
 	[mCinderView setFullScreen:fullScreen options:options];
+	//NSLog(@"FRAME < %@",NSStringFromRect(mCinderView.frame));
 
 	if( fullScreen ) {
 		// ???: necessary? won't this be set in resize?
@@ -809,10 +826,23 @@
 	[winImpl->mCinderView setNeedsDisplay:YES];
 	[winImpl->mCinderView setDelegate:winImpl];
 
+	// ROGER
+	// catch all notifications
+	//[[NSNotificationCenter defaultCenter] addObserver:winImpl selector:@selector(catchAllNotifications:) name:nil object:winImpl->mWin];
+	// for maximize/zoom
+	[[NSNotificationCenter defaultCenter] addObserver:winImpl selector:@selector(windowMovedNotification:) name:NSWindowDidEndLiveResizeNotification object:winImpl->mWin];
+
 	// make this window the active window
 	appImpl->mActiveWindow = winImpl;
 	
 	return [winImpl autorelease];
 }
+
+// ROGER -- catch all notifications
+- (void)catchAllNotifications:(NSNotification *)aNotification
+{
+	NSLog(@"--- NOTIFICAITON --- %@\n",aNotification.name);
+}
+
 
 @end

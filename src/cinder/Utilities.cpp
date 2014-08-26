@@ -221,6 +221,12 @@ void launchWebBrowser( const Url &url )
 #endif
 }
 
+	// ROGER
+	void launchDefaultApplication( const std::string &path )
+	{
+		[[NSWorkspace sharedWorkspace] openFile:[NSString stringWithCString:path.c_str() encoding:NSUTF8StringEncoding]];
+	}
+
 void deleteFile( const fs::path &path )
 {
 #if defined( CINDER_COCOA )
@@ -410,9 +416,11 @@ string toUtf8( const wstring &utf16 )
 	}
 	Vec2f clampRadians( Vec2f a )
 	{
-		a.x = clampRadians( a.x );
-		a.y = clampRadians( a.y );
-		return a;
+		return Vec2f( clampRadians(a.x), clampRadians(a.y) );
+	}
+	Vec3f clampRadians( Vec3f a )
+	{
+		return Vec3f( clampRadians(a.x), clampRadians(a.y), clampRadians(a.z) );
 	}
 	float clampDegrees( float a )
 	{
@@ -424,11 +432,56 @@ string toUtf8( const wstring &utf16 )
 	}
 	Vec2f clampDegrees( Vec2f a )
 	{
-		a.x = clampDegrees( a.x );
-		a.y = clampDegrees( a.y );
-		return a;
+		return Vec2f( clampDegrees(a.x), clampDegrees( a.y) );
 	}
-
+	Vec3f clampDegrees( Vec3f a )
+	{
+		return Vec3f( clampDegrees(a.x), clampDegrees(a.y), clampDegrees(a.z) );
+	}
+	// !!!TESTAR!!!
+	int compareAnglesDegrees( float a, float b )
+	{
+		a = clampDegrees(a);
+		b = clampDegrees(b);
+		if (a > b)
+			return ( a - b < 180.0 ? 1 : -1 );
+		else if (b > a)
+			return ( b - a > 180.0 ? 1 : -1 );
+		else
+			return 0;
+	}
+	// !!!TESTAR!!!
+	int compareAnglesRadians( float a, float b )
+	{
+		a = clampRadians(a);
+		b = clampRadians(b);
+		if (a > b)
+			return ( a - b < M_PI ? 1 : -1 );
+		else if (b > a)
+			return ( b - a > M_PI ? 1 : -1 );
+		else
+			return 0;
+	}
+	// !!!TESTAR!!!
+	float diffAnglesDegrees( float a, float b )
+	{
+		float d = clampDegrees(a) - clampDegrees(b);
+		if ( d > 180.0)
+			d -= 360.0;
+		else if ( d <= -180.0)
+			d += 360.0;
+		return d;
+	}
+	// !!!TESTAR!!!
+	float diffAnglesRadians( float a, float b )
+	{
+		float d = clampRadians(a) - clampRadians(b);
+		if ( d > M_PI)
+			d -= M_TWO_PI;
+		else if ( d <= -M_PI)
+			d += M_TWO_PI;
+		return d;
+	}
 	
 	
 	
