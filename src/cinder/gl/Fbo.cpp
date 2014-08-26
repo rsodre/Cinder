@@ -252,6 +252,7 @@ void Fbo::init()
 
 		FboExceptionInvalidSpecification exc;
 		if( ! checkStatus( &exc ) ) { // failed creation; throw
+			std::cout << "Fbo exception: " << exc.what() << std::endl;
 			throw exc;
 		}
 	}

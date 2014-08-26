@@ -54,6 +54,10 @@ bool createDirectories( const fs::path &path, bool createParents = true );
 
 //! Launches a path in a web browser
 void launchWebBrowser( const Url &url );
+
+// ROGER
+// ! Launches a file with default application
+void launchDefaultApplication( const std::string &path );
 	
 //! Delete the file at \a path. Fails quietly if the path does not exist.
 void deleteFile( const fs::path &path );
@@ -88,7 +92,7 @@ std::string toUtf8( const std::wstring &utf16 );
 	void hex(const unsigned char * from, unsigned char * to, int bytes);
 	//! Converts a srtring into hex. Input string size is double than output.
 	void unhex(const unsigned char * from, unsigned char * to, int bytes);
-	//! Trims a stringfrom start
+	//! Trims a string from start
 	std::string ltrim( const std::string & s );
 	//! Trims a string from end
 	std::string rtrim( const std::string & s );
@@ -98,11 +102,19 @@ std::string toUtf8( const std::wstring &utf16 );
 	std::string toLower( const std::string & s );
 	//! Returns the string in upper case
 	std::string toUpper( const std::string & s );
-	//! Clamps an angle between 0.0 .. 359.9
+	//! Clamps an angle between 0.0 .. 359.999
 	float clampRadians( float a );
 	Vec2f clampRadians( Vec2f a );
+	Vec3f clampRadians( Vec3f a );
 	float clampDegrees( float a );
 	Vec2f clampDegrees( Vec2f a );
+	Vec3f clampDegrees( Vec3f a );
+	//! Compare angles. Returns -1 if (a < b), 0 if (a == b), +1 if (a > b)
+	int compareAnglesRadians( float a, float b );
+	int compareAnglesDegrees( float a, float b );
+	//! Difference between angles. Returns (a - b), normalized from -179.999 to +180.0
+	float diffAnglesRadians( float a, float b );
+	float diffAnglesDegrees( float a, float b );
 
 //! Suspends the execution of the current thread until \a milliseconds have passed. Supports sub-millisecond precision only on Mac OS X.
 void sleep( float milliseconds );

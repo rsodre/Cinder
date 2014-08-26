@@ -217,6 +217,10 @@ class ColorT
 	{
 		return ColorT<T>( CHANTRAIT<T>::max(), static_cast<T>( 0 ), CHANTRAIT<T>::max() );
 	}
+	static ColorT<T> orange()
+	{
+		return ColorT<T>( CHANTRAIT<T>::max(), CHANTRAIT<T>::max() * 0.5f, static_cast<T>( 0 ) );
+	}
 	
 	// ROGER
 	// color ordering -- does it make sense?

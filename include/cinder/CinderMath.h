@@ -117,15 +117,18 @@ struct math<float>
 };
 
 #ifndef M_PI
-#define M_PI           3.14159265358979323846
+#define M_PI			3.14159265358979323846
 #endif
 
 // ROGER
+#ifndef M_QUARTER_PI
+#define M_QUARTER_PI	0.785398163397448
+#endif
 #ifndef M_HALF_PI
-#define M_HALF_PI		1.57079633
+#define M_HALF_PI		1.57079632679489661923
 #endif
 #ifndef M_TWO_PI
-#define M_TWO_PI		6.28318531
+#define M_TWO_PI		6.28318530717958647692
 #endif
 	
 const double EPSILON_VALUE = 4.37114e-05;
@@ -162,6 +165,14 @@ T lmap(T val, T inMin, T inMax, T outMin, T outMax)
 {
 	return outMin + (outMax - outMin) * ((val - inMin) / (inMax - inMin));
 }
+
+	// ROGER
+	template<typename T>
+	T lmapClamp(T val, T inMin, T inMax, T outMin, T outMax)
+	{
+		return math<T>::clamp( lmap( val, inMin, inMax, outMin, outMax), outMin, outMax);
+	}
+	
 
 template<typename T, typename L>
 T bezierInterp( T a, T b, T c, T d, L t)

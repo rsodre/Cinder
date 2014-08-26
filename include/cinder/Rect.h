@@ -73,9 +73,9 @@ class RectT {
 	RectT		scaled( const Vec2<T> &scale ) const;
 	
 	// ROGER
-	RectT<T>	flippedX() { return RectT<T>(x2,y1,x1,y2); }
-	RectT<T>	flippedY() { return RectT<T>(x1,y2,x2,y1); }
-	RectT<T>	flippedXY() { return RectT<T>(x2,y2,x1,y1); }
+	RectT<T>	flippedX()	{ return RectT<T>( Vec2f(x2,y1), Vec2f(x1,y2) ); }
+	RectT<T>	flippedY()	{ return RectT<T>( Vec2f(x1,y2), Vec2f(x2,y1) ); }
+	RectT<T>	flippedXY() { return RectT<T>( Vec2f(x2,y2), Vec2f(x1,y1) ); }
 
 	//! Returns a copy of the Rect transformed by \a matrix. Represents the bounding box of the transformed Rect when \a matrix expresses non-scale/translate operations.
 	RectT		transformCopy( const class MatrixAffine2<T> &matrix ) const;

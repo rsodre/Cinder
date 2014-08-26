@@ -517,15 +517,16 @@ Vec2i App::getMousePos()
 	{
 		if ( ! w )
 			return Vec2i::zero();
-		return getMousePos() - w->getPos();
+		Vec2i origin = ( isFullScreen() ? w->getDisplay()->getBounds().getUL() : w->getPos());
+		return getMousePos() - origin;
 	}
 	Vec2i App::getMousePosMainWindow()
 	{
-		return this->getMousePos( this->getWindowIndex( 0 ) );
+		return getMousePos( this->getWindowIndex( 0 ) );
 	}
 	Vec2i App::getMousePosWindow()
 	{
-		return this->getMousePos( this->getWindow() );
+		return getMousePos( this->getWindow() );
 	}
 	
 #if defined( CINDER_COCOA )

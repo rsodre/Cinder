@@ -205,8 +205,8 @@ class App {
 		
 		// ROGER
 		//! Should remember main window position?
-		void	rememberMainWindowPos()			{ bRememberMainWindowPos = true; }
-		bool	getRememberMainWindowPos()		{ return bRememberMainWindowPos; }
+		void	rememberMainWindowPos()				{ bRememberMainWindowPos = true; }
+		bool	getRememberMainWindowPos() const	{ return bRememberMainWindowPos; }
 		
 		Settings();
 		virtual ~Settings() {}	  

@@ -228,6 +228,14 @@ class Vec2
 		x = rx;
 	}
 
+	// ROGER
+	void rotate( DIST radians, const Vec2<T> & center )
+	{
+		Vec2<T> p = *this - center;
+		p.rotate(radians);
+		this->set( p + center );
+	}
+
 	T lengthSquared() const
 	{
 		return x * x + y * y;
