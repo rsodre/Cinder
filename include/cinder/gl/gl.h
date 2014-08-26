@@ -200,6 +200,9 @@ void enableAlphaBlending( bool premultiplied = false );
 void disableAlphaBlending();
 //! Enables alpha blending and selects a \c BlendFunc for additive blending
 void enableAdditiveBlending();
+	// ROGER
+	//! Enables alpha blending and selects a \c BlendFunc for invert blending
+	void enableInvertBlending();
 
 /** \brief Enables alpha testing and sets the \c AlphaFunc to test for values which are \a func than \a value, which should be in the range [0, 1.0]. 
  *  Possible values for \a func include <tt>GL_NEVER, GL_LESS, GL_EQUAL, GL_LEQUAL, GL_GREATER, GL_NOTEQUAL, GL_GEQUAL and GL_ALWAYS</tt>. **/

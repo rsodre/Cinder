@@ -465,6 +465,13 @@ void enableAdditiveBlending()
 	glBlendFunc( GL_SRC_ALPHA, GL_ONE );	
 }
 
+	// ROGER
+	void enableInvertBlending()
+	{
+		glEnable( GL_BLEND );
+		glBlendFunc( GL_ONE_MINUS_DST_COLOR, GL_ZERO );
+	}
+	
 void enableAlphaTest( float value, int func )
 {
 	glEnable( GL_ALPHA_TEST );
