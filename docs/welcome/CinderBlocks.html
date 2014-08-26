@@ -219,8 +219,10 @@
 
   <div>
     <code><b>&lt;buildCopy&gt;:</b></code> A file which is copied to the folder containing the build
-    product as part of the build process - typically a DLL or dylib. On Mac OS/iOS this
-    is the Contents/MacOS folder inside the output bundle.<br />
+    product as part of the build process - typically a DLL or dylib.<br />
+  </div>
+	<div>
+    &nbsp;&nbsp;<b>"destination" (executables | frameworks | plugins ):</b> The Xcode destination type; the default is <em>executables</em>, which corresponds to the Contents/MacOS folder.
   </div>
 
   <div>
@@ -351,12 +353,12 @@
   </div>
 
   <div>
-    <b>&nbsp; "os"&nbsp;</b><b>(msw | mac | ios)</b><b>:</b> Specifies an operating
+    <b>&nbsp; "os"&nbsp;</b><b>(msw | macosx | ios)</b><b>:</b> Specifies an operating
     system
   </div>
 
   <div>
-    <b>&nbsp; "compiler"&nbsp;</b><b>(xcode | vc10 | vc11)</b><b>:</b> Specifies a
+    <b>&nbsp; "compiler"&nbsp;</b><b>(xcode | vc2012 | vc2013)</b><b>:</b> Specifies a
     compiler
   </div>
 
@@ -374,11 +376,11 @@
   </div>
 
   <div>
-    <b>&nbsp; "os" (msw | mac | ios):</b> Specifies the supported operating system.
+    <b>&nbsp; "os" (msw | macosx | ios):</b> Specifies the supported operating system.
   </div>
 
   <div>
-    &nbsp; <b>"compiler" (xcode | vc10 | vc11):</b> Specifies the supported
+    &nbsp; <b>"compiler" (xcode | vc2012 | vc2013):</b> Specifies the supported
     compiler.<b>&nbsp;</b>
   </div>
 
