@@ -92,8 +92,11 @@ class Camera {
  	//! Converts a world-space coordinate \a worldCoord to normalized device coordinates
  	Vec3f worldToNdc( const Vec3f &worldCoord ) { Vec3f eye = getModelViewMatrix().transformPointAffine( worldCoord ); return getProjectionMatrix().transformPoint( eye ); }
 
-
 	float	getScreenRadius( const class Sphere &sphere, float screenWidth, float screenHeight ) const;
+
+	// ROGER
+	void lerpProjection( float fact, const Camera & r );
+	void lerpModelView( float fact, const Camera & r );
 
   protected:
 	Vec3f	mEyePoint;
@@ -167,7 +170,7 @@ class CameraPersp : public Camera {
 	CameraPersp	getFrameSphere( const class Sphere &worldSpaceSphere, int maxIterations = 20 ) const;
 
 	// ROGER
-	virtual void		calcProjectionFromGroundLevel();
+	//virtual void		calcProjectionFromGroundLevel();
 	
   protected:
 	Vec2f	mLensShift;

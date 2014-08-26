@@ -142,6 +142,7 @@ public:
 	const Matrix44<T>	operator+( T rhs ) const;
 	const Matrix44<T>	operator-( T rhs ) const;
 
+
 	// Accessors
 	T&					at( int row, int col );
 	const T&			at( int row, int col ) const;
@@ -272,6 +273,9 @@ public:
 	// creates a rotation matrix with z-axis aligned to targetDir	
 	static Matrix44<T>	alignZAxisWithTarget( Vec3<T> targetDir, Vec3<T> upDir );
 	static Matrix44<T>	alignZAxisWithTarget( Vec4<T> targetDir, Vec4<T> upDir ) { return alignZAxisWithTarget( targetDir.xyz(), upDir.xyz() ); }
+
+	// ROGER
+	void lerp( float fact, Matrix44<T> & r );
 
 	friend std::ostream& operator<<( std::ostream &lhs, const Matrix44<T> &rhs ) {
 		for( int i = 0; i < 4; i++) {
@@ -1308,6 +1312,16 @@ Matrix44<T> Matrix44<T>::alignZAxisWithTarget( Vec3<T> targetDir, Vec3<T> upDir 
     
     return mat;
 }
+
+	// ROGER
+	template<typename T>
+	void Matrix44<T>::lerp( float fact, Matrix44<T> & r )
+	{
+		for (int n = 0 ; n < 16 ; n++ )
+			m[n] = m[n] + ( r[n] - m[n] ) * fact;
+	}
+
+
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 // Typedefs

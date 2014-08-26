@@ -193,6 +193,21 @@ void Camera::calcInverseModelView() const
 	mInverseModelViewCached = true;
 }
 
+	// ROGER
+	void Camera::lerpProjection( float fact, const Camera & r )
+	{
+		if( ! mProjectionCached ) calcProjection();
+		Matrix44f rm = r.getProjectionMatrix();
+		mProjectionMatrix.lerp( 1.0 - fact, rm );
+	}
+	void Camera::lerpModelView( float fact, const Camera & r )
+	{
+		if( ! mModelViewCached ) calcModelView(); 
+		Matrix44f rm = r.getModelViewMatrix();
+		mModelViewMatrix.lerp( 1.0 - fact, rm );
+	}
+
+
 ////////////////////////////////////////////////////////////////////////////////////////
 // CameraPersp
 
@@ -324,7 +339,11 @@ void CameraPersp::setLensShift(float horizontal, float vertical)
 	// from: http://forum.libcinder.org/#topic/23286000000590029
 	// ref: http://paulbourke.net/miscellaneous/stereographics/stereorender/
 	// ref: http://www.songho.ca/opengl/gl_transform.html
-	void CameraPersp::calcProjectionFromGroundLevel()
+	//
+	// REPLACE BY:	mCam.setLensShift(0,-1);
+	// Dont forget to place lookAt() on ground level too!
+	//
+	/*void CameraPersp::calcProjectionFromGroundLevel()
 	{
 		// looking from the top
 		//mFrustumTop     =  2 * mNearClip * math<float>::tan( (float)M_PI / 180.0f * mFov * 0.5);
@@ -379,7 +398,7 @@ void CameraPersp::setLensShift(float horizontal, float vertical)
 		m[ 7] =  0.0f;
 		m[11] = -( mFarClip - mNearClip ) / ( 2.0f * mFarClip*mNearClip );
 		m[15] =  ( mFarClip + mNearClip ) / ( 2.0f * mFarClip*mNearClip );
-	}
+	}*/
 	
 	
 	
