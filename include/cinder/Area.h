@@ -80,11 +80,6 @@ class Area {
 	bool			contains( const Vec2i &offset ) const;
 
 	// ROGER
-	Area			flippedX() { return Area(x2,y1,x1,y2); }
-	Area			flippedY() { return Area(x1,y2,x2,y1); }
-	Area			flippedXY() { return Area(x2,y2,x1,y1); }
-	
-	// ROGER
 	//! Add width and height
 	void			add( Vec2i &off ) { x2 += off.x; y2 += off.y; }
 	void			add( Vec2<float> &off ) { x2 += off.x; y2 += off.y; }	// ROGER -- REMOVER ISTO!!!
