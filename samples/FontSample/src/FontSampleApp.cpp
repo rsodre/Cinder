@@ -39,6 +39,7 @@ void fontSampleApp::setup()
 		ss << "Glyph 'a' maps to " << font.getGlyphChar( 'a' );
 		vector<Font::Glyph> g = font.getGlyphs( "abc123" );
 		ss << g.size();
+		ss << std::endl;
 		console() << ss.str();
 #endif
 	}

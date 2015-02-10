@@ -1,5 +1,6 @@
 #include "cinder/app/AppBasic.h"
 #include "cinder/Rand.h"
+#include "cinder/Utilities.h"
 #include <list>
 
 using namespace ci;
@@ -15,6 +16,9 @@ class BasicAppMultiWindow : public AppBasic {
 	void mouseDrag( MouseEvent event );
 	void keyDown( KeyEvent event );
 	void draw();
+
+	// ROGER
+	Font			mFont;
 };
 
 // The window-specific data for each window
@@ -34,6 +38,10 @@ void BasicAppMultiWindow::setup()
 	getWindow()->setUserData( new WindowData );
 	
 	createNewWindow();
+
+	// ROGER
+	disableFrameRate();
+	mFont = Font( "Arial", 20 );
 }
 
 void BasicAppMultiWindow::createNewWindow()
@@ -62,6 +70,9 @@ void BasicAppMultiWindow::keyDown( KeyEvent event )
 		setFullScreen( ! isFullScreen() );
 	else if( event.getChar() == 'w' )
 		createNewWindow();
+	// ROGER
+	else if( event.getChar() == 'v' )
+		gl::enableVerticalSync( ! gl::isVerticalSyncEnabled() );
 }
 
 void BasicAppMultiWindow::draw()
@@ -76,6 +87,20 @@ void BasicAppMultiWindow::draw()
 		gl::vertex( *pointIter );
 	}
 	gl::end();
+
+	// ROGER
+	std::ostringstream ss;
+	ss.setf(std::ios::fixed);
+	ss.precision(2);
+	ss << std::setfill('0')  << App::get()->getAverageFps();
+	gl::enableAlphaBlending();
+	gl::drawString( ss.str(), Vec2i(10,10), Color::white(), mFont);
+	ss.str("");
+	ss << "(v) vsync " << (gl::isVerticalSyncEnabled()?"ON":"OFF");
+	gl::drawString( ss.str(), Vec2i(10,30), Color::white(), mFont);
+	ss.str("(w) new window");
+	gl::drawString( ss.str(), Vec2i(10,50), Color::white(), mFont);
+	gl::disableAlphaBlending();
 }
 
 // This line tells Cinder to actually create the application
