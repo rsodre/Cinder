@@ -372,7 +372,7 @@ class App {
 	uint32_t			getElapsedFrames() const { return mFrameCount; }
 	// ROGER
 	//! Returns true if this is the first frame
-	bool				isFirst() const { return (mFrameCount == 0); }
+	bool				isFirst() const { return (mFrameCount == 1); }
 
 	//! Returns the current location of the mouse in screen coordinates measured in points. Can be called outside the normal event loop.
 	static Vec2i		getMousePos();
@@ -512,7 +512,6 @@ class App {
 	// Internal handlers - these are called into by AppImpl's. If you are calling one of these, you have likely strayed far off the path.
 	virtual void	privateSetup__();
 	virtual void	privateUpdate__();
-	virtual void	privateDraw__();	// ROGER
 	
 	//! \endcond
 

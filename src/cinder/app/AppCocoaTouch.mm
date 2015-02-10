@@ -186,9 +186,6 @@ static InterfaceOrientation convertInterfaceOrientation( UIInterfaceOrientation 
 	for( auto &win : mWindows ) {
 		[win->mCinderView drawView];
 	}
-
-	// ROGER:: Increase mFrameCount AFTER draw()
-	mApp->privateDraw__();
 }
 
 - (void)proximityStateChange:(NSNotificationCenter *)notification

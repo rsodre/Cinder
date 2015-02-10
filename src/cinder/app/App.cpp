@@ -146,8 +146,6 @@ void App::privateUpdate__()
 	mSignalUpdate();
 
 	update();
-	// ROGER:: Increase mFrameCount AFTER draw()
-	//mFrameCount++;
 
 	mTimeline->stepTo( static_cast<float>( getElapsedSeconds() ) );
 
@@ -161,12 +159,6 @@ void App::privateUpdate__()
 		mFpsLastSampleFrame = mFrameCount;
 	}
 }
-
-	// ROGER:: Increase mFrameCount AFTER draw()
-	void App::privateDraw__()
-	{
-		mFrameCount++;
-	}
 
 void App::emitShutdown()
 {

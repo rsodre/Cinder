@@ -153,9 +153,6 @@
 	for( WindowImplBasicCocoa* winIt in mWindows ) {
 		[winIt->mCinderView draw];
 	}
-
-	// ROGER:: Increase mFrameCount AFTER draw()
-	mApp->privateDraw__();
 }
 
 - (cinder::app::WindowRef)createWindow:(cinder::app::Window::Format)format
