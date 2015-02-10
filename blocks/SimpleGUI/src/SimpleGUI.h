@@ -75,14 +75,13 @@ namespace cinder { namespace sgui {
 	
 	class SimpleGUI {
 	private:
-		bool enabled;
 		Vec2f	mousePos;
 		std::vector<Control*> controls;
 		
 		void	init(app::App* app);
 	public:
 		static ColorA darkColor;
-		static ColorA lightColor;
+		static ColorA sliderColor;
 		static ColorA lockedColor;
 		static ColorA bgColor;
 		static ColorA textColor;
@@ -124,7 +123,6 @@ namespace cinder { namespace sgui {
 		Control	*getMouseOverControl( Vec2i mousePos );
 		ColumnControl *getMouseOverColumn( Vec2i mousePos );
 		
-		void	updateControls();
 		bool	shouldDrawTabs()		{ return (theTabs.size() > 1); }
 		void	update();
 		void	draw();
@@ -135,9 +133,9 @@ namespace cinder { namespace sgui {
 		void	save(std::string fileName = "");
 		void	load(std::string fileName = "");
 		
-		void	setEnabled(bool state);
+		void	setVisible(bool state);
 		float	getAlpha()				{ return mAlpha.value(); }
-		bool	isEnabled()				{ return enabled; }
+		bool	isVisible()				{ return (mAlpha > 0.0); }
 
 		FloatVarControl* 	addParam(const std::string& paramName, float* var, float min=0, float max=1, float defaultValue = 0);
 		IntVarControl*		addParam(const std::string& paramName, int* var, int min=0, int max=1, int defaultValue = 0);
@@ -172,7 +170,7 @@ namespace cinder { namespace sgui {
 		int					getColumnWidth()	{ return SimpleGUI::sliderSize.x; }
 		Vec2f				getSize()			{ return mSize; }
 		int					getTabId();
-		void				setTab(int t)			{ if (theTabs.size()) theTab = theTabs[t]; bForceRedraw = true; }
+		void				setTab(int t);
 		void				setTab(TabControl *t)	{ theTab = t; }
 		
 		std::vector<TabControl*>	theTabs;
@@ -307,6 +305,7 @@ namespace cinder { namespace sgui {
 		std::string suffix;
 		SimpleGUI *parentGui;
 		// ROGER
+		bool	locked;
 		bool	visible;
 		bool	mustRefresh;
 		bool	readOnly;
@@ -330,10 +329,11 @@ namespace cinder { namespace sgui {
 		virtual ~Control() {};
 		
 		bool enabled, lastEnabled;
-		void enable(bool b=true)		{ enabled = b; }
-		void disable()					{ enabled = false; }
+		void enable(bool b=true)		{ if (b != enabled) { lastEnabled = enabled; enabled = b; mustRefresh = true; } }
+		void disable()					{ this->enable(false); }
 		bool isEnabled()				{ return enabled; }
-		
+		void lock(bool b=true)			{ if (b != locked) { locked = b; mustRefresh = true; } }
+
 		void setBackgroundColor(ColorA color);
 		void notifyUpdateListeners();
 		virtual Vec2f draw(Vec2f pos) = 0;
@@ -347,12 +347,12 @@ namespace cinder { namespace sgui {
 		// ROGER
 		PanelControl* addSwitchPanel(const std::string & name)		{ panelToSwitch = parentGui->addPanel(name); invertSwitch = false; return panelToSwitch; }		// Panel to switch ON/OFF with my value
 		PanelControl* addSwitchPanelInv(const std::string & name)	{ panelToSwitch = parentGui->addPanel(name); invertSwitch = true; return panelToSwitch; }		// Panel to switch ON/OFF with my value
-		void setSuffix(const std::string & s)				{ suffix = s; }
+		void setSuffix(const std::string & s)				{ suffix = s; mustRefresh = true; }
 		void setName(const std::string & newName)			{ if (name != newName) mustRefresh = true; name = newName; }
 		void setMustRefresh()								{ mustRefresh = true; }
 		bool hasChanged()							{ if (unitControl) if (unitControl->valueHasChanged()) mustRefresh = true; return this->valueHasChanged() || this->mustRefresh; }
 		bool controlHasResized()					{ return (this->hasResized() || enabled != lastEnabled); }
-		bool isHighlighted(int ch=0)				{ return (channelOver == ch && parentGui->selectedControl == NULL) || (this->isActiveChannel(ch) && parentGui->selectedControl == this); }
+		bool isHighlighted(int ch=0)				{ return ( (channelOver == ch && parentGui->selectedControl == NULL) || (this->isActiveChannel(ch) && parentGui->selectedControl == this) ) && ! this->locked; }
 		bool isInteracting()						{ return (parentGui->selectedControl == this); }
 		void setUnitControl(Control *c)				{ unitControl = c; }
 		Control* setReadOnly(bool b=true);			// chained setters
@@ -378,6 +378,7 @@ namespace cinder { namespace sgui {
 		virtual void decY(bool shifted)				{ return this->dec(shifted); }	// keyboard dec (Y)
 		virtual float getValue()					{ return 0.0; }			// basic float value (when available)
 		virtual void setDefaultValue(void *v)		{}
+		virtual void setLimits(float vmin, float vmax)	{}
 		// draw functions
 		void drawBackArea(Rectf a);
 		// generic float slider
@@ -433,6 +434,7 @@ namespace cinder { namespace sgui {
 		void dec(bool shifted)			{ *var = math<float>::clamp( (*var)-(step*(shifted?10:1)), min, max ); }		// keyboard dec
 		float getValue()				{ return *var; }
 		void setDefaultValue(void *v)	{ defaultValue = *((float*)v); }
+		void setLimits(float vmin, float vmax)	{ min = vmin; max = vmax; this->update(); mustRefresh = true; }
 	private:
 	};
 	
@@ -459,17 +461,17 @@ namespace cinder { namespace sgui {
 		void onMouseDrag(app::MouseEvent & event);	
 		// ROGER
 		void update();
-		void reset()				{ *var = defaultValue; }
+		void reset()					{ *var = defaultValue; }
 		void setStep(int s);
 		bool updateMouse();
-		bool valueHasChanged()		{ return (*var != lastValue); }
-		bool isOn()					{ return (*var != 0); }		// used to switch panel
-		bool keyboardEnabled()		{ return true; }			// used to inc/dec values
-		void inc(bool shifted)		{ *var = math<int>::clamp( (*var)+(step*(shifted?10:1)), min, max ); }		// keyboard inc
-		void dec(bool shifted)		{ *var = math<int>::clamp( (*var)-(step*(shifted?10:1)), min, max ); }		// keyboard dec
-		float getValue()			{ return (float)*var; }
-		void setLimits(float vmin, float vmax)	{ min = vmin; max = vmax; this->update(); mustRefresh = true; }
+		bool valueHasChanged()			{ return (*var != lastValue); }
+		bool isOn()						{ return (*var != 0); }		// used to switch panel
+		bool keyboardEnabled()			{ return true; }			// used to inc/dec values
+		void inc(bool shifted)			{ *var = math<int>::clamp( (*var)+(step*(shifted?10:1)), min, max ); }		// keyboard inc
+		void dec(bool shifted)			{ *var = math<int>::clamp( (*var)-(step*(shifted?10:1)), min, max ); }		// keyboard dec
+		float getValue()				{ return (float)*var; }
 		void setDefaultValue(void *v)	{ defaultValue = *((int*)v); }
+		void setLimits(float vmin, float vmax)	{ min = vmin; max = vmax; this->update(); mustRefresh = true; }
 	};
 	
 	//-----------------------------------------------------------------------------
@@ -809,11 +811,11 @@ namespace cinder { namespace sgui {
 		//! Registers a callback for Click events. Returns a unique identifier which can be used as a parameter to unregisterClick().
 		template<typename T>
 		void	registerClickDown( T *obj, void(T::*callback)(app::MouseEvent&) ) {
-			cbFuncDown = std::bind( callback, obj, std::_1 );
+			cbFuncDown = std::bind( callback, obj, std::placeholders::_1 );
 		}
 		template<typename T>
 		void	registerClickUp( T *obj, void(T::*callback)(app::MouseEvent&) ) {
-			cbFuncUp = std::bind( callback, obj, std::_1 );
+			cbFuncUp = std::bind( callback, obj, std::placeholders::_1 );
 		}
 		
 		// ROGER
@@ -853,17 +855,14 @@ namespace cinder { namespace sgui {
 	// ROGER
 	class AreaControl : public Control {
 	public:
-		AreaControl(SimpleGUI *parent, const std::string & name) : switchable(false), lastSwitchable(false), locked(false), lastLocked(false), Control(parent,name) {}
-		bool valueHasChanged()			{ return (switchable != lastSwitchable || locked != lastLocked); }
+		AreaControl(SimpleGUI *parent, const std::string & name) : switchable(false), lastSwitchable(false), Control(parent,name) {}
+		bool valueHasChanged()			{ return (switchable != lastSwitchable); }
 		bool hasResized()				{ return this->valueHasChanged(); }
 		void setSwitchable(bool b=true)	{ switchable = b; }
-		void lock(bool b=true)			{ locked = b; }
 		Rectf backArea;
 	protected:
 		bool switchable;
 		bool lastSwitchable;
-		bool locked;
-		bool lastLocked;
 	};
 	
 	//-----------------------------------------------------------------------------

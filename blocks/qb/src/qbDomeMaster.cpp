@@ -342,7 +342,7 @@ namespace cinder { namespace qb {
 			mMeshGrid.end();
 		}
 		// draw!
-		gl::color( ColorA(1,1,1,_cfg.guiGetAlpha()) );
+		gl::color( Color::white() );
 		mMeshGrid.draw();
 	}
 	void qbDomeMaster::drawMesh( Vec2f uv, float horizon )
@@ -355,11 +355,12 @@ namespace cinder { namespace qb {
 			float lat_h = horizonToAltitudeDeg( horizon );
 			for ( float lat = lat_h ; lat < 90.0f ; lat += mMeshStep )
 			{
+				float d = fmod( lat, mMeshStep );
 				glBegin( GL_TRIANGLE_STRIP );
 				for ( int lng = 0 ; lng <= 360 ; lng += mMeshStep )
 				{
 					Vec3f p0 = LATLNG_TO_XYZ_DEG( lat, lng );
-					Vec3f p1 = LATLNG_TO_XYZ_DEG( lat+mMeshStep, lng );
+					Vec3f p1 = LATLNG_TO_XYZ_DEG( lat+mMeshStep-d, lng );
 					Vec3f n0 = ( esfera ? p0 : -p0 );
 					Vec3f n1 = ( esfera ? p1 : -p1 );
 					// TODO:: TESTAR SEM SHADER !!! - vai dar problema no displaylist
@@ -375,10 +376,8 @@ namespace cinder { namespace qb {
 					glVertex3f( p1 );
 				}
 				glEnd();
-				// 1st time, adjust altitude (Latitude) to step
-				float diff = fmod( (lat + 360.0), mMeshStep );
-				if ( diff != 0.0 )
-					lat -= diff;
+				// 1st time, adjust dorison diff
+				lat -= d;
 			}
 			mMeshDome.end();
 		}

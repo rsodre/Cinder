@@ -58,6 +58,7 @@ namespace cinder {
 		virtual void draw();
 		
 		// Setters
+		void		guiSetLimits( int id, float vmin, float vmax );
 		void		guiSetOffset( const Vec2f & o )		{ mGui->mOffset = o; }
 		void		guiSetName( std::string name )		{ mGui->setName(name); }
 		void		guiSetName( int id, std::string name );
@@ -73,13 +74,14 @@ namespace cinder {
 		bool		guiIsInteracting(int id)		{ return ( params[id] ? ((Control*)(params[id]->guiControl))->isInteracting() : false ); }
 		
 		// Wrappers
-		void		guiShowHide()					{ if (mGui->isEnabled()) this->guiHide(); else this->guiShow(); }
-		void		guiHide()						{ mGui->setEnabled(false);  }
-		void		guiShow( bool b = true )		{ mGui->setEnabled(b); }
-		bool		guiIsVisible()					{ return mGui->isEnabled(); };
+		void		guiShowHide()					{ if (mGui->isVisible()) this->guiHide(); else this->guiShow(); }
+		void		guiHide()						{ mGui->setVisible(false);  }
+		void		guiShow( bool b = true )		{ mGui->setVisible(b); }
+		bool		guiIsVisible()					{ return mGui->isVisible(); };
 
 		// virtuals
 		void		setCurrentDefault(int def);
+		void		setLimits(int id, float vmin, float vmax);
 
 		// variable controls
 		LabelControl*		guiAddParam( const std::string & label, std::string * var, bool wrap=false );

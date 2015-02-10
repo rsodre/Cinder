@@ -5,9 +5,10 @@
 //  Copyright 2011 Studio Avante. All rights reserved.
 //
 
+#import <Foundation/Foundation.h>
+#include <sstream>
 #include "qbConfig.h"
 #include "qb.h"
-#include <sstream>
 
 using namespace ci;
 using namespace ci::sgui;
@@ -87,10 +88,18 @@ void qbConfig::setup() {
 	this->setDummy( QBCFG_PALETTE_REDUCE_TIME );
 	
 	// Readonly
-	this->addString(DUMMY_APP_VERSION, "DUMMY_APP_VERSION", QB_APP_VERSION_LONG);
-	this->addString(DUMMY_GPU, "DUMMY_GPU", std::string((const char*)glGetString(GL_RENDERER)));
-	this->addString(DUMMY_GL_VERSION, "DUMMY_GL_VERSION", std::string((const char*)glGetString(GL_VERSION)));
-	this->addString(DUMMY_GLSL_VERSION, "DUMMY_GLSL_VERSION", std::string((const char*)glGetString(GL_SHADING_LANGUAGE_VERSION)));
+	this->addString(DUMMY_APP_VERSION, "DUMMY_APP_VERSION", _sys.getAppVersionLong());
+	this->addString(DUMMY_OS_VERSION, "DUMMY_OS_VERSION", _sys.getOsVersion());
+	this->addString(DUMMY_GPU_VENDOR, "DUMMY_GPU_VENDOR", _sys.getGpuVendor());
+	this->addString(DUMMY_GPU_MODEL, "DUMMY_GPU_MODEL", _sys.getGpuModel());
+	this->addString(DUMMY_GPU_TEX_SIZE, "DUMMY_GPU_TEX_SIZE", _sys.getGpuTexSize());
+	this->addString(DUMMY_GL_VERSION, "DUMMY_GL_VERSION", _sys.getOpenGlVersion());
+	this->addString(DUMMY_GLSL_VERSION, "DUMMY_GLSL_VERSION", _sys.getGlslVersion());
+	this->addString(DUMMY_RAM_AVAILABLE, "DUMMY_RAM_AVAILABLE", _sys.getRam());
+	this->addString(DUMMY_PROCESSOR, "DUMMY_PROCESSOR", _sys.getProcessor());
+	this->addString(DUMMY_MODEL, "DUMMY_MODEL", _sys.getCpuModel());
+	this->addString(DUMMY_CORES, "DUMMY_CORES", _sys.getCpuCores());
+	this->addString(DUMMY_GPU_RAM, "DUMMY_GPU_RAM", _sys.getGpuRam());
 	this->addInt(DUMMY_RENDER_WIDTH, "DUMMY_RENDER_WIDTH", 0);
 	this->addInt(DUMMY_RENDER_HEIGHT, "DUMMY_RENDER_HEIGHT", 0);
 	this->addInt(DUMMY_QB_WIDTH, "DUMMY_QB_WIDTH", 0);
@@ -108,9 +117,18 @@ void qbConfig::setup() {
 	this->addString(DUMMY_RENDER_STATUS, "DUMMY_RENDER_STATUS", "");
 	//
 	this->setDummy(DUMMY_APP_VERSION);
-	this->setDummy(DUMMY_GPU);
+	this->setDummy(DUMMY_OS_VERSION);
+	this->setDummy(DUMMY_GPU_VENDOR);
+	this->setDummy(DUMMY_GPU_MODEL);
+	this->setDummy(DUMMY_GPU_TEX_SIZE);
 	this->setDummy(DUMMY_GL_VERSION);
 	this->setDummy(DUMMY_GLSL_VERSION);
+	this->setDummy(DUMMY_RAM_AVAILABLE);
+	this->setDummy(DUMMY_PROCESSOR);
+	this->setDummy(DUMMY_MODEL);
+	this->setDummy(DUMMY_CORES);
+	this->setDummy(DUMMY_GPU_RAM);
+	//
 	this->setDummy(DUMMY_RENDER_WIDTH);
 	this->setDummy(DUMMY_RENDER_HEIGHT);
 	this->setDummy(DUMMY_QB_WIDTH);

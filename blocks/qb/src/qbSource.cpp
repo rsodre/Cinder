@@ -408,6 +408,7 @@ namespace cinder { namespace qb {
 				mMovieGl = qtime::MovieGl();
 #else
 				mMovieGl = qtime::MovieGlHap();
+				mMovieGl.setAsRect();
 #endif
 				mMovieSurface = qtime::MovieSurface( theFile );
 				mMovie = & mMovieSurface;
@@ -418,6 +419,7 @@ namespace cinder { namespace qb {
 				mMovieGl = qtime::MovieGl( theFile );
 #else
 				mMovieGl = qtime::MovieGlHap( theFile );
+				mMovieGl.setAsRect();
 #endif
 				mMovieSurface = qtime::MovieSurface();
 				mMovie = & mMovieGl;

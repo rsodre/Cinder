@@ -24,9 +24,9 @@ namespace cinder {
 		mGui = new SimpleGUI( app::App::get() );
 		//mGui->setName(mAppName+" "+mAppVersion);
 		
-		//mGui->lightColor = ColorA(0, 1, 1, 1);		// cyan
-		mGui->lightColor = ColorA(0, 1, 0.8, 1);		// green
-		//mGui->lightColor = ColorA(1, 0.7, 0.7, 1);	// redish
+		//mGui->sliderColor = ColorA(0, 1, 1, 1);		// cyan
+		mGui->sliderColor = ColorA(0, 1, 0.8, 1);		// green
+		//mGui->sliderColor = ColorA(1, 0.7, 0.7, 1);	// redish
 	}
 	ciConfigGui::~ciConfigGui()
 	{
@@ -37,28 +37,37 @@ namespace cinder {
 
 	void ciConfigGui::draw()
 	{
-		mGui->update();
-
 		if ( !this->guiIsVisible() )
 			return;
-		
+
 		// Update Blocks
 		for (std::vector<ciConfigGuiBlock*>::iterator it = mBlocks.begin() ; it != mBlocks.end() ; it++)
 		{
 			ciConfigGuiBlock* block = *it;
 			block->update();
 		}
-		
+		mGui->update();
+
 		// Draw GUI
 		mGui->draw();
 	}
 	
+	void ciConfigGui::guiSetLimits( int id, float vmin, float vmax )
+	{
+		if (params[id])
+		{
+			Control *c = this->guiGetControl(id);
+			if ( c )
+				c->setLimits( vmin, vmax );
+		}
+	}
+
 	void ciConfigGui::guiSetName( int id, std::string name )
 	{
 		if (params[id])
 			this->guiGetControl(id)->setName( name );
 	}
-	
+
 	void ciConfigGui::guiUpdateValueLabels( int id )
 	{
 		if (params[id])
@@ -101,6 +110,11 @@ namespace cinder {
 				c->setDefaultValue(&v);
 			}
 		}
+	}
+	void ciConfigGui::setLimits(int id, float vmin, float vmax)
+	{
+		this->ciConfig::setLimits( id, vmin, vmax );
+		this->guiSetLimits( id, vmin, vmax );
 	}
 
 
@@ -202,7 +216,12 @@ namespace cinder {
 				c = mGui->addParamList(label, this->getPointerInt(id), p->valueLabels );
 		}
 		else if (this->isColor(id))
-			c = mGui->addParam(label, this->getPointerColor(id), Color( this->getColor(id) ));
+		{
+			if ( this->testFlag(id,CFG_FLAG_ALPHA) )
+				c = mGui->addParam(label, this->getPointerColorA(id), this->getColorA(id) );
+			else
+				c = mGui->addParam(label, this->getPointerColor(id), Color( this->getColor(id) ));
+		}
 		else if (this->isVector(id))
 		{
 			if ( this->isVector4(id) && ( p->quater || this->testFlag(id,CFG_FLAG_ARCBALL)) )

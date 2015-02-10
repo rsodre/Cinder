@@ -77,15 +77,11 @@ namespace cinder { namespace qb {
 	void qbMain::init( int _w, int _h, bool _autoWindowSize )
 	{
 		// Screen name
-		//mAppVersion	= std::string( [[[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey] UTF8String] );
-		mAppVersion		= std::string( [[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"] UTF8String] );
-		mAppVersionLong	= mAppVersion + " (" + std::string( [[[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleVersionKey] UTF8String] ) + ")";
-		mAppName		= std::string( [[[NSBundle mainBundle] objectForInfoDictionaryKey:(NSString *)kCFBundleNameKey] UTF8String] );
 		std::stringstream os;
-		//os << "__" << mAppName;
-		os << mAppName << " v" << mAppVersion;
+		//os << "__" << mSysInfo.getAppName();
+		os << mSysInfo.getAppName() << " v_" << mSysInfo.getAppVersion();
 		mScreenName = os.str();
-		printf("----- QB   app name [%s]   screen name [%s]\n",mAppName.c_str(),mScreenName.c_str());
+		printf("----- QB app_name [%s] screen_name [%s] app_ver [%s]\n",mSysInfo.getAppName().c_str(),mScreenName.c_str(),mSysInfo.getAppVersionLong().c_str());
 
 		// Make Config
 		mConfig = new qbConfig();
@@ -135,8 +131,8 @@ namespace cinder { namespace qb {
 		
 		// Renderer file names
 		os.clear();
-		//os << "__" << mAppName;
-		os << mAppName;
+		//os << "__" << mSysInfo.getAppName();
+		os << mSysInfo.getAppName();
 		mRenderer.setFileNameBase( os.str() );
 		mRenderer.setFolder( QB_CAPTURE_FOLDER );
 		
@@ -1079,9 +1075,8 @@ namespace cinder { namespace qb {
 				// Syphon Icon
 				if ( mConfig->getBool(QBCFG_SYPHON_OUTPUT) )
 					gl::draw( mSyphonIcon, Rectf( getWindowWidth()-mSyphonIcon.getWidth(), 0, getWindowWidth(), mSyphonIcon.getHeight()) );
+				gl::disableAlphaBlending();
 			}
-
-			gl::disableAlphaBlending();
 		}
 	}
 	

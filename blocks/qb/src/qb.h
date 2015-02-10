@@ -33,6 +33,7 @@ namespace cinder { namespace qb {
 #define _renderer				(qb::__qb.mRenderer)
 #define _src(s)					(qb::__qb.source(s))
 #define _touch					(qb::__qb.mTouch)
+#define _sys					(qb::__qb.sys())
 
 // Render unit: The rendered scene size in pixels
 #define QB_RENDER_WIDTH			(_qb.getRenderWidth())
@@ -66,9 +67,9 @@ namespace cinder { namespace qb {
 
 // misc
 #define QB_VERBOSE				(_qb.bVerbose)
-#define QB_APP_NAME				(_qb.getAppName())
-#define QB_APP_VERSION			(_qb.getAppVersion())
-#define QB_APP_VERSION_LONG		(_qb.getAppVersionLong())
+#define QB_APP_NAME				(_sys.getAppName())
+#define QB_APP_VERSION			(_sys.getAppVersion())
+#define QB_APP_VERSION_LONG		(_sys.getAppVersionLong())
 #define QB_CAPTURE_FOLDER		"/Volumes/HDD/CAPTURE/"
 #define QB_FONT					(_qb.mFont)
 

@@ -186,6 +186,14 @@ namespace cinder {
 							this->set( id, i, p->watchColor[i] * 255.0f );
 						}
 					}
+					for (int i = 0 ; i < 4 ; i++)
+					{
+						if ( (p->watchColorA[i] * 255.0f) != this->get(id, i))
+						{
+							//printf("WATCH COLOR %d %.3f  old %.3f\n",i,(float)p->watchColorA[i],this->get(id, i));
+							this->set( id, i, p->watchColorA[i] * 255.0f );
+						}
+					}
 				}
 				else if (p->isVector2() && (this->testFlag(id,CFG_FLAG_XY) || this->testFlag(id,CFG_FLAG_XY_VECTOR)))
 				{
@@ -965,7 +973,7 @@ namespace cinder {
 		this->setLimitsR(id, 0.0f, 255.0f);
 		this->setLimitsG(id, 0.0f, 255.0f);
 		this->setLimitsB(id, 0.0f, 255.0f);
-		this->set(id, r, g, b);
+		this->set(id, r, g, b, 255.0f);
 		this->init(id);
 	}
 	void ciConfig::addVector2(short id, const string name, Vec2f p, float vmin, float vmax)
@@ -1770,7 +1778,7 @@ namespace cinder {
 				ciConfigParam *param = params[pid];
 				if (param == NULL)
 					continue;
-				if ( name == param->name )
+				if ( name == param->name && ! param->dummy )
 				{
 #ifdef VERBOSE
 					printf ("READ XML param %d: %s = %s",pid,name.c_str(),value.c_str());
@@ -1851,8 +1859,8 @@ namespace cinder {
 			ciConfigParam *param = params[id];
 			if ( param == NULL )
 				continue;
-			if ( param->dummy )
-				continue;
+			//if ( param->dummy )
+			//	continue;
 			std::string name = this->getName(id);
 			std::string value = this->getString(id, true);
 			// Update ttribute
@@ -1866,6 +1874,9 @@ namespace cinder {
 				p = &p_new;
 			}
 			p->setAttribute( "value", value );
+			// prog?
+			if ( param->dummy )
+				p->setAttribute( "dummy", "true" );
 			// prog?
 			if ( param->vec[0].preserveProg )
 				p->setAttribute( "prog", "true" );

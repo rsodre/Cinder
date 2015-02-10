@@ -52,6 +52,9 @@
 
 #define RANDOM_COLOR	ColorA( Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), Rand::randFloat(0.25,1.0), 0.7)
 
+#define SLIDER_COLOR	( locked ? SimpleGUI::lockedColor : SimpleGUI::sliderColor )
+#define TEXT_COLOR		( important ? SimpleGUI::sliderColor : SimpleGUI::textColor )
+
 using namespace ci::app;
 
 namespace cinder { namespace sgui {
@@ -62,7 +65,7 @@ namespace cinder { namespace sgui {
 	
 	ColorA SimpleGUI::darkColor = ColorA(0.3, 0.3, 0.3, 1);
 	ColorA SimpleGUI::lockedColor = ColorA(0.5, 0.5, 0.5, 1);
-	ColorA SimpleGUI::lightColor = ColorA(1, 1, 1, 1);
+	ColorA SimpleGUI::sliderColor = ColorA(1, 1, 1, 1);
 	ColorA SimpleGUI::bgColor = ColorA(0, 0, 0, 0.75);
 	ColorA SimpleGUI::textColor = ColorA(1,1,1,1);
 	ColorA SimpleGUI::mouseOverColor = ColorA(0.75,0.75,0.75,1);
@@ -82,7 +85,6 @@ namespace cinder { namespace sgui {
 	
 	SimpleGUI::SimpleGUI(App* app) {
 		init(app);
-		enabled = true;
 		mouseControl = NULL;
 		theTab = NULL;			// The current active tab
 		lastTab = NULL;		// The last active tab
@@ -244,7 +246,17 @@ namespace cinder { namespace sgui {
 	int SimpleGUI::getTabId() {
 		return ( theTab != NULL ? theTab->tabId : 0 );
 	}
-	
+	void SimpleGUI::setTab(int t)
+	{
+		if (theTabs.size())
+		{
+			if ( t >= theTabs.size() )
+				t = theTabs.size() - 1;
+			theTab = theTabs[t];
+			bForceRedraw = true;
+		}
+	}
+
 	ColumnControl* SimpleGUI::addColumn(const std::string & colName) {
 		ColumnControl* control = new ColumnControl(this, colName);
 		control->tab = lastTab;
@@ -266,7 +278,7 @@ namespace cinder { namespace sgui {
 			Control* control = *it;
 			if (control->name == name) {
 				return control;
-			}		
+			}
 		}
 		return NULL;
 	}
@@ -305,7 +317,7 @@ namespace cinder { namespace sgui {
 	//
 	// UPDATE
 	//
-	void SimpleGUI::updateControls() {
+	void SimpleGUI::update() {
 		PanelControl* currPanel = NULL;
 		ColumnControl* currCol = NULL;
 		bool colEnabled = true;
@@ -345,18 +357,14 @@ namespace cinder { namespace sgui {
 				}
 				else if (control->updateMouse())
 					control->mustRefresh = true;
+				else if (bForceRedraw)
+					control->mustRefresh = true;
 			}
 		}
 	}
 	//
 	// DRAW
 	//
-	void SimpleGUI::update() {
-		float a = mAlpha.value();
-		enabled = ( a > 0.0 );
-		if (enabled)
-			this->updateControls();
-	}
 	void SimpleGUI::draw() {
 
 		gl::disableDepthRead();
@@ -645,14 +653,14 @@ namespace cinder { namespace sgui {
 		return pos;
 	}
 	
-	void SimpleGUI::setEnabled(bool state) {
+	void SimpleGUI::setVisible(bool state) {
 		//printf("GUI fade to %d   a %.2f\n",(int)state,mAlpha.value());
 		if ( state )
 		{
+			if ( mAlpha == 0.0 )
+				mAlpha = 0.001f;	// already ON
 			timeline().apply( &mAlpha, 1.0f, 0.333f, EaseInCubic() );
 			bForceRedraw = true;
-			enabled = true;
-			mAlpha = 0.001f;
 		}
 		else
 			timeline().apply( &mAlpha, 0.0f, 0.333f, EaseOutCubic() );
@@ -798,6 +806,8 @@ namespace cinder { namespace sgui {
 			Control* control = *it;
 			if (!control->visible)
 				continue;
+			if (control->locked)
+				continue;
 			// pass on mouse event
 			if (control->activeArea.contains(mousePos))
 				return control;
@@ -820,7 +830,7 @@ namespace cinder { namespace sgui {
 		mouseTabs = mTabsBounds.contains( event.getPos() );
 	}
 	void SimpleGUI::onMouseDown(app::MouseEvent & event) {
-		if (!enabled)
+		if ( ! this->isVisible() )
 			return;
 		// update mouse over
 		this->onMouseMove( event );
@@ -855,7 +865,7 @@ namespace cinder { namespace sgui {
 			event.setHandled();
 	}
 	void SimpleGUI::onMouseUp(app::MouseEvent & event) {
-		if (!enabled)
+		if ( ! this->isVisible() )
 			return;
 		// update mouse over
 		this->onMouseMove( event );
@@ -871,11 +881,11 @@ namespace cinder { namespace sgui {
 			event.setHandled();
 		}
 		// block events thru GUI
-		if (mouseColumn || mouseTabs)
-			event.setHandled();
+		//if (mouseColumn || mouseTabs)
+		//	event.setHandled();
 	}
 	void SimpleGUI::onMouseDrag(app::MouseEvent & event) {
-		if (!enabled)
+		if ( ! this->isVisible() )
 			return;
 		// update mouse over
 		//this->onMouseMove( event );
@@ -889,7 +899,7 @@ namespace cinder { namespace sgui {
 			event.setHandled();
 	}
 	void SimpleGUI::onFileDrop(FileDropEvent & event) {
-		if (!enabled)
+		if ( ! this->isVisible() )
 			return;
 		Control * c = this->getMouseOverControl( event.getPos() );
 		if ( c )
@@ -983,6 +993,7 @@ namespace cinder { namespace sgui {
 		this->parentGui = parent;
 		this->name = this->lastName = name;
 		this->enabled = this->lastEnabled = true;
+		this->locked = false;
 		bgColor = SimpleGUI::bgColor;
 		drawOffset = Vec2f::zero();
 		this->panelToSwitch = NULL;
@@ -998,7 +1009,7 @@ namespace cinder { namespace sgui {
 		this->postgap = true;
 		this->slim = false;
 		this->label = NULL;
-		
+
 		//NEW
 		gc = NULL;
 	}
@@ -1128,7 +1139,7 @@ namespace cinder { namespace sgui {
 		// save current active channel
 		int oldChannel = channelOver;
 		channelOver = ( activeArea.contains(AppBasic::get()->getMousePosMainWindow()) ? 0 : -1 );
-		return ( channelOver != oldChannel );
+		return ( channelOver != oldChannel && ! locked );
 	}
 
 	
@@ -1142,14 +1153,13 @@ namespace cinder { namespace sgui {
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect( backArea + pos );
 		
-		Color c = ( important ? SimpleGUI::lightColor : SimpleGUI::textColor );
 		gl::enableAlphaBlending();
 
 		if ( ! slim )
 		{
-			gl::drawString(name, pos, c, SimpleGUI::textFont);
+			gl::drawString(name, pos, TEXT_COLOR, SimpleGUI::textFont);
 			if (displayValue)
-				gl::drawStringRight(this->toString(), pos+Vec2f(SimpleGUI::sliderSize.x,0), c, SimpleGUI::textFont);
+				gl::drawStringRight(this->toString(), pos+Vec2f(SimpleGUI::sliderSize.x,0), TEXT_COLOR, SimpleGUI::textFont);
 			gl::disableAlphaBlending();
 		}
 
@@ -1165,10 +1175,10 @@ namespace cinder { namespace sgui {
 			// color bar
 			if (axisOnDefault || axisOnZero)
 				r = Rectf( r.getLowerRight(), rd.getUpperRight() );
-			gl::color(SimpleGUI::lightColor);
+			gl::color(SLIDER_COLOR);
 			gl::drawSolidRect(r);
 			// default value line
-			gl::color( (axisOnDefault||axisOnZero) && fabs(r.getWidth())<=1 ? SimpleGUI::lightColor : SimpleGUI::markerColor );
+			gl::color( (axisOnDefault||axisOnZero) && fabs(r.getWidth())<=1 ? SLIDER_COLOR : SimpleGUI::markerColor );
 			gl::drawLine(rd.getLowerRight(), rd.getUpperRight());
 			// highlight border
 			if (this->isHighlighted())
@@ -1345,14 +1355,13 @@ namespace cinder { namespace sgui {
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect( backArea + pos );
 		
-		Color c = ( important ? SimpleGUI::lightColor : SimpleGUI::textColor );
 		gl::enableAlphaBlending();
 
 		if ( ! slim )
 		{
-			gl::drawString(name, pos, c, SimpleGUI::textFont);
+			gl::drawString(name, pos, TEXT_COLOR, SimpleGUI::textFont);
 			if (displayValue)
-				gl::drawStringRight(this->toString(), pos+Vec2f(SimpleGUI::sliderSize.x,0), c, SimpleGUI::textFont);
+				gl::drawStringRight(this->toString(), pos+Vec2f(SimpleGUI::sliderSize.x,0), TEXT_COLOR, SimpleGUI::textFont);
 			
 		}
 		if (!readOnly)
@@ -1364,7 +1373,7 @@ namespace cinder { namespace sgui {
 				{
 					bool selected = ( *var == min + (i * step) );
 					items[i].activeArea = items[i].activeAreaBase + pos;
-					gl::color( selected ? SimpleGUI::lightColor : SimpleGUI::darkColor );
+					gl::color( selected ? SLIDER_COLOR : SimpleGUI::darkColor );
 					gl::drawSolidRect(items[i].activeArea);
 				}
 				if (slim)
@@ -1384,7 +1393,7 @@ namespace cinder { namespace sgui {
 				gl::color( SimpleGUI::markerColor );
 				gl::drawLine(rd.getLowerRight(), rd.getUpperRight());
 				// value bar
-				gl::color(SimpleGUI::lightColor);
+				gl::color(SLIDER_COLOR);
 				gl::drawSolidRect(r);
 				if (this->isHighlighted())
 				{
@@ -1517,7 +1526,7 @@ namespace cinder { namespace sgui {
 			float v = getNormalizedValue(*var,min,max);
 			gl::color(SimpleGUI::darkColor);
 			gl::drawSolidRect(activeArea);
-			gl::color(SimpleGUI::lightColor);
+			gl::color(SLIDER_COLOR);
 			gl::drawSolidRect(SimpleGUI::getScaledWidthRectf(activeArea, v));
 			if (this->isHighlighted())
 			{
@@ -1641,7 +1650,7 @@ namespace cinder { namespace sgui {
 			{
 				bool selected = ( *var & (unsigned char) items[i].key );
 				items[i].activeArea = items[i].activeAreaBase + pos;
-				gl::color( selected ? SimpleGUI::lightColor : SimpleGUI::darkColor );
+				gl::color( selected ? SLIDER_COLOR : SimpleGUI::darkColor );
 				gl::drawSolidRect(items[i].activeArea);
 			}
 		}
@@ -1730,7 +1739,7 @@ namespace cinder { namespace sgui {
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect(backArea + pos);
 		
-		gl::color((*var) ? SimpleGUI::lightColor : SimpleGUI::darkColor);
+		gl::color((*var) ? SLIDER_COLOR : SimpleGUI::darkColor);
 		gl::drawSolidRect(activeArea);
 		
 		float x = pos.x + ( asButton ? SimpleGUI::buttonGap.x : SimpleGUI::radioSize.x + SimpleGUI::padding.x*2 );
@@ -1946,7 +1955,7 @@ namespace cinder { namespace sgui {
 				gl::drawStrokedRect(activeAreas[i]);
 			}
 		}
-		gl::color(SimpleGUI::lightColor);
+		gl::color(SLIDER_COLOR);
 		for (int i = 0 ; i < channelCount ; i++)
 		{
 			Rectf r = SimpleGUI::getScaledWidthRectf(activeAreas[i], values[i]);
@@ -2136,7 +2145,7 @@ namespace cinder { namespace sgui {
 		}
 
 		// value line
-		gl::color(SimpleGUI::lightColor);
+		gl::color(SLIDER_COLOR);
 		for (int i = 0 ; i < vecCount ; i++)
 		{
 			float v = getNormalizedValue(this->displayedValue((*var)[i],step),min,max);
@@ -2310,7 +2319,7 @@ namespace cinder { namespace sgui {
 		}
 		
 		// current
-		gl::color( SimpleGUI::lightColor );
+		gl::color( SLIDER_COLOR );
 		Vec2f c = Vec2f( lmap(var->x,min,max,activeArea.x1,activeArea.x2), lmap(var->y,max,min,activeArea.y1,activeArea.y2) );
 		c.x = math<int>::clamp(c.x, activeArea.x1, activeArea.x2);
 		c.y = math<int>::clamp(c.y, activeArea.y1, activeArea.y2);
@@ -2486,7 +2495,7 @@ namespace cinder { namespace sgui {
 		}
 
 		// draw reset button
-		gl::color( resetting ? SimpleGUI::lightColor : SimpleGUI::darkColor );
+		gl::color( resetting ? SLIDER_COLOR : SimpleGUI::darkColor );
 		gl::drawSolidRect(activeAreas[1]);
 		gl::color(SimpleGUI::bgColor);
 		gl::drawString("x", activeAreas[1].getUpperLeft()+Vec2f(2,-1), SimpleGUI::textColor, SimpleGUI::textFont);
@@ -2753,7 +2762,7 @@ namespace cinder { namespace sgui {
 			items[i].activeArea = items[i].activeAreaBase + pos;
 		// draw items background
 		for (int i = 0 ; i < items.size() ; i++) {
-			gl::color(this->isSelected(i) ? SimpleGUI::lightColor : SimpleGUI::darkColor);
+			gl::color(this->isSelected(i) ? SLIDER_COLOR : SimpleGUI::darkColor);
 			gl::drawSolidRect(items[i].activeArea);
 		}
 		
@@ -2876,7 +2885,7 @@ namespace cinder { namespace sgui {
 		float h = SimpleGUI::buttonSize.y;
 		Vec2f astart = activeArea.getUpperLeft() + Vec2f( SimpleGUI::buttonSize.x-h, 0); 
 		Rectf abase = Rectf( astart, astart+Vec2f(h,h) );
-		gl::color(SimpleGUI::lightColor);
+		gl::color(SLIDER_COLOR);
 		gl::drawSolidRect(abase);
 		gl::enableAlphaBlending();
 		gl::drawString( "V", abase.getUpperLeft()+Vec2f(3,0), SimpleGUI::darkColor, SimpleGUI::textFont);
@@ -2965,7 +2974,7 @@ namespace cinder { namespace sgui {
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect(backArea + pos);
 		
-		gl::color(pressed ? SimpleGUI::lightColor : SimpleGUI::darkColor);
+		gl::color(pressed ? SLIDER_COLOR : SimpleGUI::darkColor);
 		gl::drawSolidRect(activeArea);
 		
 		gl::enableAlphaBlending();
@@ -3032,7 +3041,7 @@ namespace cinder { namespace sgui {
 		if ( wrap && name.length() )
 		{
 			TextBox tbox = TextBox().size(Vec2i(SimpleGUI::sliderSize.x,TextBox::GROW)).font(SimpleGUI::textFont).text(name);
-			tbox.setColor( important ? SimpleGUI::lightColor : SimpleGUI::textColor );
+			tbox.setColor( TEXT_COLOR );
 			wrapTex = gl::Texture( tbox.render() );
 			h = floor(tbox.measure().y);
 		}
@@ -3072,7 +3081,6 @@ namespace cinder { namespace sgui {
 		gl::drawSolidRect(backArea+pos);
 		
 		gl::enableAlphaBlending();
-		Color c = ( important ? SimpleGUI::lightColor : SimpleGUI::textColor );
 		if ( name.length() )
 		{
 			if (wrap)
@@ -3083,13 +3091,13 @@ namespace cinder { namespace sgui {
 			else
 			{
 				//printf("name[%s] sz %d\n",name.c_str(),(int)name.length());
-				gl::drawString(name, pos, c, SimpleGUI::textFont);
+				gl::drawString(name, pos, TEXT_COLOR, SimpleGUI::textFont);
 				if (var)
-					gl::drawStringRight((*var), pos+Vec2f(SimpleGUI::sliderSize.x,0), c, SimpleGUI::textFont);
+					gl::drawStringRight((*var), pos+Vec2f(SimpleGUI::sliderSize.x,0), TEXT_COLOR, SimpleGUI::textFont);
 			}
 		}
 		else if (var)
-			gl::drawString((*var), pos, c, SimpleGUI::textFont);
+			gl::drawString((*var), pos, TEXT_COLOR, SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 		
 		pos.y += backArea.getHeight() + SimpleGUI::spacing.y;
@@ -3116,7 +3124,7 @@ namespace cinder { namespace sgui {
 		//gl::drawSolidRect(activeArea);		
 		
 		//activeArea = backArea+pos-Vec2f(0,SimpleGUI::padding.y);
-		//gl::color(SimpleGUI::lightColor);
+		//gl::color(SLIDER_COLOR);
 		//gl::drawSolidRect(activeArea);		
 		
 		pos.y += backArea.getHeight() + SimpleGUI::spacing.y;
@@ -3124,7 +3132,7 @@ namespace cinder { namespace sgui {
 	}
 	
 	//-----------------------------------------------------------------------------
-	
+
 	TabControl::TabControl(SimpleGUI *parent, const std::string & tabName, bool *var, bool defaultValue) : AreaControl(parent,"TabControl") {
 		this->type = Control::TAB;
 		this->name = tabName;
@@ -3143,7 +3151,7 @@ namespace cinder { namespace sgui {
 			*var = defaultValue;
 		this->update();
 	}
-	
+
 	void TabControl::update() {
 		int gap = SimpleGUI::padding.y;
 		backArea = Rectf((-SimpleGUI::padding).x,
@@ -3165,30 +3173,29 @@ namespace cinder { namespace sgui {
 							   boolAreaBase.y1 + gap,
 							   boolAreaBase.x2 - gap,
 							   boolAreaBase.y2 - gap );
-		
+
 	}
-	
+
 	Vec2f TabControl::draw(Vec2f pos) {
 		this->lastSelected = selected;
 		this->lastSwitchable = switchable;
-		this->lastLocked = locked;
 		if (var)
 			this->lastValue = *var;
-		
+
 		activeArea = activeAreaBase + pos;
 		boolArea = boolAreaBase + pos;
 		boolAreaIn = boolAreaInBase + pos;
-		
+
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect(backArea + pos);
-		
-		gl::color( locked ? SimpleGUI::lockedColor : (selected ? SimpleGUI::lightColor : SimpleGUI::darkColor) );
+
+		gl::color( locked ? SimpleGUI::lockedColor : (selected ? SimpleGUI::sliderColor : SimpleGUI::darkColor) );
 		gl::drawSolidRect(activeArea);
-		
+
 		gl::enableAlphaBlending();
 		gl::drawString( (var?(*var?name:nameOff):name), (pos + SimpleGUI::tabGap), (selected ? SimpleGUI::darkColor : SimpleGUI::textColor), SimpleGUI::textFont);
 		gl::disableAlphaBlending();
-		
+
 		if (var)
 		{
 			gl::color(SimpleGUI::bgColor);
@@ -3198,7 +3205,7 @@ namespace cinder { namespace sgui {
 				gl::drawSolidRect(boolArea);
 			if (*var)
 			{
-				gl::color( locked ? SimpleGUI::lockedColor : (switchable ? SimpleGUI::darkColor : SimpleGUI::lightColor) );
+				gl::color( locked ? SimpleGUI::lockedColor : (switchable ? SimpleGUI::darkColor : SimpleGUI::sliderColor) );
 				if (asRadio)
 					gl::drawSolidCircle( boolAreaIn.getCenter(), boolAreaIn.getWidth() * 0.5 );
 				else
@@ -3213,18 +3220,18 @@ namespace cinder { namespace sgui {
 					gl::drawStrokedRect(boolAreaIn);
 			}
 		}
-		
+
 		pos.y += backArea.getHeight() + SimpleGUI::spacing.y;
 		return pos;
 	}
-	
+
 	std::string TabControl::toString() {
 		std::stringstream ss;
 		if (var)
 			ss << *var;
 		return ss.str();
 	}
-	
+
 	void TabControl::fromString(std::string& strValue) {
 		if (var)
 		{
@@ -3247,13 +3254,13 @@ namespace cinder { namespace sgui {
 	}
 
 	//-----------------------------------------------------------------------------
-	
+
 	ColumnControl::ColumnControl(SimpleGUI *parent, const std::string & colName) : AreaControl(parent,"ColumnControl") {
 		this->tab = NULL;
 		this->type = Control::COLUMN;
 		this->name = ( colName.length() ? colName : "column" );
 	}
-	
+
 	Vec2f ColumnControl::draw(Vec2f pos) {
 		this->lastSwitchable = switchable;
 		if (enabled)
@@ -3263,20 +3270,20 @@ namespace cinder { namespace sgui {
 		}
 		return pos;
 	}
-	
+
 	//-----------------------------------------------------------------------------
-	
+
 	PanelControl::PanelControl(SimpleGUI *parent, const std::string& panelName) : AreaControl(parent,"PanelControl") {
 		this->column = false;
 		this->type = Control::PANEL;
 		this->name = ( panelName.length() ? panelName : "panel" );
-	}	
-	
+	}
+
 	Vec2f PanelControl::draw(Vec2f pos) {
 		this->lastSwitchable = switchable;
 		return pos;
 	}
-	
-	//-----------------------------------------------------------------------------	
-	
+
+	//-----------------------------------------------------------------------------
+
 } } // namespace cinder::sgui

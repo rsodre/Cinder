@@ -27,6 +27,7 @@
 #include "qbDomeMaster.h"
 #include "qbPalette.h"
 #include "qbTouch.h"
+#include "SysInfo.h"
 
 #define QB_MAX_UNITS	8
 
@@ -111,9 +112,7 @@ public:
 	// GETTERS
 	//
 	// Misc
-	std::string & getAppName()			{ return mAppName; }
-	std::string & getAppVersion()		{ return mAppVersion; }
-	std::string & getAppVersionLong()	{ return mAppVersionLong; }
+	SysInfoGl	& sys()					{ return mSysInfo; }
 	std::string & getScreenName()		{ return mScreenName; }
 	std::string getFilePath( const std::string & _f );
 	Vec2f &		getMousePos()			{ return mMousePos; }
@@ -245,11 +244,9 @@ private:
 	bool						bSyphonControls;
 	bool						bRenderControls;
 	bool						bPaletteControls;
-	std::string					mAppName;
-	std::string					mAppVersion;
-	std::string					mAppVersionLong;
 	std::string					mScreenName;
 	std::vector<std::string>	mPathList;
+	SysInfoGl					mSysInfo;
 	
 	// QB
 	qbUpdatePool					mUpdatePool;

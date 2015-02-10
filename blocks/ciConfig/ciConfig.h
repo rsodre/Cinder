@@ -92,6 +92,7 @@ enum enumConfigFlags
 	CFG_FLAG_ARCBALL,
 	CFG_FLAG_XY,
 	CFG_FLAG_XY_VECTOR,
+	CFG_FLAG_ALPHA,
 	// count
 	CFG_FLAG_COUNT
 };
@@ -263,6 +264,7 @@ public:
 	unsigned char	watchByte;
 	int				watchInt;
 	Color			watchColor;
+	ColorA			watchColorA;
 	Vec2f			watchVector2;
 	Vec4f			watchVector;
 	std::string		watchString;
@@ -282,10 +284,10 @@ public:
 		// vector value count
 		switch (_type)
 		{
+			case CFG_TYPE_COLOR:
 			case CFG_TYPE_VECTOR4:
 				vecCount = 4;
 				break;
-			case CFG_TYPE_COLOR:
 			case CFG_TYPE_VECTOR3:
 				vecCount = 3;
 				break;
@@ -351,6 +353,7 @@ public:
 	unsigned char*	getPointerByte()	{ return &watchByte; }
 	int*			getPointerInt()		{ return &watchInt; }
 	Color*			getPointerColor()	{ return &watchColor; }
+	ColorA*			getPointerColorA()	{ return &watchColorA; }
 	Vec2f*			getPointerVector2()	{ return &watchVector2; }
 	Vec4f*			getPointerVector()	{ return &watchVector; }
 	std::string*	getPointerString()	{ return &watchString; }
@@ -368,12 +371,15 @@ public:
 			//printf("UPDATE WATCHER 1 watchString [%d] [%s]\n",(int)&watchString,watchString.c_str());
 		}
 		watchFloat[i] = val;
-		if (i <= 1)
+		if (i < 2)
 			watchVector2[i] = val;
-		if (i <= 2)
+		if (i < 3)
 			watchColor[i] = val / 255.0f;
-		if (i <= 3)
+		if (i < 4)
+		{
+			watchColorA[i] = val / 255.0f;
 			watchVector[i] = val;
+		}
 		//printf("CONFIG updatePointers %s = %.3f\n",name.c_str(),val);
 	}
 };
@@ -480,7 +486,7 @@ public:
 	void updateLastValueString(int id)				{ params[id]->updateLastValueString(); }
 	void setDummy(int id, bool _e=false)			{ params[id]->dummy = true; params[id]->editable = _e; }
 	void setReadOnly(int id, bool _ro=true)			{ params[id]->editable = ! _ro; }
-	void setLimits(int id, float vmin, float vmax)	{ this->setLimits(id,0,vmin,vmax); }
+	virtual void setLimits(int id, float vmin, float vmax)	{ this->setLimits(id,0,vmin,vmax); }
 	void setLimitsR(int id, float vmin, float vmax) { this->setLimits(id,0,vmin,vmax); }
 	void setLimitsG(int id, float vmin, float vmax) { this->setLimits(id,1,vmin,vmax); }
 	void setLimitsB(int id, float vmin, float vmax) { this->setLimits(id,2,vmin,vmax); }
@@ -595,6 +601,7 @@ public:
 	unsigned char* getPointerByte(int id)	{ return (params[id]->getPointerByte()); }
 	int* getPointerInt(int id)				{ return (params[id]->getPointerInt()); }
 	Color* getPointerColor(int id)			{ return (params[id]->getPointerColor()); }
+	ColorA* getPointerColorA(int id)		{ return (params[id]->getPointerColorA()); }
 	Vec2f* getPointerVector2(int id)		{ return (params[id]->getPointerVector2()); }
 	Vec4f* getPointerVector(int id)			{ return (params[id]->getPointerVector()); }
 	std::string* getPointerString(int id)	{ return (params[id]->getPointerString()); }
@@ -645,7 +652,7 @@ public:
 	bool	getBool(int id)			{ return ( params[id]->value.get() == 0.0 ? false : true ); }
 	unsigned char getByte(int id)	{ return (unsigned char) (params[id]->value.get()); }
 	Color8u	getColor(int id)		{ return Color8u(this->get(id,0), this->get(id,1),this->get(id,2)); }
-	ColorA	getColorA(int id)		{ return ColorA(this->get(id,0), this->get(id,1),this->get(id,2),this->get(id,3)); }
+	ColorA8u getColorA(int id)		{ return ColorA8u(this->get(id,0), this->get(id,1),this->get(id,2),this->get(id,3)); }
 	Vec2f	getVector2(int id)		{ return Vec2f(this->get(id,0), this->get(id,1)); }
 	Vec2f	getVector2(int id0, int id1) { return Vec2f(this->get(id0,0), this->get(id1,0)); }
 	Vec3f	getVector3(int id)		{ return Vec3f(this->get(id,0), this->get(id,1),this->get(id,2)); }
