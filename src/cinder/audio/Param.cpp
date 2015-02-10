@@ -59,28 +59,42 @@ void rampOutQuad( float *array, size_t count, float t, float tIncr, const std::p
 	}
 }
 
-Event::Event( float timeBegin, float timeEnd, float valueBegin, float valueEnd, const RampFn &rampFn )
-	: mTimeBegin( timeBegin ), mTimeEnd( timeEnd ), mDuration( timeEnd - timeBegin ),
+Event::Event( float timeBegin, float timeEnd, float valueBegin, float valueEnd, bool copyValueOnBegin, const RampFn &rampFn )
+	: mTimeBegin( timeBegin ), mTimeEnd( timeEnd ), mDuration( timeEnd - timeBegin ), mCopyValueOnBegin( copyValueOnBegin ),
 		mValueBegin( valueBegin ), mValueEnd( valueEnd ), mRampFn( rampFn ), mIsComplete( false ), mIsCanceled( false )
 {
 }
 
 Param::Param( Node *parentNode, float initialValue )
-	: mParentNode( parentNode ), mValue( initialValue )
+	: mParentNode( parentNode ), mValue( initialValue ), mIsVaryingThisBlock( false )
 {
 }
 
 void Param::setValue( float value )
 {
 	lock_guard<mutex> lock( getContext()->getMutex() );
-
 	resetImpl();
 	mValue = value;
 }
 
 EventRef Param::applyRamp( float valueEnd, float rampSeconds, const Options &options )
 {
-	return applyRamp( mValue, valueEnd, rampSeconds, options );
+	initInternalBuffer();
+
+	auto ctx = getContext();
+	float timeBegin = ( options.getBeginTime() >= 0 ? options.getBeginTime() : (float)ctx->getNumProcessedSeconds() + options.getDelay() );
+	float timeEnd = timeBegin + rampSeconds;
+
+	EventRef event( new Event( timeBegin, timeEnd, mValue, valueEnd, true, options.getRampFn() ) );
+
+	lock_guard<mutex> lock( ctx->getMutex() );
+
+	removeEventsAt( timeBegin );
+	if( mProcessor )
+		mProcessor.reset();
+
+	mEvents.push_back( event );
+	return event;
 }
 
 EventRef Param::applyRamp( float valueBegin, float valueEnd, float rampSeconds, const Options &options )
@@ -88,15 +102,18 @@ EventRef Param::applyRamp( float valueBegin, float valueEnd, float rampSeconds, 
 	initInternalBuffer();
 
 	auto ctx = getContext();
-	float timeBegin = (float)ctx->getNumProcessedSeconds() + options.getDelay();
+	float timeBegin = ( options.getBeginTime() >= 0 ? options.getBeginTime() : (float)ctx->getNumProcessedSeconds() + options.getDelay() );
 	float timeEnd = timeBegin + rampSeconds;
 
-	EventRef event( new Event( timeBegin, timeEnd, valueBegin, valueEnd, options.getRampFn() ) );
+	EventRef event( new Event( timeBegin, timeEnd, valueBegin, valueEnd, false, options.getRampFn() ) );
 
 	lock_guard<mutex> lock( ctx->getMutex() );
-	resetImpl();
-	mEvents.push_back( event );
 
+	removeEventsAt( timeBegin );
+	if( mProcessor )
+		mProcessor.reset();
+
+	mEvents.push_back( event );
 	return event;
 }
 
@@ -106,15 +123,29 @@ EventRef Param::appendRamp( float valueEnd, float rampSeconds, const Options &op
 
 	auto ctx = getContext();
 	auto endTimeAndValue = findEndTimeAndValue();
-
-	float timeBegin = endTimeAndValue.first + options.getDelay();
+	float timeBegin = ( options.getBeginTime() >= 0 ? options.getBeginTime() : endTimeAndValue.first + options.getDelay() );
 	float timeEnd = timeBegin + rampSeconds;
 
-	EventRef event( new Event( timeBegin, timeEnd, endTimeAndValue.second, valueEnd, options.getRampFn() ) );
+	EventRef event( new Event( timeBegin, timeEnd, endTimeAndValue.second, valueEnd, true, options.getRampFn() ) );
 
 	lock_guard<mutex> lock( ctx->getMutex() );
 	mEvents.push_back( event );
+	return event;
+}
 
+EventRef Param::appendRamp( float valueBegin, float valueEnd, float rampSeconds, const Options &options )
+{
+	initInternalBuffer();
+
+	auto ctx = getContext();
+	auto endTimeAndValue = findEndTimeAndValue();
+	float timeBegin = ( options.getBeginTime() >= 0 ? options.getBeginTime() : endTimeAndValue.first + options.getDelay() );
+	float timeEnd = timeBegin + rampSeconds;
+
+	EventRef event( new Event( timeBegin, timeEnd, valueBegin, valueEnd, false, options.getRampFn() ) );
+
+	lock_guard<mutex> lock( ctx->getMutex() );
+	mEvents.push_back( event );
 	return event;
 }
 
@@ -134,6 +165,7 @@ void Param::setProcessor( const NodeRef &node )
 	node->initializeImpl();
 
 	mProcessor = node;
+	mIsVaryingThisBlock = true; // stays true until there is no more processor and eval() sets this to false.
 }
 
 void Param::reset()
@@ -175,9 +207,12 @@ pair<float, float> Param::findEndTimeAndValue() const
 	}
 }
 
-const float* Param::getValueArray() const
+const float* Param::getValueArray()
 {
-	CI_ASSERT( ! mInternalBuffer.isEmpty() );
+	if( ! mIsVaryingThisBlock ) {
+		initInternalBuffer();
+		dsp::fill( mValue, mInternalBuffer.getData(), mInternalBuffer.getSize() );
+	}
 
 	return mInternalBuffer.getData();
 }
@@ -191,7 +226,8 @@ bool Param::eval()
 	}
 	else {
 		auto ctx = getContext();
-		return eval( (float)ctx->getNumProcessedSeconds(), mInternalBuffer.getData(), mInternalBuffer.getSize(), ctx->getSampleRate() );
+		mIsVaryingThisBlock = eval( (float)ctx->getNumProcessedSeconds(), mInternalBuffer.getData(), mInternalBuffer.getSize(), ctx->getSampleRate() );
+		return mIsVaryingThisBlock;
 	}
 }
 
@@ -204,9 +240,10 @@ bool Param::eval( float timeBegin, float *array, size_t arrayLength, size_t samp
 		EventRef &event = *eventIt;
 
 		// first remove dead events
-		if( event->mTimeEnd <= timeBegin || event->mIsCanceled ) {
-			// if this is the last event, record its end value before erasing.
-			if( mEvents.size() == 1 )
+		const bool cancelled = event->mIsCanceled;
+		if( event->mTimeEnd <= timeBegin || cancelled ) {
+			// if we skipped over the last event, record its end value before erasing.
+			if( mEvents.size() == 1 && ! cancelled )
 				mValue = event->mValueEnd;
 			
 			eventIt = mEvents.erase( eventIt );
@@ -229,6 +266,9 @@ bool Param::eval( float timeBegin, float *array, size_t arrayLength, size_t samp
 			float timeEndNormalized = float( timeBegin - event->mTimeBegin + endIndex * samplePeriod ) / event->mDuration;
 			float timeIncr = ( timeEndNormalized - timeBeginNormalized ) / (float)count;
 
+			if( event->getCopyValueOnBegin() )
+				event->setValueBegin( mValue ); // this is only copied the first block the Event is processed, as next block getCopyValueOnBegin() is false.
+
 			event->mRampFn( array + startIndex, count, timeBeginNormalized, timeIncr, make_pair( event->mValueBegin, event->mValueEnd ) );
 			samplesWritten += count;
 
@@ -239,6 +279,7 @@ bool Param::eval( float timeBegin, float *array, size_t arrayLength, size_t samp
 				eventIt = mEvents.erase( eventIt );
 			}
 			else if( samplesWritten == arrayLength ) {
+				// the array was filled, store the last calculated samples in mValue and finish evaluating
 				mValue = array[arrayLength - 1];
 				break;
 			}
@@ -271,6 +312,18 @@ void Param::resetImpl()
 	}
 
 	mProcessor.reset();
+}
+
+void Param::removeEventsAt( float time )
+{
+	mEvents.remove_if( [time]( const EventRef &event ) {
+		if( event->getTimeEnd() >= time ) {
+			event->cancel();
+			return true;
+		}
+		else
+			return false;
+	} );
 }
 
 void Param::initInternalBuffer()

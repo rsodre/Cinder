@@ -213,6 +213,15 @@ void TW_CALL getterCallback( void *value, void *clientData )
 	*(T *)value = twc->mGetter();
 }
 
+// specialization of getterCallback for std::string (string must be copied using TwCopyStdStringToLibrary)
+template <>
+void TW_CALL getterCallback<string>( void *value, void *clientData )
+{
+	Accessors<string> *twc = reinterpret_cast<Accessors<string>*>( clientData );
+	string *destPtr = static_cast<string *>( value );
+	TwCopyStdStringToLibrary( *destPtr, twc->mGetter() );
+}
+
 } // anonymous namespace
 
 int initAntGl( weak_ptr<app::Window> winWeak )
@@ -663,6 +672,8 @@ template void InterfaceGl::addParamCallbackImpl( const function<void( int32_t )>
 template void InterfaceGl::addParamCallbackImpl( const function<void( uint32_t )>	&setter, const function<uint32_t ()>	&getter, const Options<uint32_t>	&options );
 template void InterfaceGl::addParamCallbackImpl( const function<void( float )>		&setter, const function<float ()>		&getter, const Options<float>		&options );
 template void InterfaceGl::addParamCallbackImpl( const function<void( double )>		&setter, const function<double ()>		&getter, const Options<double>		&options );
+template void InterfaceGl::addParamCallbackImpl( const function<void( string )>		&setter, const function<string ()>		&getter, const Options<string>		&options );
+template void InterfaceGl::addParamCallbackImpl( const function<void( Color )>		&setter, const function<Color ()>		&getter, const Options<Color>		&options );
 template void InterfaceGl::addParamCallbackImpl( const function<void( ColorA )>		&setter, const function<ColorA ()>		&getter, const Options<ColorA>		&options );
 template void InterfaceGl::addParamCallbackImpl( const function<void( Quatf )>		&setter, const function<Quatf ()>		&getter, const Options<Quatf>		&options );
 template void InterfaceGl::addParamCallbackImpl( const function<void( Quatd )>		&setter, const function<Quatd ()>		&getter, const Options<Quatd>		&options );
