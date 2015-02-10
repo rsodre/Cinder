@@ -474,7 +474,23 @@ class Window : public std::enable_shared_from_this<Window> {
 	//! \endcond
 
 	App*			getApp() const { return mApp; }
-	
+
+	// ROGER
+	void* getImpl() { return (void*) mImpl; }
+	/*
+#if defined( CINDER_COCOA )
+#if defined( __OBJC__ )
+	id<WindowImplCocoa>	getImpl() { return mImpl; }
+#else
+	WindowImplCocoa *	getImpl() { return mImpl; }
+#endif
+#elif defined( CINDER_MSW )
+	WindowImplMsw *		getImpl() { return mImpl; }
+#elif defined( CINDER_WINRT )
+	WindowImplWinRT *	getImpl() { return mImpl; }
+#endif
+	 */
+
   protected:
 	Window() : mValid( true ), mImpl( 0 ) {}
   
