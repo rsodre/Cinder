@@ -141,7 +141,25 @@ void Display::enumerateDisplays()
 		
 		sDisplays.push_back( newDisplay );
 	}
-	
+
+	// ROGER
+	// Sort by X pos
+	int first = 1;	// ignore main (0)
+	for ( auto last = sDisplays.size()-1 ; last > first ; --last )
+	{
+		for ( auto n = first ; n < last ; ++n )
+		{
+			if ( sDisplays[n]->mArea.x1 > sDisplays[n+1]->mArea.x1 )
+			{
+				DisplayRef d = sDisplays[n];
+				sDisplays[n] = sDisplays[n+1];
+				sDisplays[n+1] = d;
+			}
+		}
+	}
+//	for ( int n = 0 ; n < sDisplays.size() ; n++ )
+//		printf (">>>>>>> DISPLAYS [%d] id [%d] x [%d]\n",n,sDisplays[n]->mDirectDisplayID,sDisplays[n]->getBounds().x1);
+
 	sDisplaysInitialized = true;
 	[pool drain];
 }
