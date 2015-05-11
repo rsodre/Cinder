@@ -93,6 +93,8 @@ void qbConfig::setup() {
 	this->addString(DUMMY_GPU_VENDOR, "DUMMY_GPU_VENDOR", _sys.getGpuVendor());
 	this->addString(DUMMY_GPU_MODEL, "DUMMY_GPU_MODEL", _sys.getGpuModel());
 	this->addString(DUMMY_GPU_TEX_SIZE, "DUMMY_GPU_TEX_SIZE", _sys.getGpuTexSize());
+	this->addString(DUMMY_GPU_FBO_WIDTH, "DUMMY_GPU_FBO_WIDTH", _sys.getGpuFboWidth());
+	this->addString(DUMMY_GPU_FBO_HEIGHT, "DUMMY_GPU_FBO_HEIGHT", _sys.getGpuFboHeight());
 	this->addString(DUMMY_GL_VERSION, "DUMMY_GL_VERSION", _sys.getOpenGlVersion());
 	this->addString(DUMMY_GLSL_VERSION, "DUMMY_GLSL_VERSION", _sys.getGlslVersion());
 	this->addString(DUMMY_RAM_AVAILABLE, "DUMMY_RAM_AVAILABLE", _sys.getRam());

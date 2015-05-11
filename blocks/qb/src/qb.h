@@ -75,14 +75,14 @@ namespace cinder { namespace qb {
 
 // Flags
 #define TEST_FLAG(src,f)		((src)&(f))
-#define QBFAG_SURFACE			0x01
-#define QBFAG_2					0x02
-#define QBFAG_3					0x04
-#define QBFAG_4					0x08
-#define QBFAG_5					0x10
-#define QBFAG_6					0x20
-#define QBFAG_7					0x40
-#define QBFAG_8					0x80
+#define QBFLAG_SURFACE			0x01
+#define QBFLAG_2					0x02
+#define QBFLAG_3					0x04
+#define QBFLAG_4					0x08
+#define QBFLAG_5					0x10
+#define QBFLAG_6					0x20
+#define QBFLAG_7					0x40
+#define QBFLAG_8					0x80
 	
 	
 ///////////////////////////////////

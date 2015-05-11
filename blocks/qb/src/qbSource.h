@@ -175,7 +175,7 @@ namespace cinder { namespace qb {
 		const float			getCurrentFrameRate()	{ return mCurrentFrameRate; }
 		
 	private:
-#ifdef QT64
+#if defined QT64 || defined NO_HAP
 		qtime::MovieGl		mMovieGl;
 #else
 		qtime::MovieGlHap	mMovieGl;

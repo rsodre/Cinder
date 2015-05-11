@@ -1781,19 +1781,18 @@ namespace cinder {
 				if ( name == param->name && ! param->dummy )
 				{
 #ifdef VERBOSE
-					printf ("READ XML param %d: %s = %s",pid,name.c_str(),value.c_str());
+					printf ("READ XML param %d: %s = %s\n",pid,name.c_str(),value.c_str());
 #endif
 					this->preserveProg( pid, pp );
 					this->set(pid, value.c_str(), pp);
 					break;
 				}
 			}
-			
 		}
 		
 		
 #ifdef VERBOSE
-		console() << doc << std::endl;
+		//console() << doc << std::endl;
 #endif
 
 		//
@@ -2006,7 +2005,7 @@ namespace cinder {
 				if ( key == param->name )
 				{
 #ifdef VERBOSE
-					printf ("READ CFG param %d: %s = %s",pid,key.c_str(),val.c_str());
+					printf ("READ CFG param %d: %s = %s\n",pid,key.c_str(),val.c_str());
 #endif
 					this->preserveProg(pid, pp);
 					this->set(pid, val.c_str(), pp);

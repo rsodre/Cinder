@@ -402,9 +402,9 @@ namespace cinder { namespace qb {
 		try {
 			printf("SRC FLAG %d [%s]\n",_flags,_f.c_str());
 			
-			if ( TEST_FLAG( _flags, QBFAG_SURFACE) )
+			if ( TEST_FLAG( _flags, QBFLAG_SURFACE) )
 			{
-#ifdef QT64
+#if defined QT64 || defined NO_HAP
 				mMovieGl = qtime::MovieGl();
 #else
 				mMovieGl = qtime::MovieGlHap();
@@ -415,7 +415,7 @@ namespace cinder { namespace qb {
 			}
 			else
 			{
-#ifdef QT64
+#if defined QT64 || defined NO_HAP
 				mMovieGl = qtime::MovieGl( theFile );
 #else
 				mMovieGl = qtime::MovieGlHap( theFile );
