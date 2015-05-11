@@ -447,6 +447,7 @@ bool Fbo::checkStatus( FboExceptionInvalidSpecification *resultExc )
 			*resultExc = FboExceptionInvalidSpecification( "Framebuffer incomplete: missing attachment" );
 		return false;
 		case GL_SUFFIX(GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_):
+			// https://www.opengl.org/wiki/Framebuffer_Object#Attachment_Completeness
 			*resultExc = FboExceptionInvalidSpecification( "Framebuffer incomplete: duplicate attachment" );
 		return false;
 		case GL_SUFFIX(GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_):
