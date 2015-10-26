@@ -50,6 +50,12 @@ class ColorT
 	ColorT( const ColorT<T> &src ) 
 		: r( src.r ), g( src.g ), b( src.b )
 	{}
+	
+	// ROGER
+	ColorT( const float v )
+		: r( v ), g( v ), b( v )
+	{
+	}
 	ColorT( const char *svgColorName );
 
 	ColorT( ColorModel cm, const vec3 &v );
@@ -181,6 +187,13 @@ class ColorAT {
 	ColorAT( const ColorT<T> &color, T alpha = CHANTRAIT<T>::convert( 1.0f ) )
 		: r( color.r ), g( color.g ), b( color.b ), a( alpha )
 	{}
+	
+	// ROGER
+	ColorAT( const float v )
+		: r( v ), g( v ), b( v ), a( v )
+	{
+	}
+	
 	ColorAT( const char *svgColorName, T aA = CHANTRAIT<T>::convert( 1.0f ) );
 
 	ColorAT( ColorModel cm, float c0, float c1, float c2, float alpha = CHANTRAIT<T>::convert( 1.0f ) );
