@@ -199,9 +199,13 @@ void Line::calcExtents()
 	
 	CGFloat ascentCG, descentCG, leadingCG;
 	mWidth = ::CTLineGetTypographicBounds( mCTLineRef, &ascentCG, &descentCG, &leadingCG );
-	mAscent = ascentCG;
-	mDescent = descentCG;
-	mLeading = leadingCG;
+	
+	// ROGER -- avoid blurriness
+	mWidth = floor(mWidth);
+	mAscent = floor(ascentCG);
+	mDescent = floor(descentCG);
+	mLeading = floor(leadingCG);
+	
 	mHeight = 0;
 #elif defined( CINDER_MSW )
 	mHeight = mWidth = mAscent = mDescent = mLeading = 0;
@@ -628,6 +632,12 @@ void TextBox::createLines() const
 		CTLineRef line = ::CTTypesetterCreateLine( typeSetter, range );
 		double lineWidth = ::CTLineGetTypographicBounds( line, &ascent, &descent, &leading );
 		
+		// ROGER -- avoid blurriness
+		lineWidth = floor(lineWidth);
+		ascent = floor(ascent);
+		descent = floor(descent);
+		leading = floor(leading);
+
 		lineOffset.x = ::CTLineGetPenOffsetForFlush( line, flush, maxWidth );
 		lineOffset.y += ascent;
 		mLines.push_back( make_pair( shared_ptr<__CTLine>( (__CTLine*)line, ::CFRelease ), lineOffset ) );
