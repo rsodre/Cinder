@@ -1191,7 +1191,8 @@ void drawStringHelper( const std::string &str, const vec2 &pos, const ColorA &co
 	if( justification == -1 ) // left
 		draw( tex, pos - vec2( 0, baselineOffset ) );
 	else if( justification == 0 ) // center
-		draw( tex, pos - vec2( tex->getWidth() * 0.5f, baselineOffset ) );
+		//draw( tex, pos - vec2( tex->getWidth() * 0.5f, baselineOffset ) );
+		draw( tex, pos - vec2( floor(tex->getWidth() * 0.5f), baselineOffset ) );	// ROGER -- avoid blurriness
 	else // right
 		draw( tex, pos - vec2( (float)tex->getWidth(), baselineOffset ) );
 }
