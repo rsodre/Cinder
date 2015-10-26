@@ -216,6 +216,8 @@ class Rect : public Source {
 	Rect&		colors( bool enable = true ) { mHasColors = enable; return *this; }
 	//! Enables COLOR attrib and specifies corner values in clockwise order starting with the upper-left
 	Rect&		colors( const ColorAf &upperLeft, const ColorAf &upperRight, const ColorAf &lowerRight, const ColorAf &lowerLeft );
+	//! Enables COLOR attrib and specifies same color for all vertices
+	Rect&		colors( const ColorAf &c) { return this->colors(c,c,c,c); }
 	//! Enables TEX_COORD_0 attrib and specifies corner values in clockwise order starting with the upper-left
 	Rect&		texCoords( const vec2 &upperLeft, const vec2 &upperRight, const vec2 &lowerRight, const vec2 &lowerLeft );
 
@@ -246,6 +248,7 @@ class RoundedRect : public Source {
 	RoundedRect&	cornerRadius( float cornerRadius );
 	RoundedRect&	texCoords( const vec2 &upperLeft, const vec2 &lowerRight );
 	RoundedRect&	colors( const ColorAf &upperLeft, const ColorAf &upperRight, const ColorAf &lowerRight, const ColorAf &lowerLeft );
+	RoundedRect&	colors( const ColorAf &c) { return this->colors(c,c,c,c); }
 	
 	size_t		getNumVertices() const override { return mNumVertices; }
 	size_t		getNumIndices() const override { return 0; }
