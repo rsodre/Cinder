@@ -1,4 +1,5 @@
 #include "cinder/app/App.h"
+#include "cinder/gl/gl.h"
 #include "cinder/app/RendererGl.h"
 
 #include "cinder/audio/audio.h"
@@ -13,6 +14,7 @@ using namespace std;
 class BufferPlayerNodeApp : public App {
 public:
 	void setup() override;
+	void resize() override;
 	void fileDrop( FileDropEvent event ) override;
 	void keyDown( KeyEvent event ) override;
 	void mouseDown( MouseEvent event ) override;
@@ -42,9 +44,13 @@ void BufferPlayerNodeApp::setup()
 	// connect and enable the Context
 	mBufferPlayerNode >> mGain >> ctx->getOutput();
 	ctx->enable();
+}
 
-	// also load the buffer into our waveform visual util.
-	mWaveformPlot.load( buffer, getWindowBounds() );
+void BufferPlayerNodeApp::resize()
+{
+	// visualize the audio buffer
+	if( mBufferPlayerNode )
+		mWaveformPlot.load( mBufferPlayerNode->getBuffer(), getWindowBounds() );
 }
 
 void BufferPlayerNodeApp::fileDrop( FileDropEvent event )
@@ -95,6 +101,6 @@ void BufferPlayerNodeApp::draw()
 	gl::drawSolidRect( Rectf( readPos - 2, 0, readPos + 2, (float)getWindowHeight() ) );
 }
 
-CINDER_APP( BufferPlayerNodeApp, RendererGl, []( App::Settings *settings ) {
+CINDER_APP( BufferPlayerNodeApp, RendererGl( RendererGl::Options().msaa( 8 ) ), []( App::Settings *settings ) {
 	settings->setMultiTouchEnabled( false );
 } )

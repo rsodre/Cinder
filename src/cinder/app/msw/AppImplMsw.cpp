@@ -73,42 +73,22 @@ void AppImplMsw::hideCursor()
 {
 	int counter;
 
-	while( (counter = ::ShowCursor(false)) > -1 );
+	while( ( counter = ::ShowCursor( false ) ) > -1 );
 
 	// when repeatedly calling hideCursor(), keep counter at -1
-	if(counter < -1) while( ::ShowCursor(true) < -1 );
+	if( counter < -1 )
+		while( ::ShowCursor( true ) < -1 );
 }
 
 void AppImplMsw::showCursor()
 {
 	int counter;
 
-	while( (counter = ::ShowCursor(true)) < 0 );
+	while( ( counter = ::ShowCursor( true ) ) < 0 );
 
 	// when repeatedly calling showCursor(), keep counter at 0
-	if(counter > 0) while( ::ShowCursor(false) > 0 );
-}
-
-fs::path AppImplMsw::getAppPath()
-{
-	wchar_t appPath[MAX_PATH] = L"";
-
-	// fetch the path of the executable
-	::GetModuleFileName( 0, appPath, sizeof(appPath) - 1);
-
-	// get a pointer to the last occurrence of the windows path separator
-	wchar_t *appDir = wcsrchr( appPath, L'\\' );
-	if( appDir ) {
-		++appDir;
-
-		// this shouldn't be null but one never knows
-		if( appDir ) {
-			// null terminate the string
-			*appDir = 0;
-		}
-	}
-
-	return fs::path( appPath );
+	if( counter > 0 )
+		while( ::ShowCursor( false ) > 0 );
 }
 
 fs::path AppImplMsw::getOpenFilePath( const fs::path &initialPath, vector<string> extensions )
@@ -322,11 +302,12 @@ WindowImplMsw::WindowImplMsw( const Window::Format &format, RendererRef sharedRe
 	mWindowedSize = format.getSize();
 	mWindowWidth = mWindowedSize.x;
 	mWindowHeight = mWindowedSize.y;
-	if( format.isPosSpecified() )
-		mWindowOffset = mWindowedPos = format.getPos();
+	if( format.isPosSpecified() ) {
+		mWindowOffset = mWindowedPos = mDisplay->getBounds().getUL() + format.getPos();
+	}
 	else {
 		ivec2 displaySize = mDisplay->getSize();
-		mWindowOffset = mWindowedPos = ( displaySize - mWindowedSize ) / 2;
+		mWindowOffset = mWindowedPos = mDisplay->getBounds().getUL() + ( displaySize - mWindowedSize ) / 2;
 	}
 
 	createWindow( ivec2( mWindowWidth, mWindowHeight ), format.getTitle(), mDisplay, sharedRenderer );

@@ -67,7 +67,7 @@ void Earth::update()
 
 	// Update the instance data.
 	if( !mQuakes.empty() && mNumQuakes == 0 ) {
-		mat4 *data = (mat4*) mInstanceDataVbo->mapWriteOnly( true );
+		mat4 *data = (mat4*) mInstanceDataVbo->mapReplace();
 		{
 			mNumQuakes = 0;
 			for( auto &quake : mQuakes ) {
@@ -107,7 +107,8 @@ void Earth::drawQuakes()
 
 void Earth::drawQuakeLabelsOnSphere( const vec3 &eyeNormal, const float eyeDist )
 {
-	gl::ScopedDepth depth( true, false );
+	gl::ScopedDepthTest depthTest( true );
+	gl::ScopedDepthWrite depthWrite( false );
 	gl::ScopedGlslProg shader( gl::getStockShader( gl::ShaderDef().color().texture() ) );
 
 	gl::ScopedColor color( 1, 1, 1 );

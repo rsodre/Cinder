@@ -31,6 +31,9 @@
 	#include "cinder/app/cocoa/PlatformCocoa.h"
 	#import <Foundation/Foundation.h>
 	#include <syslog.h>
+#elif defined( CINDER_MSW )
+	#include <Windows.h>
+	#include <codecvt>
 #endif
 
 #if defined( CINDER_COCOA ) && ( ! defined( __OBJC__ ) )
@@ -40,31 +43,9 @@
 #include <mutex>
 #include <time.h>
 
-// TODO: consider storing Logger's as shared_ptr instead
-//	- they really aren't shared, but makes swapping them in and out and LogManager's handles easier
-
 using namespace std;
 
 namespace cinder { namespace log {
-
-class LoggerImplMulti : public Logger {
-public:
-
-	void add( Logger *logger )							{ mLoggers.push_back( std::unique_ptr<Logger>( logger ) ); }
-	void add( std::unique_ptr<Logger> &&logger )		{ mLoggers.emplace_back( move( logger ) ); }
-
-	template <typename LoggerT>
-	LoggerT* findType();
-
-	void remove( Logger *logger );
-
-	const vector<unique_ptr<Logger> >& getLoggers() const	{ return mLoggers; }
-
-	virtual void write( const Metadata &meta, const std::string &text ) override;
-
-private:
-	vector<unique_ptr<Logger> >	mLoggers; // TODO: make set? don't want duplicates
-};
 
 namespace  {
 
@@ -99,22 +80,6 @@ const std::string getDailyLogString( const std::string& format )
 	return result;
 }
 
-#if defined( CINDER_COCOA )
-int cinderLogLevelToSysLogLevel( Level cinderLogLevel )
-{
-	switch( cinderLogLevel ) {
-		case LEVEL_FATAL:	return LOG_CRIT;
-		case LEVEL_ERROR:	return LOG_ERR;
-		case LEVEL_WARNING:	return LOG_WARNING;
-		// We never return lower than LOG_NOTICE for OS X SysLog to ensure the message arrives
-		// http://apple.stackexchange.com/questions/13484/messages-issued-by-syslog-not-showing-up-in-system-logs
-		case LEVEL_INFO:	return LOG_NOTICE;
-		case LEVEL_VERBOSE:	return LOG_NOTICE;
-		default: CI_ASSERT_NOT_REACHABLE();
-	}
-}
-#endif
-
 } // anonymous namespace
 
 // ----------------------------------------------------------------------------------------------------
@@ -133,212 +98,77 @@ LogManager::LogManager()
 	restoreToDefault();
 }
 
-void LogManager::resetLogger( Logger *logger )
+void LogManager::clearLoggers()
 {
 	lock_guard<mutex> lock( mMutex );
-
-	mLogger.reset( logger );
-
-	LoggerImplMulti *multi = dynamic_cast<LoggerImplMulti *>( logger );
-	mLoggerMulti = multi ? multi : nullptr;
-
-	mConsoleLoggingEnabled = mFileLoggingEnabled = mSystemLoggingEnabled = false;
+	mLoggers.clear();
 }
-
-void LogManager::addLogger( Logger *logger )
+	
+void LogManager::resetLogger( const LoggerRef& logger )
 {
 	lock_guard<mutex> lock( mMutex );
-
-	if( ! mLoggerMulti ) {
-		auto loggerMulti = unique_ptr<LoggerImplMulti>( new LoggerImplMulti );
-		loggerMulti->add( move( mLogger ) );
-		mLoggerMulti = loggerMulti.get();
-		mLogger = move( loggerMulti );
-	}
-
-	mLoggerMulti->add( logger );
+	mLoggers.clear();
+	mLoggers.push_back( logger );
 }
 
-
-void LogManager::removeLogger( Logger *logger )
+void LogManager::addLogger( const LoggerRef& logger )
 {
-	CI_ASSERT( mLoggerMulti );
-
-	mLoggerMulti->remove( logger );
+	lock_guard<mutex> lock( mMutex );
+	mLoggers.push_back( logger );
 }
 
+void LogManager::removeLogger( const LoggerRef& logger )
+{
+	lock_guard<mutex> lock( mMutex );
+	mLoggers.erase( remove_if( mLoggers.begin(), mLoggers.end(),
+							  [logger]( const LoggerRef &o ) {
+								  return o == logger;
+							  } ),
+				   mLoggers.end() );
+}
+
+std::vector<LoggerRef> LogManager::getAllLoggers()
+{
+	lock_guard<mutex> lock( mMutex );
+	return mLoggers;
+}
+	
 void LogManager::restoreToDefault()
 {
+	clearLoggers();
+	makeLogger<LoggerConsole>();
+}
+	
+void LogManager::write( const Metadata &meta, const std::string &text )
+{
+	// TODO move this to a shared_lock_timed with c++14 support
 	lock_guard<mutex> lock( mMutex );
 
-	mLogger.reset( new LoggerConsoleThreadSafe );
-	mLoggerMulti = nullptr;
-	mConsoleLoggingEnabled = true;
-	mFileLoggingEnabled = false;
-	mSystemLoggingEnabled = false;
-	mBreakOnLogEnabled = false;
-
-	switch( CI_MAX_LOG_LEVEL ) {
-		case 5: mSystemLoggingLevel = LEVEL_VERBOSE;	break;
-		case 4: mSystemLoggingLevel = LEVEL_INFO;		break;
-		case 3: mSystemLoggingLevel = LEVEL_WARNING;	break;
-		case 2: mSystemLoggingLevel = LEVEL_ERROR;		break;
-		case 1: mSystemLoggingLevel = LEVEL_FATAL;		break;
-		default: CI_ASSERT_NOT_REACHABLE();
+	for( auto& logger : mLoggers ) {
+		logger->write( meta, text );
 	}
 }
 
-vector<Logger *> LogManager::getAllLoggers()
+// ----------------------------------------------------------------------------------------------------
+// MARK: - Entry
+// ----------------------------------------------------------------------------------------------------
+
+Entry::Entry( Level level, const Location &location )
+: mHasContent( false )
 {
-	vector<Logger *> result;
-
-	if( mLoggerMulti ) {
-		for( const auto &logger : mLoggerMulti->getLoggers() )
-			result.push_back( logger.get() );
-	}
-	else
-		result.push_back( mLogger.get() );
-
-	return result;
+	mMetaData.mLevel = level;
+	mMetaData.mLocation = location;
 }
 
-void LogManager::enableConsoleLogging()
+Entry::~Entry()
 {
-	if( mConsoleLoggingEnabled )
-		return;
-
-	addLogger( new LoggerConsoleThreadSafe );
-	mConsoleLoggingEnabled = true;
+	if( mHasContent )
+		writeToLog();
 }
 
-bool LogManager::initFileLogging()
+void Entry::writeToLog()
 {
-	if( mFileLoggingEnabled ) {
-		// destroys previous file logger to prepare for changes
-		auto logger = mLoggerMulti->findType<LoggerFile>();
-		if( logger )
-			disableFileLogging();
-		else
-			return false;
-	}
-	return true;
-}
-
-void LogManager::enableFileLogging( const fs::path &path, bool appendToExisting )
-{
-	if( ! initFileLogging() ) {
-		return;
-	}
-
-	addLogger( new LoggerFileThreadSafe( path, appendToExisting ) );
-	mFileLoggingEnabled = true;
-}
-
-void LogManager::enableFileLogging( const fs::path &folder, const std::string &formatStr, bool appendToExisting )
-{
-	if( ! initFileLogging() ) {
-		return;
-	}
-
-	addLogger( new LoggerFileThreadSafe( folder, formatStr, appendToExisting ) );
-	mFileLoggingEnabled = true;
-}
-
-void LogManager::setFileLoggingEnabled( bool enable, const fs::path &filePath, bool appendToExisting )
-{
-	if( enable )
-		enableFileLogging( filePath, appendToExisting );
-	else
-		disableFileLogging();
-}
-
-
-void LogManager::setFileLoggingEnabled( bool enable, const fs::path &folder, const string &formatStr, bool appendToExisting )
-{
-	if( enable )
-		enableFileLogging( folder, formatStr, appendToExisting );
-	else
-		disableFileLogging();
-}
-
-void LogManager::enableSystemLogging()
-{
-	if( mSystemLoggingEnabled )
-		return;
-
-#if defined( CINDER_COCOA )
-	addLogger( new LoggerSysLog );
-	setSystemLoggingLevel( mSystemLoggingLevel );
-	mSystemLoggingEnabled = true;
-#endif
-}
-
-void LogManager::setSystemLoggingLevel( Level level )
-{
-	mSystemLoggingLevel = level;
-
-#if defined( CINDER_COCOA )
-	int sysLevel = cinderLogLevelToSysLogLevel( level );
-	setlogmask( LOG_UPTO( sysLevel ) );
-#endif
-}
-
-void LogManager::disableConsoleLogging()
-{
-	if( ! mConsoleLoggingEnabled || ! mLoggerMulti )
-		return;
-
-	auto logger = mLoggerMulti->findType<LoggerConsole>();
-	mLoggerMulti->remove( logger );
-
-	mConsoleLoggingEnabled = false;
-}
-
-void LogManager::disableFileLogging()
-{
-	if( ! mFileLoggingEnabled || ! mLoggerMulti )
-		return;
-
-	auto logger = mLoggerMulti->findType<LoggerFile>();
-	mLoggerMulti->remove( logger );
-
-	mFileLoggingEnabled = false;
-}
-
-void LogManager::disableSystemLogging()
-{
-	if( ! mSystemLoggingEnabled || ! mLoggerMulti )
-		return;
-
-#if defined( CINDER_COCOA )
-	auto logger = mLoggerMulti->findType<LoggerSysLog>();
-	mLoggerMulti->remove( logger );
-	mSystemLoggingEnabled = false;
-#endif
-}
-
-void LogManager::enableBreakOnLevel( Level triggerLevel )
-{
-	if( mBreakOnLogEnabled ) {
-		auto logger = mLoggerMulti->findType<LoggerBreakpoint>();
-		logger->setTriggerLevel( triggerLevel );
-	}
-	else {
-		addLogger( new LoggerBreakpoint( triggerLevel ) );
-		mBreakOnLogEnabled = true;
-	}
-}
-
-void LogManager::disableBreakOnLog()
-{
-	if( ! mBreakOnLogEnabled )
-		return;
-	
-	auto logger = mLoggerMulti->findType<LoggerBreakpoint>();
-	if( logger )
-		mLoggerMulti->remove( logger );
-
-	mBreakOnLogEnabled = false;
+	manager()->write( mMetaData, mStream.str() );
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -365,60 +195,15 @@ void LoggerConsole::write( const Metadata &meta, const string &text )
 }
 
 // ----------------------------------------------------------------------------------------------------
-// MARK: - LoggerImplMulti
-// ----------------------------------------------------------------------------------------------------
-
-template <typename LoggerT>
-LoggerT* LoggerImplMulti::findType()
-{
-	for( const auto &logger : mLoggers ) {
-		auto result = dynamic_cast<LoggerT *>( logger.get() );
-		if( result )
-			return result;
-	}
-
-	return nullptr;
-}
-
-void LoggerImplMulti::remove( Logger *logger )
-{
-	mLoggers.erase( remove_if( mLoggers.begin(), mLoggers.end(),
-							  [logger]( const std::unique_ptr<Logger> &o ) {
-								  return o.get() == logger;
-							  } ),
-				   mLoggers.end() );
-}
-
-void LoggerImplMulti::write( const Metadata &meta, const string &text )
-{
-	for( auto &logger : mLoggers )
-		logger->write( meta, text );
-}
-
-// ----------------------------------------------------------------------------------------------------
 // MARK: - LoggerFile
 // ----------------------------------------------------------------------------------------------------
 
 LoggerFile::LoggerFile( const fs::path &filePath, bool appendToExisting )
-	: mFilePath( filePath ), mAppend( appendToExisting ), mRotating( false )
+: mFilePath( filePath ), mAppend( appendToExisting )
 {
 	if( mFilePath.empty() )
 		mFilePath = getDefaultLogFilePath();
-
-	setTimestampEnabled();
-}
-
-LoggerFile::LoggerFile( const fs::path &folder, const std::string &formatStr, bool appendToExisting )
-	: mFolderPath( folder ), mDailyFormatStr( formatStr ), mAppend( appendToExisting ), mRotating( true )
-{
-	CI_ASSERT_MSG( ! formatStr.empty(), "cannot provide empty formatStr" );
 	
-	if( mFolderPath.empty() )
-		mFolderPath = getDefaultLogFilePath().parent_path();
-
-	mYearDay = getCurrentYearDay();
-	mFilePath = mFolderPath / fs::path( getDailyLogString( mDailyFormatStr ) );
-
 	setTimestampEnabled();
 }
 
@@ -430,14 +215,6 @@ LoggerFile::~LoggerFile()
 
 void LoggerFile::write( const Metadata &meta, const string &text )
 {
-	if( mRotating && mYearDay != getCurrentYearDay() ) {
-		mFilePath = mFolderPath / fs::path( getDailyLogString( mDailyFormatStr ) );
-		mYearDay = getCurrentYearDay();
-
-		if( mStream.is_open() )
-			mStream.close();
-	}
-
 	if( ! mStream.is_open() ) {
 		ensureDirectoryExists();
 		mAppend ? mStream.open( mFilePath.string(), std::ofstream::app ) : mStream.open( mFilePath.string() );
@@ -454,13 +231,53 @@ fs::path LoggerFile::getDefaultLogFilePath() const
 void LoggerFile::ensureDirectoryExists()
 {
 	fs::path dir = mFilePath.parent_path();
-	if( ! fs::is_directory( dir ) ) {
+	if( dir.empty() ) {
+		// make single file path names explicitly next to executable
+		mFilePath = app::Platform::get()->getExecutablePath() / mFilePath;
+	}
+	else if( ! fs::is_directory( dir ) ) {
 		bool success = fs::create_directories( dir );
 		if( ! success ) {
 			// not using CI_LOG_E since it could lead to recursion
 			cerr << "ci::log::LoggerFile error: Unable to create folder \"" << dir.string() << "\"" << endl;
 		}
 	}
+}
+
+// ----------------------------------------------------------------------------------------------------
+// MARK: - LoggerFileRotating
+// ----------------------------------------------------------------------------------------------------
+
+LoggerFileRotating::LoggerFileRotating( const fs::path &folder, const std::string &formatStr, bool appendToExisting )
+: mFolderPath( folder ), mDailyFormatStr( formatStr )
+{
+	CI_ASSERT_MSG( ! formatStr.empty(), "cannot provide empty formatStr" );
+	if( formatStr.empty() ) {
+		return;
+	}
+	
+	if( mFolderPath.empty() ) {
+		mFolderPath = getDefaultLogFilePath().parent_path();
+	}
+	
+	mAppend = appendToExisting;
+	mYearDay = getCurrentYearDay();
+	mFilePath = mFolderPath / fs::path( getDailyLogString( mDailyFormatStr ) );
+	
+	setTimestampEnabled();
+}
+
+void LoggerFileRotating::write( const Metadata &meta, const string &text )
+{
+	if( mYearDay != getCurrentYearDay() ) {
+		mFilePath = mFolderPath / fs::path( getDailyLogString( mDailyFormatStr ) );
+		mYearDay = getCurrentYearDay();
+		
+		if( mStream.is_open() )
+			mStream.close();
+	}
+	
+	LoggerFile::write( meta, text );
 }
 
 // ----------------------------------------------------------------------------------------------------
@@ -477,33 +294,156 @@ void LoggerBreakpoint::write( const Metadata &meta, const string &text )
 #if defined( CINDER_COCOA )
 
 // ----------------------------------------------------------------------------------------------------
-// MARK: - LoggerSysLog
+// MARK: - ImplSysLog
 // ----------------------------------------------------------------------------------------------------
 
-LoggerSysLog::LoggerSysLog()
-{
-	// determine app name from it's NSBundle. https://developer.apple.com/library/mac/qa/qa1544/_index.html
-	NSBundle *bundle = app::PlatformCocoa::get()->getBundle();
-	NSString *bundlePath = [bundle bundlePath];
-	NSString *appName = [[NSFileManager defaultManager] displayNameAtPath: bundlePath];
+class LoggerSystem::ImplSysLog : public Logger {
+public:
+	ImplSysLog()
+	{
+		// determine app name from it's NSBundle. https://developer.apple.com/library/mac/qa/qa1544/_index.html
+		NSBundle *bundle = app::PlatformCocoa::get()->getBundle();
+		NSString *bundlePath = [bundle bundlePath];
+		NSString *appName = [[NSFileManager defaultManager] displayNameAtPath: bundlePath];
+		
+		const char *cAppName = [appName UTF8String];
+		openlog( cAppName, ( LOG_CONS | LOG_PID ), LOG_USER );
+	}
+	
+	virtual ~ImplSysLog()
+	{
+		closelog();
+	}
+	
+	void write( const Metadata &meta, const std::string &text ) override
+	{
+		int sysLevel = cinderLogLevelToSysLogLevel( meta.mLevel );
+		syslog( sysLevel , "%s %s", meta.toString().c_str(), text.c_str() );
+	};
+	
+protected:
+	int cinderLogLevelToSysLogLevel( Level cinderLogLevel )
+	{
+		switch( cinderLogLevel ) {
+			case LEVEL_FATAL:	return LOG_CRIT;
+			case LEVEL_ERROR:	return LOG_ERR;
+			case LEVEL_WARNING:	return LOG_WARNING;
+				// We never return lower than LOG_NOTICE for OS X SysLog to ensure the message arrives
+				// http://apple.stackexchange.com/questions/13484/messages-issued-by-syslog-not-showing-up-in-system-logs
+			case LEVEL_INFO:	return LOG_NOTICE;
+			case LEVEL_DEBUG:	return LOG_NOTICE;
+			case LEVEL_VERBOSE:	return LOG_NOTICE;
+			default: CI_ASSERT_NOT_REACHABLE();
+		}
+	}
+};
+	
+#elif defined( CINDER_MSW )
 
-	const char *cAppName = [appName UTF8String];
-	openlog( cAppName, ( LOG_CONS | LOG_PID ), LOG_USER );
-}
+// ----------------------------------------------------------------------------------------------------
+// MARK: - ImplEventLog
+// ----------------------------------------------------------------------------------------------------
 
-LoggerSysLog::~LoggerSysLog()
-{
-	closelog();
-}
+class LoggerSystem::ImplEventLog : public Logger {
+public:
+	ImplEventLog()
+	{
+		char filename[MAX_PATH];
+		wchar_t wFilename[MAX_PATH];
+		string stem;
+		
+		DWORD size = ::GetModuleFileNameA( NULL, filename, MAX_PATH );
+		if( size ) {
+			fs::path exePath( filename );
+			stem = exePath.stem().string();
+		} else {
+			app::Platform::get()->console() << CINDER_CURRENT_FUNCTION << "[" << __LINE__
+			<< "] could not determine application name, defaulting to 'CinderApp'" << endl;
+			stem = "CinderApp";
+		}
+		
+		::mbstowcs( wFilename, stem.c_str(), stem.size() + 1 );
+		mHLog = ::RegisterEventSourceW( 0, wFilename );
+		
+		if( ! mHLog ) {
+			app::Platform::get()->console() << CINDER_CURRENT_FUNCTION << "[" << __LINE__
+			<< "] RegisterEventSourceW() failed with " << GetLastError() << endl;
+		}
+	}
+	
+	virtual ~ImplEventLog()
+	{
+		if( mHLog ) {
+			::CloseEventLog( mHLog );
+		}
+	}
+	
+	void write( const Metadata& meta, const std::string& text ) override
+	{
+		int eventLevel = cinderLogLevelToEventLogLevel( meta.mLevel );
+	
+		std::wstring wMeta = mConverter.from_bytes( meta.toString() );
+		std::wstring wText = mConverter.from_bytes( text );
+	
+		LPCTSTR wStrings[2];
+		wStrings[0] = wMeta.c_str();
+		wStrings[1] = wText.c_str();
+	
+		// Windows manifests do not allow 0 based event IDs.
+		DWORD eventID = meta.mLevel + 100;
 
-void LoggerSysLog::write( const Metadata &meta, const string &text )
-{
-	int sysLevel = cinderLogLevelToSysLogLevel( meta.mLevel );
-	syslog( sysLevel , "%s %s", meta.toString().c_str(), text.c_str() );
-}
+		::ReportEventW( mHLog, eventLevel, 0, eventID, 0, 2, 0, wStrings, 0 );
+	}
+
+protected:
+	int cinderLogLevelToEventLogLevel( Level cinderLogLevel )
+	{
+		switch( cinderLogLevel ) {
+				// MSDN Event Types don't seem particularly granular, hence the repeats
+			case LEVEL_FATAL:	return EVENTLOG_ERROR_TYPE;
+			case LEVEL_ERROR:	return EVENTLOG_ERROR_TYPE;
+			case LEVEL_WARNING:	return EVENTLOG_WARNING_TYPE;
+			case LEVEL_INFO:	return EVENTLOG_INFORMATION_TYPE;
+			case LEVEL_DEBUG:	return EVENTLOG_INFORMATION_TYPE;
+			case LEVEL_VERBOSE:	return EVENTLOG_INFORMATION_TYPE;
+			default: CI_ASSERT_NOT_REACHABLE();
+		}
+	}
+	
+	HANDLE			mHLog;
+	std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> mConverter;
+};
 
 #endif
 
+	
+// ----------------------------------------------------------------------------------------------------
+// MARK: - LoggerSystem
+// ----------------------------------------------------------------------------------------------------
+
+LoggerSystem::LoggerSystem()
+{
+	mMinLevel = static_cast<Level>(CI_MIN_LOG_LEVEL);
+#if defined( CINDER_COCOA )
+	LoggerSystem::mImpl = std::unique_ptr<ImplSysLog>( new ImplSysLog() );
+#elif defined( CINDER_MSW )
+	LoggerSystem::mImpl = std::unique_ptr<ImplEventLog>( new ImplEventLog() );
+#endif
+}
+
+LoggerSystem::~LoggerSystem()
+{
+}
+
+void LoggerSystem::write( const Metadata &meta, const std::string &text )
+{
+#if ! defined( CINDER_WINRT ) // Currently no system logging support on WinRT
+	if( meta.mLevel >= mMinLevel ) {
+		mImpl->write( meta, text );
+	}
+#endif
+}
+	
 // ----------------------------------------------------------------------------------------------------
 // MARK: - Helper Classes
 // ----------------------------------------------------------------------------------------------------
@@ -525,6 +465,7 @@ ostream& operator<<( ostream &lhs, const Level &rhs )
 {
 	switch( rhs ) {
 		case LEVEL_VERBOSE:		lhs << "|verbose|";	break;
+		case LEVEL_DEBUG:		lhs << "|debug  |";	break;
 		case LEVEL_INFO:		lhs << "|info   |";	break;
 		case LEVEL_WARNING:		lhs << "|warning|";	break;
 		case LEVEL_ERROR:		lhs << "|error  |";	break;

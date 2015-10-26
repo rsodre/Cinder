@@ -64,6 +64,8 @@ class Environment {
 
 	virtual bool			isExtensionAvailable( const std::string &extName ) = 0;
 	virtual bool			supportsHardwareVao() = 0;
+	//! Returns whether this platform supports Texture Level-of-Detail. \c true everywhere but ES 2, which requires \c GL_EXT_shader_texture_lod
+	virtual bool			supportsTextureLod() const = 0;
 
 	virtual void			allocateTexStorage1d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, bool immutable, GLint texImageDataType ) = 0;
 	virtual void			allocateTexStorage2d( GLenum target, GLsizei levels, GLenum internalFormat, GLsizei width, GLsizei height, bool immutable, GLint texImageDataType ) = 0;
@@ -77,8 +79,6 @@ class Environment {
 	virtual GlslProgRef		buildShader( const ShaderDef &shader ) = 0;
 
 #if ! defined( CINDER_GL_ES )	
-	virtual bool			isCoreProfile() const = 0;
-
 	static void				setCore();
 #else
 	static void				setEs();

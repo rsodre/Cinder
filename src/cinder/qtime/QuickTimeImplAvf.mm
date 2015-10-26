@@ -205,6 +205,10 @@ MovieBase::~MovieBase()
 		[mAsset cancelLoading];
 		[mAsset release];
 	}
+
+	if( mPlayerVideoOutput ) {
+		[mPlayerVideoOutput release];
+	}
 }
 	
 float MovieBase::getPixelAspectRatio() const
@@ -695,9 +699,12 @@ void MovieBase::processAssetTracks( AVAsset* asset )
 
 void MovieBase::createPlayerItemOutput( const AVPlayerItem* playerItem )
 {
-	NSDictionary *pixBuffAttributes = avPlayerItemOutputDictionary();
-	mPlayerVideoOutput = [[AVPlayerItemVideoOutput alloc] initWithPixelBufferAttributes:pixBuffAttributes];
-	[mPlayerVideoOutput setDelegate:mPlayerDelegate queue:dispatch_queue_create("movieVideoOutputQueue", DISPATCH_QUEUE_SERIAL)];
+	AVPlayerItemVideoOutput *oldPlayerVideoOutput = mPlayerVideoOutput;
+	mPlayerVideoOutput = [[AVPlayerItemVideoOutput alloc] initWithPixelBufferAttributes:avPlayerItemOutputDictionary()];
+	[oldPlayerVideoOutput release];
+	dispatch_queue_t outputQueue = dispatch_queue_create("movieVideoOutputQueue", DISPATCH_QUEUE_SERIAL);
+	[mPlayerVideoOutput setDelegate:mPlayerDelegate queue:outputQueue];
+	dispatch_release(outputQueue);
 	mPlayerVideoOutput.suppressesPlayerRendering = YES;
 	[playerItem addOutput:mPlayerVideoOutput];
 }
@@ -858,6 +865,7 @@ MovieLoader::MovieLoader( const Url &url )
 	AVPlayerItem* playerItem = [[AVPlayerItem alloc] initWithURL:asset_url];
 	mPlayer = [[AVPlayer alloc] init];
 	[mPlayer replaceCurrentItemWithPlayerItem:playerItem];	// starts the downloading process
+	[playerItem release];
 }
 
 MovieLoader::~MovieLoader()

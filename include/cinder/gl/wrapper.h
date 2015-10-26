@@ -117,8 +117,17 @@ inline void scissor( const ivec2 &position, const ivec2 &size ) { scissor( std::
 void enable( GLenum state, bool enable = true );
 inline void disable( GLenum state ) { enable( state, false ); }
 
-void enableAlphaBlending( bool premultiplied = false );
-void disableAlphaBlending();
+//! Enables or disables blending state as governed by \c GL_BLEND but does not modify blend function.
+void enableBlending( bool enable = false );
+//! Disables blending state via \c GL_BLEND, but does not modify blend function
+inline void disableBlending() { enableBlending( false ); }
+//! Enables blending via \c GL_BLEND and sets the blend function to unpremultiplied alpha blending when \p enable is \c true; otherwise disables blending without modifying the blend function.
+void enableAlphaBlending( bool enable = true );
+//! Enables blending via \c GL_BLEND and sets the blend function to premultiplied alpha blending
+void enableAlphaBlendingPremult();
+//! Disables blending state as governed by \c GL_BLEND but does not modify blend function.. Deprecated; prefer disableBlending()
+inline void disableAlphaBlending() { disableBlending(); }
+//! Enables \c GL_BLEND and sets the blend function to additive blending
 void enableAdditiveBlending();
 
 //! Specifies whether polygons are culled. Equivalent to calling enable( \c GL_CULL_FACE, \a enable ). Specify front or back faces with gl::cullFace().
@@ -133,16 +142,22 @@ void enableLogicOp( bool enable = true );
 void logicOp( GLenum mode );
 #endif
 
+//! Disables reading / testing from the depth buffer. Disables \c GL_DEPTH_TEST
 void disableDepthRead();
+//! Disables writing to depth buffer; analogous to calling glDepthMask( GL_FALSE );
 void disableDepthWrite();
+//! Enables or disables reading / testing from depth buffer; analogous to setting \c GL_DEPTH_TEST to \p enable
 void enableDepthRead( bool enable = true );
+//! Enables or disables writing to depth buffer; analogous to calling glDepthMask( \p enable ); Note that reading must also be enabled for writing to have any effect.
 void enableDepthWrite( bool enable = true );
+//! Enables or disables writing to and reading / testing from depth buffer
+inline void enableDepth( bool enable = true ) { enableDepthRead( enable ); enableDepthWrite( enable ); }
 
-void enableStencilRead( bool enable = true );
-void disableStencilRead();
-void enableStencilWrite( bool enable = true );
-void disableStencilWrite();
-
+//! Enables or disables the stencil test operation, which controls reading and writing to the stencil buffer. Analagous to `glEnable( GL_STENCIL_TEST, enable );`
+void enableStencilTest( bool enable = true );
+//! Disables the stencil test operation. Analagous to `glEnable( GL_STENCIL_TEST, false );`
+void disableStencilTest();
+ 
 //! Sets the View and Projection matrices based on a Camera
 void setMatrices( const ci::Camera &cam );
 void setModelMatrix( const ci::mat4 &m );
@@ -308,6 +323,8 @@ inline void	vertexAttrib( GLuint index, float v0, float v1, float v2, float v3 )
 
 // Buffers
 void	bindBuffer( const BufferObjRef &buffer );
+//! Binds a named buffer object \a buffer to \a target. Analogous to glBindBuffer().
+void	bindBuffer( GLenum target, GLuint buffer );
 #if ! defined( CINDER_GL_ES_2 )
 //! Specifies a color buffer as the source for subsequent glReadPixels(), glCopyTexImage2D(), glCopyTexSubImage2D(), and glCopyTexSubImage3D() commands. Analogous to glReadBuffer().
 void	readBuffer( GLenum src );
@@ -319,6 +336,19 @@ void	drawBuffer( GLenum dst );
 
 //! Reads a block of pixels from the framebuffer. Analogous to glReadPixels().
 void	readPixels( GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid *data );
+
+// Compute
+#if defined( CINDER_MSW ) && ! defined( CINDER_GL_ANGLE )
+//! Launches one or more compute work groups. Analogous to glDispatchCompute(). 
+inline void	dispatchCompute( GLuint numGroupsX, GLuint numGroupsY, GLuint numGroupsZ ) { glDispatchCompute( numGroupsX, numGroupsY, numGroupsZ ); }
+//! Defines a barrier ordering memory transactions. Analogous to glMemoryBarrier().
+inline void	memoryBarrier( GLbitfield barriers ) { glMemoryBarrier( barriers ); }
+
+//! Returns ivec3( GL_MAX_COMPUTE_WORK_GROUP_COUNT )
+ivec3	getMaxComputeWorkGroupCount();
+//! Returns ivec3( GL_MAX_COMPUTE_WORK_GROUP_SIZE )
+ivec3	getMaxComputeWorkGroupSize();
+#endif
 
 class Exception : public cinder::Exception {
   public:

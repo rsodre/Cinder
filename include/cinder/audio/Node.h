@@ -55,7 +55,7 @@ typedef std::shared_ptr<class Node>				NodeRef;
 //! Subclassing: implement process( Buffer *buffer ) to perform audio processing. A Node does not have access to its owning Context until
 //! initialize() is called, uninitialize() is called before a Node is deallocated or channel counts change.
 //!
-//! \see InputNode, OutputNode, EffectNode
+//! \see InputNode, OutputNode
 class Node : public std::enable_shared_from_this<Node>, private Noncopyable {
   public:
 	//! Used to specifiy how the corresponding channels are to be resolved between two connected Node's,
@@ -258,11 +258,11 @@ class NodeAutoPullable : public Node {
   public:
 	virtual ~NodeAutoPullable();
 
-	virtual void connect( const NodeRef &output )					override;
-	virtual void connectInput( const NodeRef &input )				override;
-	virtual void disconnectInput( const NodeRef &input )			override;
+	void connect( const NodeRef &output )					override;
+	void connectInput( const NodeRef &input )				override;
+	void disconnectInput( const NodeRef &input )			override;
 	//! Overridden to also remove from  Context's auto-pulled list
-	virtual void disconnectAllOutputs()								override;
+	void disconnectAllOutputs()								override;
 
   protected:
 	NodeAutoPullable( const Format &format );

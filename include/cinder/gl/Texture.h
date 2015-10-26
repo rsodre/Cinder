@@ -318,11 +318,25 @@ std::ostream& operator<<( std::ostream &os, const TextureBase &rhs );
 
 class TextureData {
   public:
-	struct Level {
+	//! Represents a face of a texture; typically 1 Face per Level; CubeMaps have 6.
+	struct Face {
   		GLsizei						dataSize;
 		size_t						offset;
-		std::shared_ptr<uint8_t>	dataStore;
+//		std::shared_ptr<uint8_t>	dataStore;
+	};
+
+	//! Represents a single mip-level, composed of 1 or more Faces
+	struct Level {
 		GLsizei						width, height, depth;
+
+		size_t						getNumFaces() const { return mFaces.size(); }
+		const Face&					getFace( size_t index ) const { return mFaces.at( index ); }
+		const std::vector<Face>&	getFaces() const { return mFaces; }
+		std::vector<Face>&			getFaces() { return mFaces; }
+		Face&						back() { return mFaces.back(); }
+		void						push_back( const Face &face ) { mFaces.push_back( face ); }
+		
+		std::vector<Face>			mFaces;
 	};
 
 	TextureData();
@@ -339,8 +353,10 @@ class TextureData {
 	void				setHeight( GLint height ) { mHeight = height; }
 	GLint				getDepth() const { return mDepth; }
 	void				setDepth( GLint depth ) { mDepth = depth; }
+	GLint				getNumFaces() const { return mNumFaces; }
+	void				setNumFaces( GLint numFaces ) { mNumFaces = numFaces; }	
 	
-	bool				isCompressed() const { return mDataFormat == 0; }
+	bool				isCompressed() const { return mDataType == 0; }
 	GLint				getInternalFormat() const { return mInternalFormat; }
 	void				setInternalFormat( GLint internalFormat ) { mInternalFormat = internalFormat; }
 	GLenum				getDataFormat() const { return mDataFormat; }
@@ -354,8 +370,8 @@ class TextureData {
 	void						setSwizzleMask( const std::array<GLint,4> &swizzleMask ) { mSwizzleMask = swizzleMask; }
 
 	size_t						getNumLevels() const { return mLevels.size(); }
-	const Level&				getLevel( size_t index ) const { return mLevels.at( index ); }
 	const std::vector<Level>&	getLevels() const { return mLevels; }
+	std::vector<Level>&			getLevels() { return mLevels; }
 	Level&						back() { return mLevels.back(); }
 	void						push_back( const Level &level ) { mLevels.push_back( level ); }
 	void						clear() { mLevels.clear(); }
@@ -369,14 +385,14 @@ class TextureData {
   private:
 	void		init();
 	
-	GLint				mWidth, mHeight, mDepth;
+	GLint				mWidth, mHeight, mDepth, mNumFaces;
 	GLint				mInternalFormat;
 	GLenum				mDataFormat, mDataType;
 	GLint				mUnpackAlignment;
 	std::array<GLint,4>	mSwizzleMask;
-	
-	std::vector<Level>			mLevels;
 
+	std::vector<Level>	mLevels; // mip-levels
+	
   #if ! defined( CINDER_GL_ES )
 	PboRef						mPbo;
 	void*						mPboMappedPtr;
@@ -408,14 +424,20 @@ class Texture1d : public TextureBase {
 		//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
 		Format&	label( const std::string &label ) { setLabel( label ); return *this; }
 		
+		//! Sets a custom deleter for destruction of the shared_ptr<Texture1d>
+		Format&	deleter( const std::function<void(Texture1d*)> &sharedPtrDeleter ) { mDeleter = sharedPtrDeleter; return *this; }
+
+	  protected:
+		std::function<void(Texture1d*)>		mDeleter;
+		
 		friend Texture1d;
 	};
 
-	static Texture1dRef create( GLint width, Format format = Format() );
+	static Texture1dRef create( GLint width, const Format &format = Format() );
 	//! Constructs a Texture1d using the top row of \a surface
-	static Texture1dRef create( const Surface8u &surface, Format format = Format() );
+	static Texture1dRef create( const Surface8u &surface, const Format &format = Format() );
 	//! Constructs a Texture1d using the data pointed to by \a data, in format \a dataFormat. For a dataType other than \c GL_UNSIGNED_CHAR use \a format.setDataType()
-	static Texture1dRef	create( const void *data, GLenum dataFormat, int width, Format format = Format() );
+	static Texture1dRef	create( const void *data, GLenum dataFormat, int width, const Format &format = Format() );
 	
 	//! Updates the Texture1d using the top row of \a surface.
 	void	update( const Surface8u &surface, int mipLevel = 0 );
@@ -434,7 +456,7 @@ class Texture1d : public TextureBase {
 	Texture1d( const Surface8u &surface, Format format );
 	Texture1d( const void *data, GLenum dataFormat, int width, Format format );
 
-	virtual void	printDims( std::ostream &os ) const override;
+	void	printDims( std::ostream &os ) const override;
 
 	GLint		mWidth;
 };
@@ -477,35 +499,36 @@ class Texture2d : public TextureBase {
 #endif		
 		//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
 		Format&	label( const std::string &label ) { setLabel( label ); return *this; }
+		//! Sets a custom deleter for destruction of the shared_ptr<Texture2d>
+		Format&	deleter( const std::function<void(Texture2d*)> &sharedPtrDeleter ) { mDeleter = sharedPtrDeleter; return *this; }
 
 	  protected:
-		bool	mLoadTopDown;
-		friend	Texture;
+		bool								mLoadTopDown;
+		std::function<void(Texture2d*)>		mDeleter;
+		
+		friend		Texture2d;
 	};
 	
 	//! Constructs a texture of size(\a width, \a height) and allocates storage.
-	static Texture2dRef	create( int width, int height, Format format = Format() );
+	static Texture2dRef	create( int width, int height, const Format &format = Format() );
 	//! Constructs a texture of size(\a width, \a height). Pixel data is provided by \a data in format \a dataFormat (Ex: \c GL_RGB, \c GL_RGBA). Use \a format.setDataType() to specify a dataType other than \c GL_UNSIGNED_CHAR. Ignores \a format.loadTopDown().
-	static Texture2dRef	create( const void *data, GLenum dataFormat, int width, int height, Format format = Format() );
+	static Texture2dRef	create( const void *data, GLenum dataFormat, int width, int height, const Format &format = Format() );
 	//! Constructs a Texture based on the contents of \a surface.
-	static Texture2dRef	create( const Surface8u &surface, Format format = Format() );
+	static Texture2dRef	create( const Surface8u &surface, const Format &format = Format() );
 	//! Constructs a Texture based on the contents of \a channel. Sets swizzle mask to {R,R,R,1} where supported unless otherwise specified in \a format.
-	static Texture2dRef	create( const Channel8u &channel, Format format = Format() );
+	static Texture2dRef	create( const Channel8u &channel, const Format &format = Format() );
 	//! Constructs a Texture based on the contents of \a surface.
-	static Texture2dRef	create( const Surface16u &surface, Format format = Format() );
+	static Texture2dRef	create( const Surface16u &surface, const Format &format = Format() );
 	//! Constructs a Texture based on the contents of \a channel. Sets swizzle mask to {R,R,R,1} where supported unless otherwise specified in \a format.
-	static Texture2dRef	create( const Channel16u &channel, Format format = Format() );
+	static Texture2dRef	create( const Channel16u &channel, const Format &format = Format() );
 	//! Constructs a Texture based on the contents of \a surface.
-	static Texture2dRef	create( const Surface32f &surface, Format format = Format() );
+	static Texture2dRef	create( const Surface32f &surface, const Format &format = Format() );
 	/** \brief Constructs a texture based on the contents of \a channel. A default value of -1 for \a internalFormat chooses an appropriate internal format automatically. **/
-	static Texture2dRef	create( const Channel32f &channel, Format format = Format() );
+	static Texture2dRef	create( const Channel32f &channel, const Format &format = Format() );
 	//! Constructs a Texture based on \a imageSource. A default value of -1 for \a internalFormat chooses an appropriate internal format based on the contents of \a imageSource. Uses a Format's intermediate PBO when available, which is resized as necessary.
-	static Texture2dRef	create( ImageSourceRef imageSource, Format format = Format() );
-	//! Constructs a Texture based on an externally initialized OpenGL texture. \a doNotDispose specifies whether the Texture is responsible for disposing of the associated OpenGL resource.
-	static Texture2dRef	create( GLenum target, GLuint aTextureID, int width, int height, bool doNotDispose );
+	static Texture2dRef	create( ImageSourceRef imageSource, const Format &format = Format() );
 	//! Constructs a Texture based on an externally initialized OpenGL texture. \a doNotDispose specifies whether the Texture is responsible for disposing of the associated OpenGL resource. Supports a custom deleter.
-	template<typename D>
-	static Texture2dRef	create( GLenum target, GLuint aTextureID, int width, int height, bool doNotDispose, D deleter );
+	static Texture2dRef	create( GLenum target, GLuint textureID, int width, int height, bool doNotDispose, const std::function<void(Texture2d*)> &deleter = std::function<void(Texture2d*)>() );
 	//! Constructs a Texture based on an instance of TextureData
 	static Texture2dRef	create( const TextureData &data, const Format &format );
 	//! Constructs a Texture from an optionally compressed KTX file. Enables mipmapping if KTX file contains mipmaps and Format has not specified \c false for mipmapping. Uses Format's intermediate PBO if supplied; requires it to be large enough to hold all MIP levels and throws if it is not. (http://www.khronos.org/opengles/sdk/tools/KTX/file_format_spec/)
@@ -515,8 +538,8 @@ class Texture2d : public TextureBase {
 	static Texture2dRef	createFromDds( const DataSourceRef &dataSource, const Format &format = Format() );
 #endif
 
-	//! Allows specification of some size other than the Texture's true size for cases where not all pixels in the Texture are usable / "clean"; common in video decoding pipelines in particular. Specified in pixels, and relative to whichever origin is appropriate to the Texture's "top-downness".
-	void			setCleanSize( GLint cleanWidth, GLint cleanHeight );
+	//! Allows specification of some Area other than the Texture's full area for cases where not all pixels in the Texture are usable / "clean"; common in video decoding pipelines in particular. Specified in pixels, and relative to upper-left origin coordinate system regardless of whether Textre is top-down or not.
+	void			setCleanBounds( const Area &cleanBounds );
 
 	//! Updates the pixels of a Texture with the data pointed to by \a data, of format \a dataFormat (Ex: GL_RGB), and type \a dataType (Ex: GL_UNSIGNED_BYTE) of size (\a width, \a height). \a destLowerLeftOffset specifies a texel offset to copy to within the Texture.
 	void			update( const void *data, GLenum dataFormat, GLenum dataType, int mipLevel, int width, int height, const ivec2 &destLowerLeftOffset = ivec2( 0, 0 ) );
@@ -554,21 +577,19 @@ class Texture2d : public TextureBase {
 	//! Replaces the pixels (and data store) of a Texture with contents of \a textureData. Use update() instead if the bounds of \a this match those of \a textureData
 	void			replace( const TextureData &textureData );
 
-	//! Returns the width of the texture in pixels, ignoring clean bounds.
-	GLint			getWidth() const { return mWidth; }
-	//! Returns the height of the texture in pixels, ignoring clean bounds.
-	GLint			getHeight() const { return mHeight; }
-	//! Returns the depth of the texture in pixels, ignoring clean bounds.
-	GLint			getDepth() const { return 1; }
-	//! Returns the width of the texture in pixels accounting for its clean bounds - \sa getCleanBounds()
-	GLint			getCleanWidth() const;
-	//! Returns the height of the texture in pixels accounting for its clean bounds - \sa getCleanBounds()
-	GLint			getCleanHeight() const;
+	//! Returns the width of the texture in pixels.
+	GLint			getWidth() const override { return mCleanBounds.getWidth(); }
+	//! Returns the height of the texture in pixels.
+	GLint			getHeight() const override { return mCleanBounds.getHeight(); }
+	//! Returns the depth of the texture in pixels.
+	GLint			getDepth() const override { return 1; }
+	//! Returns the true width of the texture in pixels, which may be larger than it's "clean" area
+	GLint			getActualWidth() const { return mActualSize.x; }
+	//! Returns the true height of the texture in pixels, which may be larger than it's "clean" area
+	GLint			getActualHeight() const { return mActualSize.y; }
 	//! Returns size of the texture in pixels, igonring clean bounds
 	ivec2			getSize() const { return ivec2( getWidth(), getHeight() ); }
-	//! Returns the Area defining the Texture's bounds in pixels, accounting for clean bounds.
-	Area			getCleanBounds() const { return Area( 0, 0, getCleanWidth(), getCleanHeight() ); }
-	//! Returns the UV coordinates which correspond to the pixels contained in \a area (as expressed with an upper-left origin). Accounts for clean bounds, top-down storage and target (0-1 for \c GL_TEXTURE_2D and pixel for GL_TEXTURE_RECTANGLE)
+	//! Returns the UV coordinates which correspond to the pixels contained in \a area (as expressed with an upper-left origin, relative to clean bounds). Accounts for top-down storage and target (0-1 for \c GL_TEXTURE_2D and pixels for \c GL_TEXTURE_RECTANGLE)
 	Rectf			getAreaTexCoords( const Area &area ) const;
 	//! Returns whether the scanlines of the image are stored top-down in memory relative to the base address. Default is \c false.
 	bool			isTopDown() const { return mTopDown; }
@@ -579,7 +600,6 @@ class Texture2d : public TextureBase {
 	ImageSourceRef	createSource();
 	
   protected:
-	virtual void	printDims( std::ostream &os ) const override;
 
 	Texture2d( int width, int height, Format format = Format() );
 	Texture2d( const void *data, GLenum dataFormat, int width, int height, Format format = Format() );
@@ -593,6 +613,7 @@ class Texture2d : public TextureBase {
 	Texture2d( GLenum target, GLuint textureId, int width, int height, bool doNotDispose );
 	Texture2d( const TextureData &data, Format format );
 	
+	void	printDims( std::ostream &os ) const override;
 	void	initParams( Format &format, GLint defaultInternalFormat, GLint defaultDataType );
 	void	initMaxMipmapLevel();
 	template<typename T>
@@ -602,12 +623,13 @@ class Texture2d : public TextureBase {
 	void	initData( const void *data, GLenum dataFormat, const Format &format );
 	void	initData( const ImageSourceRef &imageSource, const Format &format );
 #if ! defined( CINDER_GL_ES )
-	void	initDataImageSourceWithPboImpl( const ImageSourceRef &imageSource, const Format &format, GLint dataFormat, ImageIo::ChannelOrder channelOrder, bool isGray, const PboRef &pbo );
+	void	initDataImageSourceWithPboImpl( const ImageSourceRef &imageSource, const Format &format, GLint dataFormat, GLint dataType, ImageIo::ChannelOrder channelOrder, bool isGray, const PboRef &pbo );
 #endif
-	void	initDataImageSourceImpl( const ImageSourceRef &imageSource, const Format &format, GLint dataFormat, ImageIo::ChannelOrder channelOrder, bool isGray );
+	void	initDataImageSourceImpl( const ImageSourceRef &imageSource, const Format &format, GLint dataFormat, GLint dataType, ImageIo::ChannelOrder channelOrder, bool isGray );
 
-	mutable GLint	mWidth, mHeight, mCleanWidth, mCleanHeight;
-	bool			mTopDown;
+	ivec2		mActualSize; // true texture size in pixels, as opposed to clean bounds
+	Area		mCleanBounds; // relative to upper-left origin regardless of top-down
+	bool		mTopDown;
 	
 	friend class Texture2dCache;
 };
@@ -639,12 +661,19 @@ class Texture3d : public TextureBase {
 		//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
 		Format&	label( const std::string &label ) { setLabel( label ); return *this; }
 		
+		//! Sets a custom deleter for destruction of the shared_ptr<Texture3d>
+		Format&	deleter( const std::function<void(Texture3d*)> &sharedPtrDeleter ) { mDeleter = sharedPtrDeleter; return *this; }
+		
+	  protected:
+		std::function<void(Texture3d*)>		mDeleter;
+		
 		friend Texture3d;
 	};
 
-	static Texture3dRef create( GLint width, GLint height, GLint depth, Format format = Format() );
+	//! Constructs a texture of size(\a width, \a height, \a depth).
+	static Texture3dRef create( GLint width, GLint height, GLint depth, const Format &format = Format() );
 	//! Constructs a texture of size(\a width, \a height, \a depth). Pixel data is provided by \a data in format \a dataFormat (Ex: \c GL_RGB, \c GL_RGBA). Use \a format.setDataType() to specify a dataType other than \c GL_UNSIGNED_CHAR.
-	static Texture3dRef create( const void *data, GLenum dataFormat, int width, int height, int depth, Format format = Format() );
+	static Texture3dRef create( const void *data, GLenum dataFormat, int width, int height, int depth, const Format &format = Format() );
   
 	void	update( const Surface &surface, int depth, int mipLevel = 0 );
 
@@ -661,7 +690,7 @@ class Texture3d : public TextureBase {
   	Texture3d( GLint width, GLint height, GLint depth, Format format );
 	Texture3d( const void *data, GLenum dataFormat, int width, int height, int depth, Format format );
 
-	virtual void	printDims( std::ostream &os ) const override;
+	void	printDims( std::ostream &os ) const override;
 
 	GLint		mWidth, mHeight, mDepth;
 };
@@ -693,6 +722,12 @@ class TextureCubeMap : public TextureBase
 		//! Sets the debugging label associated with the Texture. Calls glObjectLabel() when available.
 		Format&	label( const std::string &label ) { setLabel( label ); return *this; }
 		
+		//! Sets a custom deleter for destruction of the shared_ptr<TextureCubeMap>
+		Format&	deleter( const std::function<void(TextureCubeMap*)> &sharedPtrDeleter ) { mDeleter = sharedPtrDeleter; return *this; }
+		
+	  protected:
+		std::function<void(TextureCubeMap*)>	mDeleter;
+		
 		friend TextureCubeMap;
 	};
   
@@ -701,6 +736,14 @@ class TextureCubeMap : public TextureBase
 	static TextureCubeMapRef	create( const ImageSourceRef &imageSource, const Format &format = Format() );
 	//! Expects images ordered { +X, -X, +Y, -Y, +Z, -Z }
 	static TextureCubeMapRef	create( const ImageSourceRef images[6], const Format &format = Format() );
+	//! Constructs a TextureCubeMap based on an instance of TextureData
+	static TextureCubeMapRef	create( const TextureData &data, const Format &format );
+	//! Constructs a TextureCubeMap from a KTX file. Enables mipmapping if KTX file contains mipmaps and Format has not specified \c false for mipmapping. Uses Format's intermediate PBO if supplied; requires it to be large enough to hold all MIP levels and throws if it is not. (http://www.khronos.org/opengles/sdk/tools/KTX/file_format_spec/)
+	static TextureCubeMapRef	createFromKtx( const DataSourceRef &dataSource, const Format &format = Format() );
+#if ! defined( CINDER_GL_ES ) || defined( CINDER_GL_ANGLE )
+	//! Constructs a TextureCubeMap from a DDS file. Supports DXT1, DTX3, and DTX5. Supports BC7 in the presence of \c GL_ARB_texture_compression_bptc. Enables mipmapping if DDS contains mipmaps and Format has not specified \c false for mipmapping. ANGLE version requires textures to be a multiple of 4 due to DX limitation.
+	static TextureCubeMapRef	createFromDds( const DataSourceRef &dataSource, const Format &format = Format() );
+#endif
 
 	//! Returns the width of the texture in pixels
 	GLint			getWidth() const override { return mWidth; }
@@ -708,16 +751,20 @@ class TextureCubeMap : public TextureBase
 	GLint			getHeight() const override { return mHeight; }
 	//! Returns the depth of the texture in pixels (
 	GLint			getDepth() const override { return 1; }
+
+	//! Replaces the pixels (and data store) of a Texture with contents of \a textureData.
+	void			replace( const TextureData &textureData );
 	
   protected:
 	TextureCubeMap( int32_t width, int32_t height, Format format );
 	template<typename T>
 	TextureCubeMap( const SurfaceT<T> images[6], Format format );
+	TextureCubeMap( const TextureData &data, Format format );
 
 	template<typename T>
 	static TextureCubeMapRef createTextureCubeMapImpl( const ImageSourceRef &imageSource, const Format &format );
 
-	virtual void	printDims( std::ostream &os ) const override;
+	void	printDims( std::ostream &os ) const override;
 	
 	GLint		mWidth, mHeight;
 };
@@ -745,12 +792,6 @@ class Texture2dCache : public std::enable_shared_from_this<Texture2dCache>
 	int										mNextId;
 	std::vector<std::pair<int,TextureRef>>	mTextures;
 };
-
-template<typename D>
-Texture2dRef Texture2d::create( GLenum target, GLuint textureID, int width, int height, bool doNotDispose, D deleter )
-{
-	return TextureRef( new Texture( target, textureID, width, height, doNotDispose ), deleter );
-}
 
 class SurfaceConstraintsGLTexture : public SurfaceConstraints {
   public:
