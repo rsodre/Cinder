@@ -13,6 +13,7 @@ const float winScales[] = { 0.8, 0.75, 0.5, 0.25, 0.2, 0.1, 0.08, 0.075, 0.05, 0
 using namespace ci;
 using namespace ci::app;
 using namespace ci::gl;
+using namespace sysinfo;
 
 namespace cinder { namespace qb {
 	
@@ -78,10 +79,10 @@ namespace cinder { namespace qb {
 	{
 		// Screen name
 		std::stringstream os;
-		//os << "__" << mSysInfo.getAppName();
-		os << mSysInfo.getAppName() << " v_" << mSysInfo.getAppVersion();
+		//os << "__" << SysInfo::getAppName();
+		os << SysInfo::getAppName() << " v_" << SysInfo::getAppVersion();
 		mScreenName = os.str();
-		printf("----- QB app_name [%s] screen_name [%s] app_ver [%s]\n",mSysInfo.getAppName().c_str(),mScreenName.c_str(),mSysInfo.getAppVersionLong().c_str());
+		printf("----- QB app_name [%s] screen_name [%s] app_ver [%s]\n",SysInfo::getAppName().c_str(),mScreenName.c_str(),SysInfo::getAppVersionLong().c_str());
 
 		// Make Config
 		mConfig = new qbConfig();
@@ -131,8 +132,8 @@ namespace cinder { namespace qb {
 		
 		// Renderer file names
 		os.clear();
-		//os << "__" << mSysInfo.getAppName();
-		os << mSysInfo.getAppName();
+		//os << "__" << SysInfo::getAppName();
+		os << SysInfo::getAppName();
 		mRenderer.setFileNameBase( os.str() );
 		mRenderer.setFolder( QB_CAPTURE_FOLDER );
 		
@@ -535,11 +536,11 @@ namespace cinder { namespace qb {
 		mCameraRight.setPerspective( fovGl, stereoAspect, mCameraNear, mCameraFar );
 		//
 		// Ground perspective
-		if ( this->isCameraGround() )
+		if ( this->isCameraGroundActive() )
 		{
-			mCameraPersp.setLensShift( 0, -1 );
-			mCameraLeft.setLensShift(  0, -1 );
-			mCameraRight.setLensShift( 0, -1 );
+			mCameraPersp.setLensShift( 0, -this->getCameraGroundShift() );
+			mCameraLeft.setLensShift(  0, -this->getCameraGroundShift() );
+			mCameraRight.setLensShift( 0, -this->getCameraGroundShift() );
 		}
 		//
 		// Select active camera
@@ -621,7 +622,7 @@ namespace cinder { namespace qb {
 	void qbMain::updateCamera( Vec3f off )
 	{
 		if ( this->isCameraGroundActive() )
-			off += Vec3f( 0.0f, mMetricHeight * 0.5f, 0.0f );
+			off += Vec3f( 0.0f, mMetricHeight * this->getCameraGroundShift() * 0.5, 0.0f );
 		Vec3f e = mCamEye + mCameraOffset + off;
 		Vec3f t = mCamTarget + mCameraOffset + off;
 		mCameraActive->lookAt( e, t );

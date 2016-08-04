@@ -352,8 +352,7 @@ namespace cinder { namespace sgui {
 				if (control->hasChanged() || control->controlHasResized()) {
 					control->updateFbo();	// update fbo before GUI drawing
 					control->mustRefresh = true;
-					if (control->panelToSwitch)
-						control->panelToSwitch->enable( control->invertSwitch ? ! control->isOn() : control->isOn() );
+					control->switchPanels();
 				}
 				else if (control->updateMouse())
 					control->mustRefresh = true;
@@ -996,9 +995,7 @@ namespace cinder { namespace sgui {
 		this->locked = false;
 		bgColor = SimpleGUI::bgColor;
 		drawOffset = Vec2f::zero();
-		this->panelToSwitch = NULL;
 		this->unitControl = NULL;
-		this->invertSwitch = false;
 		this->readOnly = false;
 		this->important = false;
 		this->displayValue = false;
@@ -1042,6 +1039,13 @@ namespace cinder { namespace sgui {
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect( a );
 		gl::disableAlphaBlending();
+	}
+
+	void Control::switchPanels() {
+		for (auto it = panelsToSwitch.begin() ; it != panelsToSwitch.end() ; ++it )
+			(*it)->enable( this->isOn() );
+		for (auto it = panelsToSwitchInv.begin() ; it != panelsToSwitchInv.end() ; ++it )
+			(*it)->enable( ! this->isOn() );
 	}
 
 	//
@@ -1704,6 +1708,7 @@ namespace cinder { namespace sgui {
 		this->defaultValue = defaultValue;
 		this->lastValue = *var;
 		this->asButton = false;
+		this->switchButton = false;
 		this->dontGoOff = false;
 		this->update();
 	}	
@@ -1765,7 +1770,17 @@ namespace cinder { namespace sgui {
 	void BoolVarControl::onMouseDown(app::MouseEvent & event) {
 		if ( *var && dontGoOff )
 			return;
-		*var = ! *var;
+		if ( switchButton )
+			*var = true;
+		else
+			*var = ! *var;
+	}
+	
+	void BoolVarControl::onMouseUp(app::MouseEvent & event) {
+		if ( *var && dontGoOff )
+			return;
+		if ( switchButton )
+			*var = false;
 	}
 	
 	//-----------------------------------------------------------------------------
@@ -2586,7 +2601,7 @@ namespace cinder { namespace sgui {
 						 (-SimpleGUI::padding).y, 
 						 (SimpleGUI::sliderSize + SimpleGUI::padding).x, 
 						 (nameSize + SimpleGUI::padding + thumbSize + SimpleGUI::padding ).y );
-		printf("TextureVarControl:: size  %d %d\n",(int)activeAreaBase.getWidth(),(int)activeAreaBase.getHeight());
+		//printf("TextureVarControl:: size  %d %d\n",(int)activeAreaBase.getWidth(),(int)activeAreaBase.getHeight());
 		resized = true;
 	}
 	

@@ -93,7 +93,7 @@ extern NSString * const SyphonServerRetireNotification;
  SyphonServerDirectory provides information on available Syphon Servers. Servers are represented by dictionaries. Generally you can expect to find some or all of the keys listed in Constants.
 */
 
-@interface BlendySyphonServerDirectory : NSObject {
+@interface SyphonServerDirectory : NSObject {
 @private
  NSMutableArray *_servers;
  pthread_mutex_t _generalLock;
@@ -106,7 +106,7 @@ extern NSString * const SyphonServerRetireNotification;
  @returns the shared server instance 
 */
 
-+ (BlendySyphonServerDirectory *)sharedDirectory;
++ (SyphonServerDirectory *)sharedDirectory;
 
 /*!
  NSArray of NSDictionaries that describe (using the keys above) currently available SyphonServer instances on the system.
@@ -124,5 +124,3 @@ extern NSString * const SyphonServerRetireNotification;
 - (NSArray *)serversMatchingName:(NSString *)name appName:(NSString *)appname;
 
 @end
-
-@compatibility_alias SyphonServerDirectory BlendySyphonServerDirectory;

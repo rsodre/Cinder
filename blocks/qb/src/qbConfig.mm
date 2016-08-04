@@ -12,6 +12,7 @@
 
 using namespace ci;
 using namespace ci::sgui;
+using namespace sysinfo;
 
 PanelControl *pc3, *pc4, *pc5;
 
@@ -38,6 +39,7 @@ void qbConfig::setup() {
 	this->addVector2(QBCFG_OFFSET, "QBCFG_OFFSET", Vec2f::zero(), -0.5f, 0.5f );
 	this->addInt(QBCFG_CAMERA_TYPE, "QBCFG_CAMERA_TYPE", _qb.mDefaultCamera, 0, CAMERA_TYPE_COUNT-1);
 	this->addBool(QBCFG_CAMERA_GROUND, "QBCFG_CAMERA_GROUND", false);
+	this->addFloat(QBCFG_CAMERA_GROUND_SHIFT, "QBCFG_CAMERA_GROUND_SHIFT", 1.0f, 0.0f, 5.0f);
 	this->addFloat(QBCFG_METRIC_THROW, "QBCFG_METRIC_THROW", 1.0f, 0.1f, 1.2f);
 	this->addFloat(QBCFG_PERSPECTIVE_PROG, "QBCFG_PERSPECTIVE_PROG", 1.0f, 0.0f, 1.0f);
 	// Animation
@@ -88,20 +90,20 @@ void qbConfig::setup() {
 	this->setDummy( QBCFG_PALETTE_REDUCE_TIME );
 	
 	// Readonly
-	this->addString(DUMMY_APP_VERSION, "DUMMY_APP_VERSION", _sys.getAppVersionLong());
-	this->addString(DUMMY_OS_VERSION, "DUMMY_OS_VERSION", _sys.getOsVersion());
-	this->addString(DUMMY_GPU_VENDOR, "DUMMY_GPU_VENDOR", _sys.getGpuVendor());
-	this->addString(DUMMY_GPU_MODEL, "DUMMY_GPU_MODEL", _sys.getGpuModel());
-	this->addString(DUMMY_GPU_TEX_SIZE, "DUMMY_GPU_TEX_SIZE", _sys.getGpuTexSize());
-	this->addString(DUMMY_GPU_FBO_WIDTH, "DUMMY_GPU_FBO_WIDTH", _sys.getGpuFboWidth());
-	this->addString(DUMMY_GPU_FBO_HEIGHT, "DUMMY_GPU_FBO_HEIGHT", _sys.getGpuFboHeight());
-	this->addString(DUMMY_GL_VERSION, "DUMMY_GL_VERSION", _sys.getOpenGlVersion());
-	this->addString(DUMMY_GLSL_VERSION, "DUMMY_GLSL_VERSION", _sys.getGlslVersion());
-	this->addString(DUMMY_RAM_AVAILABLE, "DUMMY_RAM_AVAILABLE", _sys.getRam());
-	this->addString(DUMMY_PROCESSOR, "DUMMY_PROCESSOR", _sys.getProcessor());
-	this->addString(DUMMY_MODEL, "DUMMY_MODEL", _sys.getCpuModel());
-	this->addString(DUMMY_CORES, "DUMMY_CORES", _sys.getCpuCores());
-	this->addString(DUMMY_GPU_RAM, "DUMMY_GPU_RAM", _sys.getGpuRam());
+	this->addString(DUMMY_APP_VERSION, "DUMMY_APP_VERSION", SysInfo::getAppVersionLong());
+	this->addString(DUMMY_OS_VERSION, "DUMMY_OS_VERSION", SysInfo::getOsVersion());
+	this->addString(DUMMY_GPU_VENDOR, "DUMMY_GPU_VENDOR", SysInfo::getGpuVendor());
+	this->addString(DUMMY_GPU_MODEL, "DUMMY_GPU_MODEL", SysInfo::getGpuModel());
+	this->addString(DUMMY_GPU_TEX_SIZE, "DUMMY_GPU_TEX_SIZE", SysInfo::getGpuTexSize());
+	this->addString(DUMMY_GPU_FBO_WIDTH, "DUMMY_GPU_FBO_WIDTH", SysInfo::getGpuFboWidth());
+	this->addString(DUMMY_GPU_FBO_HEIGHT, "DUMMY_GPU_FBO_HEIGHT", SysInfo::getGpuFboHeight());
+	this->addString(DUMMY_GL_VERSION, "DUMMY_GL_VERSION", SysInfo::getGlVersion());
+	this->addString(DUMMY_GLSL_VERSION, "DUMMY_GLSL_VERSION", SysInfo::getGlslVersion());
+	this->addString(DUMMY_RAM_AVAILABLE, "DUMMY_RAM_AVAILABLE", SysInfo::getRam());
+	this->addString(DUMMY_PROCESSOR, "DUMMY_PROCESSOR", SysInfo::getProcessor());
+	this->addString(DUMMY_MODEL, "DUMMY_MODEL", SysInfo::getCpuModel());
+	this->addString(DUMMY_CORES, "DUMMY_CORES", SysInfo::getCpuCores());
+	this->addString(DUMMY_GPU_RAM, "DUMMY_GPU_RAM", SysInfo::getGpuRam());
 	this->addInt(DUMMY_RENDER_WIDTH, "DUMMY_RENDER_WIDTH", 0);
 	this->addInt(DUMMY_RENDER_HEIGHT, "DUMMY_RENDER_HEIGHT", 0);
 	this->addInt(DUMMY_QB_WIDTH, "DUMMY_QB_WIDTH", 0);
@@ -221,6 +223,7 @@ void qbConfig::setup() {
 	this->guiAddParam(QBCFG_PERSPECTIVE_PROG,		"Perspective Scale", 2 );
 	this->guiAddParam(QBCFG_METRIC_THROW,			"Camera Throw", 2 );
 	this->guiAddParam(QBCFG_CAMERA_GROUND,			"Camera on Ground" );
+	this->guiAddParam(QBCFG_CAMERA_GROUND_SHIFT,	"Ground Shift" );
 	this->guiAddParam(QBCFG_SCALE,					"Scale", 2 );
 	this->guiAddParam(QBCFG_OFFSET,					"Offset", 3 );
 	// Syphon
@@ -496,6 +499,7 @@ void qbConfig::postSetCallback(int id, int i)
 			_qb.setCameraType( this->get(QBCFG_CAMERA_TYPE) );
 			break;
 		case QBCFG_CAMERA_GROUND:
+		case QBCFG_CAMERA_GROUND_SHIFT:
 		case QBCFG_METRIC_THROW:
 		case QBCFG_PERSPECTIVE_PROG:
 			_qb.resizeCameras();

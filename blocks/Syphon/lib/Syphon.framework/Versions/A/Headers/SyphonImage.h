@@ -34,7 +34,7 @@
  SyphonImage represents an image stored as an OpenGL texture of type GL_TEXTURE_RECTANGLE_ARB.
  */
 
-@interface BlendySyphonImage : NSObject {
+@interface SyphonImage : NSObject {
 
 }
 
@@ -48,5 +48,3 @@
  */
 @property (readonly) NSSize textureSize;
 @end
-
-@compatibility_alias SyphonImage BlendySyphonImage;

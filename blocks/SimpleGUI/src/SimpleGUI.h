@@ -319,10 +319,10 @@ namespace cinder { namespace sgui {
 		Rectf	activeArea;
 		Rectf	activeAreasBase[4];
 		Rectf	activeAreas[4];
-		PanelControl *panelToSwitch;
 		Control	*unitControl;
 		LabelControl *label;
-		bool	invertSwitch;
+		std::vector<PanelControl*> panelsToSwitch;		// Panel to switch ON with my value
+		std::vector<PanelControl*> panelsToSwitchInv;	// Panel to switch OFF with my value
 		bool	mouseMoved;
 		int		channelOver;
 		Control(SimpleGUI *parent, const std::string & name);
@@ -333,6 +333,7 @@ namespace cinder { namespace sgui {
 		void disable()					{ this->enable(false); }
 		bool isEnabled()				{ return enabled; }
 		void lock(bool b=true)			{ if (b != locked) { locked = b; mustRefresh = true; } }
+		void switchPanels();
 
 		void setBackgroundColor(ColorA color);
 		void notifyUpdateListeners();
@@ -345,9 +346,8 @@ namespace cinder { namespace sgui {
 		virtual bool fileDrop(app::FileDropEvent & event) { return false; };
 		virtual void onResize() {};
 		// ROGER
-		PanelControl* addSwitchPanel(const std::string & name)		{ panelToSwitch = parentGui->addPanel(name); invertSwitch = false; return panelToSwitch; }		// Panel to switch ON/OFF with my value
-		PanelControl* addSwitchPanelInv(const std::string & name)	{ panelToSwitch = parentGui->addPanel(name); invertSwitch = true; return panelToSwitch; }		// Panel to switch ON/OFF with my value
-		void setSuffix(const std::string & s)				{ suffix = s; mustRefresh = true; }
+		PanelControl* addSwitchPanel(const std::string & name)		{ panelsToSwitch.push_back( parentGui->addPanel(name) ); this->switchPanels(); return panelsToSwitch.back(); }
+		PanelControl* addSwitchPanelInv(const std::string & name)	{ panelsToSwitchInv.push_back( parentGui->addPanel(name) ); this->switchPanels(); return panelsToSwitchInv.back(); }
 		void setName(const std::string & newName)			{ if (name != newName) mustRefresh = true; name = newName; }
 		void setMustRefresh()								{ mustRefresh = true; }
 		bool hasChanged()							{ if (unitControl) if (unitControl->valueHasChanged()) mustRefresh = true; return this->valueHasChanged() || this->mustRefresh; }
@@ -362,6 +362,7 @@ namespace cinder { namespace sgui {
 		Control* setPostGap(bool b)					{ postgap = b; this->update(); return this; }		// chained setters
 		Control* setNameOff(const std::string & n)	{ nameOff = n; return this; }						// chained setters
 		Control* setSlim(bool b=true)				{ slim = b; this->update(); return this; }	// chained setters
+		Control* setSuffix(const std::string & s)	{ suffix = s; mustRefresh = true; return this; }
 		virtual void updateFbo()					{}
 		virtual void update()						{}
 		virtual void reset()						{}
@@ -427,7 +428,7 @@ namespace cinder { namespace sgui {
 		FloatVarControl* setFormatAsTime(bool b=true)		{ formatAsTime=b; return this; }		// chamed setters
 		FloatVarControl* setFormatAsTimecode(bool b=true)	{ formatAsTimecode=b; return this; }	// chamed setters
 		FloatVarControl* setFormatAsPercentage(bool b=true)	{ percentage=b; return this; }			// chamed setters
-		bool isOn()						{ return ( *var != 0.0 ); }		// used to switch panel
+		bool isOn()						{ return ( *var != 0.0f ); }	// used to switch panel
 		bool keyboardEnabled()			{ return true; }				// used to inc/dec values
 		bool valueHasChanged()			{ return ( this->displayedValue(*var,step) != this->displayedValue(lastValue,step) ); };
 		void inc(bool shifted)			{ *var = math<float>::clamp( (*var)+(step*(shifted?10:1)), min, max ); }		// keyboard inc
@@ -543,16 +544,19 @@ namespace cinder { namespace sgui {
 		std::string toString();	
 		void fromString(std::string& strValue);
 		void onMouseDown(app::MouseEvent & event);
+		void onMouseUp(app::MouseEvent & event);
 		// ROGER
 		void update();
 		void reset()					{ *var = defaultValue; }
 		bool valueHasChanged()			{ return (*var != lastValue); };
 		bool isOn()						{ return (*var); }		// used to switch panel
 		float getValue()				{ return (float)*var; }
-		BoolVarControl* setAsButton(bool b=true)	{ asButton=b; this->update(); return this; }	// chained setters
-		BoolVarControl* setDontGoOff(bool b=true)	{ dontGoOff=b; this->update(); return this; }	// chained setters
+		BoolVarControl* setAsButton(bool b=true)	{ asButton=b; this->update(); return this; }		// chained setters
+		BoolVarControl* setAsSwitch(bool b=true)	{ switchButton=b; this->update(); return this; }	// chained setters
+		BoolVarControl* setDontGoOff(bool b=true)	{ dontGoOff=b; this->update(); return this; }		// chained setters
 		void setDefaultValue(void *v)	{ defaultValue = *((bool*)v); }
 		bool asButton;
+		bool switchButton;
 		bool dontGoOff;
 	};
 	

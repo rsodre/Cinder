@@ -246,7 +246,8 @@ public:
 	bool						quater;
 	char						flag;
 	char						changeGroups;	// group flags
-	bool						changed;
+	bool						loaded;			// value was loaded from file?
+	bool						changed;		// value changed last frame?
 	// Values
 	std::string					strval;
 	std::string					strvalInitial[MAX_DEFAULTS];
@@ -278,6 +279,7 @@ public:
 		quater = false;
 		editable = true;
 		guiControl = NULL;
+		loaded = false;
 		changed = false;
 		changeGroups = 0x00;
 		flag = 0x00;
@@ -587,6 +589,8 @@ public:
 	bool isFresh(short id, bool _unfresh=true)	{ return params[id]->isFresh(_unfresh); }	// param freshness
 	void unfresh()				{ freshness = false; }						// global freshness - automatic UNFRESH
 	void unfreshAll()			{ this->unfresh(); for (int id=0;id<params.size();id++) if (params[id]) params[id]->unfresh(); }
+	void setLoaded(short id, bool l)	{ params[id]->loaded = l; }
+	bool isLoaded(short id)				{ return params[id]->loaded; }
 	// pointers
 	float* getPointer(int id, int i)		{ return (params[id]->getPointer(i)); }
 	float* getPointer(int id)				{ return this->getPointer(id,0); }

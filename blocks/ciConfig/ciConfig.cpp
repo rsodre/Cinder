@@ -1785,6 +1785,7 @@ namespace cinder {
 #endif
 					this->preserveProg( pid, pp );
 					this->set(pid, value.c_str(), pp);
+					this->setLoaded(pid, true);
 					break;
 				}
 			}

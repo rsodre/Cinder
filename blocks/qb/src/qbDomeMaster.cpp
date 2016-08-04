@@ -288,7 +288,7 @@ namespace cinder { namespace qb {
 			glBegin( GL_LINE_STRIP );
 			for ( float lng = 0 ; lng <= 360 ; lng += mMeshStep )
 			{
-				Vec3f p = LATLNG_TO_XYZ_DEG( lat_h, lng );
+				Vec3f p = LATLNG_TO_DOME_DEG( lat_h, lng );
 				glVertex3f( p );
 			}
 			glEnd();
@@ -313,7 +313,7 @@ namespace cinder { namespace qb {
 				glBegin( GL_LINE_STRIP );
 				for ( float lat = lat_h ; lat <= 90.0 ; lat += mMeshStep )
 				{
-					Vec3f p = LATLNG_TO_XYZ_DEG( lat, lng );
+					Vec3f p = LATLNG_TO_DOME_DEG( lat, lng );
 					glVertex3f( p );
 					// 1st time, adjust altitude (Latitude) to step
 					float diff = fmod( (lat + 360.0), mMeshStep );
@@ -330,7 +330,7 @@ namespace cinder { namespace qb {
 				glBegin( GL_LINE_STRIP );
 				for ( int lng = 0 ; lng <= 360 ; lng += mMeshStep )
 				{
-					Vec3f p = LATLNG_TO_XYZ_DEG( lat, lng );
+					Vec3f p = LATLNG_TO_DOME_DEG( lat, lng );
 					glVertex3f( p );
 				}
 				glEnd();
@@ -359,8 +359,8 @@ namespace cinder { namespace qb {
 				glBegin( GL_TRIANGLE_STRIP );
 				for ( int lng = 0 ; lng <= 360 ; lng += mMeshStep )
 				{
-					Vec3f p0 = LATLNG_TO_XYZ_DEG( lat, lng );
-					Vec3f p1 = LATLNG_TO_XYZ_DEG( lat+mMeshStep-d, lng );
+					Vec3f p0 = LATLNG_TO_DOME_DEG( lat, lng );
+					Vec3f p1 = LATLNG_TO_DOME_DEG( lat+mMeshStep-d, lng );
 					Vec3f n0 = ( esfera ? p0 : -p0 );
 					Vec3f n1 = ( esfera ? p1 : -p1 );
 					// TODO:: TESTAR SEM SHADER !!! - vai dar problema no displaylist

@@ -15,8 +15,10 @@
 
 #define DXYI(X,Y)					((Y)*mSize.x+(X))
 
-#define LATLNG_TO_XYZ(lat,lng)		(qbDomeMaster::getPosFromLatLng((lat),(lng)))
-#define LATLNG_TO_XYZ_DEG(lat,lng)	(qbDomeMaster::getPosFromLatLngDeg((lat),(lng)))
+#define LATLNG_TO_DOME(lat,lng)		(qbDomeMaster::getPosFromLatLng((lat),(lng)))
+#define LATLNG_TO_DOME_DEG(lat,lng)	(qbDomeMaster::getPosFromLatLngDeg((lat),(lng)))
+
+#define DOME_TO_LATLNG(dc)			Vec2f(getAltitude((dc).x),getAzimuth((dc).y))
 
 // Returns azimuth (longitude) of a dome position: 0 .. TWOPI
 // dc = dome coordinates ( -1.0 .. +1.0 )
