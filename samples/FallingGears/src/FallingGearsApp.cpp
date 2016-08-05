@@ -7,12 +7,13 @@
 // license:			BSD
 //
 // Outline: Falling gears bounce into shapes (the 'Island' class) and Walls, triggering Synth's.
-// AudioController maintain's a bank of Synth subclasses - of type AltoSynth for Island collisions
-// and BassSynth for wall colissions.  Musical chords are created by the collisions that descend
+// AudioController maintains a bank of Synth subclasses - of type AltoSynth for Island collisions
+// and BassSynth for wall collisions.  Musical chords are created by the collisions that descend
 // through the circle of fifths.  The SceneController class maintains a Box2D physics world, which
 // triggers the interaction between visuals and audio.
 
-#include "cinder/app/AppNative.h"
+#include "cinder/app/App.h"
+#include "cinder/app/RendererGl.h"
 #include "cinder/gl/gl.h"
 #include "cinder/gl/Texture.h"
 #include "cinder/Timeline.h"
@@ -21,7 +22,6 @@
 #include "cinder/params/Params.h"
 
 #include "cinder/audio/Utilities.h"
-#include "cinder/audio/Debug.h"
 #include "AudioController.h"
 
 #include "Config.h"
@@ -32,17 +32,17 @@ using namespace ci;
 using namespace ci::app;
 using namespace std;
 
-class FallingGearsApp : public AppNative {
+class FallingGearsApp : public App {
   public:
-	void prepareSettings( Settings *settings );
-	void setup();
-	void keyDown( KeyEvent event );
-	void mouseDown( MouseEvent event );
-	void mouseDrag( MouseEvent event );
-	void mouseUp( MouseEvent event );
-	void update();
-	void draw();
+	void setup() override;
+	void keyDown( KeyEvent event ) override;
+	void mouseDown( MouseEvent event ) override;
+	void mouseDrag( MouseEvent event ) override;
+	void mouseUp( MouseEvent event ) override;
+	void update() override;
+	void draw() override;
 
+  private:
 	void setupGraphics();
 	void setupParams();
 	void drawBackground();
@@ -59,16 +59,11 @@ class FallingGearsApp : public AppNative {
 	float					mMasterGain;
 };
 
-void FallingGearsApp::prepareSettings( Settings *settings )
-{
-	settings->setWindowSize( 1200, 800 );
-}
-
 void FallingGearsApp::setup()
 {
 	mDrawDebug = false;
 	mDrawInfo = false;
-	mMasterGain = 84.0f;
+	mMasterGain = 84;
 
 	mAudio.setup();
 	mAudio.setMasterGain( mMasterGain );
@@ -92,7 +87,7 @@ void FallingGearsApp::setupGraphics()
 
 void FallingGearsApp::setupParams()
 {
-	mParams = params::InterfaceGl::create( "params", Vec2i( 250, 350 ) );
+	mParams = params::InterfaceGl::create( "params", ivec2( 250, 350 ) );
 	mParams->minimize();
 	
 	mParams->addParam( "fps", &mFps, "", true );
@@ -195,26 +190,25 @@ void FallingGearsApp::drawBackground()
 
 	gl::color( Color::white() );
 
-	gl::pushModelView();
+	gl::ScopedModelMatrix modelScope;
 	gl::translate( 0, decentMod * 0.5f );
 
 	gl::draw( mBackgroundTex, destRect, destRect );
 
-	gl::popModelView();
 }
 
 void FallingGearsApp::drawDebug()
 {
 	float pointsPerMeter = mScene.getPointsPerMeter();
-	gl::pushModelView();
-		gl::scale( pointsPerMeter, pointsPerMeter );
-		mScene.getWorld()->DrawDebugData();
-	gl::popModelView();
+
+	gl::ScopedModelMatrix modelScope;
+	gl::scale( pointsPerMeter, pointsPerMeter );
+	mScene.getWorld()->DrawDebugData();
 }
 
 void FallingGearsApp::drawInfo()
 {
-	gl::enableAlphaBlending();
+	gl::ScopedBlendAlpha blendScope;
 
 	TextLayout layout;
 	layout.setFont( Font( "Arial", 14 ) );
@@ -225,11 +219,12 @@ void FallingGearsApp::drawInfo()
 
 	auto tex = gl::Texture::create( layout.render( true ) );
 
-	Vec2f offset( getWindowWidth() - tex->getWidth() - 16, 10 );
+	vec2 offset( getWindowWidth() - tex->getWidth() - 16, 10 );
 	gl::color( Color::white() );
 	gl::draw( tex, offset );
 
-	gl::disableAlphaBlending();
 }
 
-CINDER_APP_NATIVE( FallingGearsApp, RendererGl )
+CINDER_APP( FallingGearsApp, RendererGl( RendererGl::Options().msaa( 8 ) ), []( App::Settings *settings ) {
+	settings->setWindowSize( 1200, 800 );
+} )

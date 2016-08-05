@@ -21,12 +21,12 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
-#if( _WIN32_WINNT >= _WIN32_WINNT_VISTA )
+#if( _WIN32_WINNT >= 0x0600 ) // Requires Windows Vista+
 
 #include "cinder/audio/msw/DeviceManagerWasapi.h"
 #include "cinder/audio/msw/MswUtil.h"
-#include "cinder/audio/Debug.h"
 #include "cinder/CinderAssert.h"
+#include "cinder/Log.h"
 #include "cinder/msw/CinderMsw.h"
 
 #include <setupapi.h>

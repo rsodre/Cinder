@@ -28,11 +28,11 @@
 #include "cinder/TimelineItem.h"
 #include "cinder/Easing.h"
 #include "cinder/Tween.h"
-#include "cinder/Function.h"
 
 #include <vector>
 #include <list>
 #include <map>
+#include <algorithm>
 
 namespace cinder {
 

@@ -45,7 +45,7 @@ typedef std::shared_ptr<class ImageTargetFile>	ImageTargetFileRef;
 class ImageIo {
   public:
 	typedef enum ColorModel { CM_RGB, CM_GRAY, CM_UNKNOWN } ColorModel;
-	typedef enum DataType { UINT8, UINT16, FLOAT32, DATA_UNKNOWN } DataType;
+	typedef enum DataType { UINT8, UINT16, FLOAT32, FLOAT16, DATA_UNKNOWN } DataType;
 	typedef enum ChannelType { CHAN_RGB_R, CHAN_RGB_G, CHAN_RGB_B, CHAN_GRAY, CHAN_ALPHA, CHAN_MASK, CHAN_LAB_L, CHAN_LAB_A, CHAN_LAB_B,
 					CHAN_YUV_Y, CHAN_YUV_U, CHAN_YUV_V, CHAN_CMYK_C, CHAN_CMYK_M, CHAN_CMYK_Y, CHAN_CMYK_K,
 					CHAN_UNKNOWN } ChannelType;
@@ -85,7 +85,7 @@ class ImageIo {
 
 class ImageSource : public ImageIo {
   public:
-	ImageSource() : ImageIo(), mIsPremultiplied( false ), mPixelAspectRatio( 1 ), mCustomPixelInc( 0 ) {}
+	ImageSource() : ImageIo(), mIsPremultiplied( false ), mPixelAspectRatio( 1 ), mCustomPixelInc( 0 ), mFrameCount( 1 ) {}
 	virtual ~ImageSource() {}  
 
 	//! Optional parameters passed when creating an Image. \see loadImage()
@@ -93,7 +93,7 @@ class ImageSource : public ImageIo {
 	  public:
 		Options() : mIndex( 0 ), mThrowOnFirstException( false ) {}
 
-		//! Specifies an image index for multi-part images, like animated GIFs
+		//! Specifies an image index for multi-part images, like animated GIFs. 0-based index.
 		Options& index( int32_t index )						{ mIndex = index; return *this; }
 		//! If an exception occurs, enabling this will prevent any attempts at using other handlers to load the image. Default = false, all handlers are tried and if none succeed, the last exception is rethrown. \see ImageIoException
 		Options& throwOnFirstException( bool b = true )		{ mThrowOnFirstException = b; return *this; }
@@ -112,6 +112,10 @@ class ImageSource : public ImageIo {
 	float		getPixelAspectRatio() const;
 	//! Returns whether the ImageSource's color data has been premultiplied by its alpha channel
 	bool		isPremultiplied() const;
+	//! Returns the number of bytes necessary to represent a row of the ImageSource
+	size_t		getRowBytes() const;	
+	//! Returns the number of images. Generally \c 1 but may not be in the case of animated GIFs. \see Options::index()
+	int32_t		getCount() const { return mFrameCount; }
 
 	virtual void	load( ImageTargetRef target ) = 0;
 
@@ -122,6 +126,7 @@ class ImageSource : public ImageIo {
 	void		setPremultiplied( bool premult = true ) { mIsPremultiplied = premult; }
 	//! Allows declaration of a pixel increment different from what its ColorModel would imply. For example a non-planar Channel.
 	void		setCustomPixelInc( int8_t customPixelInc ) { mCustomPixelInc = customPixelInc; }
+	void		setFrameCount( int32_t frameCount ) { mFrameCount = frameCount; }
 
 	RowFunc		setupRowFunc( ImageTargetRef target );
 	void		setupRowFuncRgbSource( ImageTargetRef target );
@@ -141,6 +146,7 @@ class ImageSource : public ImageIo {
 	float						mPixelAspectRatio;
 	bool						mIsPremultiplied;
 	int8_t						mCustomPixelInc;
+	int32_t						mFrameCount;
 	
 	int8_t						mRowFuncSourceRed, mRowFuncSourceGreen, mRowFuncSourceBlue, mRowFuncSourceAlpha;
 	int8_t						mRowFuncTargetRed, mRowFuncTargetGreen, mRowFuncTargetBlue, mRowFuncTargetAlpha;
@@ -200,10 +206,7 @@ void			writeImage( ImageTargetRef imageTarget, const ImageSourceRef &imageSource
 
 class ImageIoException : public Exception {
   public:
-	ImageIoException( const std::string &description = "" ) : mDescription( description ) {}
-	virtual const char* what() const throw()	{ return mDescription.c_str(); }
-  protected:
-	std::string mDescription;
+	ImageIoException( const std::string &description = "" ) : Exception( description ) {}
 };
 
 class ImageIoExceptionFailedLoad : public ImageIoException {
@@ -267,28 +270,6 @@ struct ImageIoRegistrar {
 	static ImageIoRegistrar::Inst*	instance();		
 		
 	friend class ImageIo;
-};
-
-template<typename T>
-struct ImageIoRegistrant {
-	ImageIoRegistrant() {
-		(void) register_object;
-	}
-  private:
-	struct exec_register {
-		exec_register() {
-			T::registerSelf();
-		}
-	};
-	
-	static exec_register register_object;
-};
-
-template<typename D> typename ImageIoRegistrant<D>::exec_register ImageIoRegistrant<D>::register_object;
-
-#define REGISTER_IMAGE_IO_FILE_HANDLER( TYPE ) \
-struct ImageIoRegisterT##TYPE : public ImageIoRegistrant<TYPE> { \
-	ImageIoRegisterT##TYPE() : ImageIoRegistrant<TYPE>() {} \
 };
 
 } // namespace cinder

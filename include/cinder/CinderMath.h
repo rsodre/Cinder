@@ -25,6 +25,8 @@
 #pragma once
 
 #include "cinder/Cinder.h"
+#include "cinder/CinderGlm.h"
+
 #include <cmath>
 #include <climits>
 #include <cfloat>
@@ -164,7 +166,7 @@ T lerp( const T &a, const T &b, L factor )
 template<typename T>
 T lmap(T val, T inMin, T inMax, T outMin, T outMax)
 {
-	return outMin + (outMax - outMin) * ((val - inMin) / (inMax - inMin));
+	return outMin + ((outMax - outMin) * (val - inMin)) / (inMax - inMin);
 }
 
 	// ROGER
@@ -302,6 +304,22 @@ T rombergIntegral( T a, T b, const std::function<T(T)> &SPEEDFN )
 
 template<typename T>
 int solveCubic( T a, T b, T c, T d, T result[3] );
+
+//! Returns the closest point to \a testPoint on the boundary of the ellipse defined by \a center, \a axisA and \a axisB. Algorithm due to David Eberly, http://www.geometrictools.com/Documentation/DistancePointEllipseEllipsoid.pdf
+glm::vec2 getClosestPointEllipse( const glm::vec2& center, const glm::vec2& axisA, const glm::vec2& axisB, const glm::vec2& testPoint );
+
+union half_float
+{
+	uint16_t u;
+	struct {
+		uint16_t Mantissa : 10;
+		uint16_t Exponent : 5;
+		uint16_t Sign : 1;
+	};
+};
+
+half_float floatToHalf( float f );
+float halfToFloat( half_float h );
 
 } // namespace cinder
 

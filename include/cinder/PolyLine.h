@@ -28,10 +28,10 @@
 namespace cinder {
 
 template<typename T>
-class PolyLine {
+class PolyLineT {
   public:
-	PolyLine() : mClosed( false ) {}
-	PolyLine( const std::vector<T> &aPoints ) : mPoints( aPoints ), mClosed( false ) {}
+	PolyLineT() : mClosed( false ) {}
+	PolyLineT( const std::vector<T> &aPoints ) : mPoints( aPoints ), mClosed( false ) {}
 	
 	const std::vector<T>&	getPoints() const { return mPoints; }
 	std::vector<T>&			getPoints() { return mPoints; }
@@ -54,27 +54,47 @@ class PolyLine {
 	T			getPosition( float t ) const;
 	T			getDerivative( float t ) const;
 
-	void		scale( const T &scaleFactor, T scaleCenter = T::zero() );
+	void		scale( const T &scaleFactor, T scaleCenter = T() );
 	void		offset( const T &offsetBy );
+	void		reverse();
+	
+	PolyLineT<T>	reversed() const;
 
 	//! Returns whether the point \a pt is contained within the boundaries of the PolyLine
-	bool	contains( const Vec2f &pt ) const;
+	bool	contains( const vec2 &pt ) const;
+
+	//! Returns the unsigned area of the polygon. Assumes closed and no self-intersections.
+	double	calcArea() const;
+	//! Returns the centroid or "center of mass" of the polygon. Assumes closed and no self-intersections.
+	T		calcCentroid() const;
 
 	//! Calculates the boolean union of \a a and \a b. Assumes the first PolyLine in the vector is the outermost and the (optional) others are holes.
-	static std::vector<PolyLine> 	calcUnion( const std::vector<PolyLine> &a, std::vector<PolyLine> &b );
+	static std::vector<PolyLineT> 	calcUnion( const std::vector<PolyLineT> &a, std::vector<PolyLineT> &b );
 	//! Calculates the boolean intersection of \a a and \a b. Assumes the first PolyLine in the vector is the outermost and the (optional) others are holes.
-	static std::vector<PolyLine> 	calcIntersection( const std::vector<PolyLine> &a, std::vector<PolyLine> &b );
+	static std::vector<PolyLineT> 	calcIntersection( const std::vector<PolyLineT> &a, std::vector<PolyLineT> &b );
 	//! Calculates the boolean XOR (symmetric difference) of \a a and \a b. Assumes the first PolyLine in the vector is the outermost and the (optional) others are holes.
-	static std::vector<PolyLine> 	calcXor( const std::vector<PolyLine> &a, std::vector<PolyLine> &b );
+	static std::vector<PolyLineT> 	calcXor( const std::vector<PolyLineT> &a, std::vector<PolyLineT> &b );
 	//! Calculates the boolean difference of \a a and \a b. Assumes the first PolyLine in the vector is the outermost and the (optional) others are holes.
-	static std::vector<PolyLine> 	calcDifference( const std::vector<PolyLine> &a, std::vector<PolyLine> &b );		
-	
+	static std::vector<PolyLineT> 	calcDifference( const std::vector<PolyLineT> &a, std::vector<PolyLineT> &b );
+
+	friend std::ostream& operator<<( std::ostream& lhs, const PolyLineT& rhs )
+	{
+		lhs << "(";
+		for( const auto &it : rhs.mPoints )
+			lhs << it << " ";
+		return lhs << ")";
+	}
+
   private:
 	std::vector<T>			mPoints;
 	bool					mClosed;
 };
 
-typedef PolyLine<Vec2f> PolyLine2f;
-typedef PolyLine<Vec2d> PolyLine2d;
+typedef PolyLineT<vec2>		PolyLine2;
+typedef PolyLineT<vec2>		PolyLine2f;
+typedef PolyLineT<dvec2>	PolyLine2d;
+typedef PolyLineT<vec3>		PolyLine3;
+typedef PolyLineT<vec3>		PolyLine3f;
+typedef PolyLineT<dvec3>	PolyLine3d;
 
 } // namespace cinder

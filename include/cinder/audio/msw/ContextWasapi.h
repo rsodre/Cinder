@@ -23,9 +23,8 @@
 
 #pragma once
 
-#if( _WIN32_WINNT < 0x0600 )
-	#error "WASAPI only available on Windows Vista or newer"
-#endif
+#include "cinder/Cinder.h"
+#if defined( CINDER_WINRT ) || ( _WIN32_WINNT >= 0x0600 ) // requires Windows Vista+
 
 #include "cinder/audio/Context.h"
 
@@ -79,3 +78,5 @@ class ContextWasapi : public Context {
 };
 
 } } } // namespace cinder::audio::msw
+
+#endif // defined( CINDER_WINRT ) || ( _WIN32_WINNT >= 0x0600 )

@@ -28,62 +28,64 @@
 namespace cinder {
 
 template<typename T>
-Plane<T>::Plane( const Vec3<T> &v1, const Vec3<T> &v2, const Vec3<T> &v3 )
+PlaneT<T>::PlaneT( const Vec3T &v1, const Vec3T &v2, const Vec3T &v3 )
 {
 	set( v1, v2, v3 );
 }
 
 template<typename T>
-Plane<T>::Plane( const Vec3<T> &point, const Vec3<T> &normal )
+PlaneT<T>::PlaneT( const Vec3T &point, const Vec3T &normal )
 {
 	set( point, normal );
 }
 
 template<typename T>
-Plane<T>::Plane( T a, T b, T c, T d )
+PlaneT<T>::PlaneT( T a, T b, T c, T d )
 {
 	set( a, b, c, d );
 }
 
 template<typename T>
-void Plane<T>::set( const Vec3<T> &v1, const Vec3<T> &v2, const Vec3<T> &v3 )
+void PlaneT<T>::set( const Vec3T &v1, const Vec3T &v2, const Vec3T &v3 )
 {
-	Vec3<T> normal = (v2 - v1).cross( v3 - v1 );
+	Vec3T normal = cross( v2 - v1, v3 - v1 );
 	
-	if( normal.lengthSquared() == 0 )
-		 // error! invalid parameters
+	if( length2( normal ) == 0 ) {
+		// error! invalid parameters
 		throw PlaneExc();
+	}
 
-	mNormal = normal.normalized();
-	mDistance = mNormal.dot( v1 );
+	mNormal = normalize( normal );
+	mDistance = dot( mNormal, v1 );
 }
 
 template<typename T>
-void Plane<T>::set( const Vec3<T> &point, const Vec3<T> &normal )
+void PlaneT<T>::set( const Vec3T &point, const Vec3T &normal )
 {
-	if( normal.lengthSquared() == 0 )
+	if( length2( normal ) == 0 )
 		 // error! invalid parameters
 		throw PlaneExc();
 
-	mNormal = normal.normalized();
-	mDistance = mNormal.dot( point );
+	mNormal = normalize( normal );
+	mDistance = dot( mNormal, point );
 }
 
 template<typename T>
-void Plane<T>::set( T a, T b, T c, T d )
+void PlaneT<T>::set( T a, T b, T c, T d )
 {
-	Vec3<T> normal( a, b, c );
+	Vec3T normal( a, b, c );
 
-	T length = normal.length();
-	if( length == 0 )
-		 // error! invalid parameters
+	T length = glm::length( normal );
+	if( length == 0 ) {
+		// error! invalid parameters
 		throw PlaneExc();
+	}
 
-	mNormal = normal.normalized();
+	mNormal = normalize( normal );
 	mDistance = d / length;
 }
 
-template class Plane<float>;
-template class Plane<double>;
+template class PlaneT<float>;
+template class PlaneT<double>;
 
 } // namespace cinder

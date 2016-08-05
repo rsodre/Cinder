@@ -23,6 +23,10 @@
 #pragma once
 
 #include "cinder/Cinder.h"
+
+// This path is not used on 64-bit Mac or Windows. On the Mac we only use this path for <=Mac OS 10.7
+#if ( defined( CINDER_MAC ) && ( ! defined( __LP64__ ) ) && ( MAC_OS_X_VERSION_MIN_REQUIRED < 1080 ) ) || ( defined( CINDER_MSW ) && ( ! defined( _WIN64 ) ) )
+
 #include "cinder/ImageIo.h"
 #include "cinder/Stream.h"
 #include "cinder/qtime/QuickTime.h"
@@ -140,7 +144,7 @@ class MovieWriter {
 	//! Returns the height of the Movie in pixels
 	int32_t	getHeight() const { return mObj->mHeight; }
 	//! Returns the size of the Movie in pixels
-	Vec2i	getSize() const { return Vec2i( getWidth(), getHeight() ); }
+	ivec2	getSize() const { return ivec2( getWidth(), getHeight() ); }
 	//! Returns the Movie's aspect ratio, which is its width / height
 	float	getAspectRatio() const { return getWidth() / (float)getHeight(); }
 	//! Returns the bounding Area of the Movie in pixels: [0,0]-(width,height)
@@ -218,3 +222,5 @@ class MovieWriterExcAlreadyFinished : public MovieWriterExc {
 };
 
 } } // namespace cinder::qtime
+
+#endif // end of 64-bit / 10.8+ test

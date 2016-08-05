@@ -1,4 +1,6 @@
-#include "cinder/app/AppBasic.h"
+#include "cinder/app/App.h"
+#include "cinder/app/RendererGl.h"
+#include "cinder/gl/gl.h"
 #include "cinder/Rand.h"
 #include "cinder/Utilities.h"
 #include <list>
@@ -7,8 +9,8 @@ using namespace ci;
 using namespace ci::app;
 using namespace std;
 
-// We'll create a new Cinder Application by deriving from the AppBasic class
-class BasicAppMultiWindow : public AppBasic {
+// We'll create a new Cinder Application by deriving from the App class
+class BasicAppMultiWindow : public App {
   public:
 	void setup();
 	void createNewWindow();
@@ -29,7 +31,7 @@ class WindowData {
 	{}
   
 	Color			mColor;
-	list<Vec2f>		mPoints; // the points drawn into this window
+	list<vec2>		mPoints; // the points drawn into this window
 };
 
 void BasicAppMultiWindow::setup()
@@ -104,4 +106,4 @@ void BasicAppMultiWindow::draw()
 }
 
 // This line tells Cinder to actually create the application
-CINDER_APP_BASIC( BasicAppMultiWindow, RendererGl )
+CINDER_APP( BasicAppMultiWindow, RendererGl )

@@ -30,10 +30,10 @@
 namespace cinder {
 
 template<typename T>
-T PolyLine<T>::getPosition( float t ) const
+T PolyLineT<T>::getPosition( float t ) const
 {
-	typedef typename T::TYPE R;
-	if( mPoints.size() <= 1 ) return T::zero();
+	typedef typename T::value_type R;
+	if( mPoints.size() <= 1 ) return T();
 	if( t >= 1 ) return mPoints.back();
 	if( t <= 0 ) return mPoints[0];
 	
@@ -44,10 +44,10 @@ T PolyLine<T>::getPosition( float t ) const
 }
 
 template<typename T>
-T PolyLine<T>::getDerivative( float t ) const
+T PolyLineT<T>::getDerivative( float t ) const
 {
-	typedef typename T::TYPE R;
-	if( mPoints.size() <= 1 ) return T::zero();
+	typedef typename T::value_type R;
+	if( mPoints.size() <= 1 ) return T();
 	if( t >= 1 ) return mPoints.back() - mPoints[mPoints.size()-2];
 	if( t <= 0 ) return mPoints[1] - mPoints[0];
 	
@@ -57,28 +57,42 @@ T PolyLine<T>::getDerivative( float t ) const
 }
 
 template<typename T>
-void PolyLine<T>::scale( const T &scaleFactor, T scaleCenter )
+void PolyLineT<T>::scale( const T &scaleFactor, T scaleCenter )
 {
 	for( typename std::vector<T>::iterator ptIt = mPoints.begin(); ptIt != mPoints.end(); ++ptIt )
 		*ptIt = scaleCenter + ( *ptIt - scaleCenter ) * scaleFactor;
 }
 
 template<typename T>
-void PolyLine<T>::offset( const T &offsetBy )
+void PolyLineT<T>::offset( const T &offsetBy )
 {
 	for( typename std::vector<T>::iterator ptIt = mPoints.begin(); ptIt != mPoints.end(); ++ptIt )
 		*ptIt += offsetBy;
 }
 
 template<typename T>
-T linearYatX( const Vec2<T> p[2], T x )
+void PolyLineT<T>::reverse()
+{
+	std::reverse( mPoints.begin(), mPoints.end() );
+}
+
+template<typename T>
+PolyLineT<T> PolyLineT<T>::reversed() const
+{
+	PolyLineT result( *this );
+	std::reverse( result.mPoints.begin(), result.mPoints.end() );
+	return result;
+}
+
+template<typename T>
+T linearYatX( const glm::tvec2<T, glm::defaultp> p[2], T x )
 {
 	if( p[0].x == p[1].x ) 	return p[0].y;
 	return p[0].y + (p[1].y - p[0].y) * (x - p[0].x) / (p[1].x - p[0].x);
 }
 
 template<typename T>
-size_t linearCrossings( const Vec2<T> p[2], const Vec2f &pt )
+size_t linearCrossings( const glm::tvec2<T, glm::defaultp> p[2], const vec2 &pt )
 {
 	if( (p[0].x < pt.x && pt.x <= p[1].x ) ||
 		(p[1].x < pt.x && pt.x <= p[0].x )) {
@@ -89,7 +103,7 @@ size_t linearCrossings( const Vec2<T> p[2], const Vec2f &pt )
 }
 
 template<typename T>
-bool PolyLine<T>::contains( const Vec2f &pt ) const
+bool PolyLineT<T>::contains( const vec2 &pt ) const
 {
 	if( mPoints.size() <= 2 )
 		return false;
@@ -99,7 +113,7 @@ bool PolyLine<T>::contains( const Vec2f &pt ) const
 		crossings += linearCrossings( &(mPoints[s]), pt );
 	}
 
-	Vec2f temp[2];
+	vec2 temp[2];
 	temp[0] = mPoints[mPoints.size()-1];
 	temp[1] = mPoints[0];
 	crossings += linearCrossings( &(temp[0]), pt );
@@ -107,24 +121,62 @@ bool PolyLine<T>::contains( const Vec2f &pt ) const
 	return (crossings & 1) == 1;
 }
 
+template<typename T>
+double PolyLineT<T>::calcArea() const
+{
+	double sum = 0;
+	const size_t numPoints = mPoints.size();
+	if( numPoints > 2 ) {
+		for( size_t i = 0; i < numPoints - 1; ++i )
+			sum += mPoints[i].x * mPoints[i+1].y - mPoints[i+1].x * mPoints[i].y;
+		sum += mPoints[numPoints-1].x * mPoints[0].y - mPoints[0].x * mPoints[numPoints-1].y;
+	}
+
+	return glm::abs(sum * 0.5);
+}
+
+template<typename T>
+T PolyLineT<T>::calcCentroid() const
+{
+	dvec2 result( 0 );
+
+	const size_t numPoints = mPoints.size();
+	double area = 0;
+	if( numPoints > 2 ) {
+		for( size_t i = 0; i < numPoints - 1; ++i ) {
+			double subExpr = mPoints[i].x * mPoints[i+1].y - mPoints[i+1].x * mPoints[i].y;
+			result.x += ( mPoints[i].x + mPoints[i+1].x ) * subExpr;
+			result.y += ( mPoints[i].y + mPoints[i+1].y ) * subExpr;
+			area += subExpr;
+		}
+		double subExpr = mPoints[numPoints-1].x * mPoints[0].y - mPoints[0].x * mPoints[numPoints-1].y;
+		result.x += ( mPoints[numPoints-1].x + mPoints[0].x ) * subExpr;
+		result.y += ( mPoints[numPoints-1].y + mPoints[0].y ) * subExpr;
+		area += subExpr;
+
+		result *= 1 / ( area * 3 );
+	}
+
+	return result;
+}
 
 namespace {
 typedef boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double> > polygon;
 
 template<typename T>
-std::vector<PolyLine<T> > convertBoostGeometryPolygons( std::vector<polygon> &polygons )
+std::vector<PolyLineT<T> > convertBoostGeometryPolygons( std::vector<polygon> &polygons )
 {
-	std::vector<PolyLine<T> > result;
+	std::vector<PolyLineT<T> > result;
 	for( std::vector<polygon>::const_iterator outIt = polygons.begin(); outIt != polygons.end(); ++outIt ) {
 		typedef polygon::inner_container_type::const_iterator RingIterator;
 		typedef polygon::ring_type::const_iterator PointIterator;
 
-		result.push_back( PolyLine<T>() );	
+		result.push_back( PolyLineT<T>() );
 		for( PointIterator pt = outIt->outer().begin(); pt != outIt->outer().end(); ++pt )
 			result.back().push_back( T( boost::geometry::get<0>(*pt), boost::geometry::get<1>(*pt) ) );
 
 		for( RingIterator crunk = outIt->inners().begin(); crunk != outIt->inners().end(); ++crunk ) {
-			PolyLine<T> contour;
+			PolyLineT<T> contour;
 			for( PointIterator pt = crunk->begin(); pt != crunk->end(); ++pt )
 				contour.push_back( T( boost::geometry::get<0>(*pt), boost::geometry::get<1>(*pt) ) );
 			result.push_back( contour );
@@ -135,13 +187,13 @@ std::vector<PolyLine<T> > convertBoostGeometryPolygons( std::vector<polygon> &po
 }
 
 template<typename T>
-polygon convertPolyLinesToBoostGeometry( const std::vector<PolyLine<T> > &a )
+polygon convertPolyLinesToBoostGeometry( const std::vector<PolyLineT<T> > &a )
 {
 	polygon result;
 	
 	for( typename std::vector<T>::const_iterator ptIt = a[0].getPoints().begin(); ptIt != a[0].getPoints().end(); ++ptIt )
 		result.outer().push_back( boost::geometry::make<boost::geometry::model::d2::point_xy<double> >( ptIt->x, ptIt->y ) );
-	for( typename std::vector<PolyLine<T> >::const_iterator plIt = a.begin() + 1; plIt != a.end(); ++plIt ) {
+	for( typename std::vector<PolyLineT<T> >::const_iterator plIt = a.begin() + 1; plIt != a.end(); ++plIt ) {
 		polygon::ring_type ring;
 		for( typename std::vector<T>::const_iterator ptIt = plIt->getPoints().begin(); ptIt != plIt->getPoints().end(); ++ptIt )
 			ring.push_back( boost::geometry::make<boost::geometry::model::d2::point_xy<double> >( ptIt->x, ptIt->y ) );
@@ -155,7 +207,7 @@ polygon convertPolyLinesToBoostGeometry( const std::vector<PolyLine<T> > &a )
 } // anonymous namespace
 
 template<typename T>
-std::vector<PolyLine<T> > PolyLine<T>::calcUnion( const std::vector<PolyLine<T> > &a, std::vector<PolyLine<T> > &b )
+std::vector<PolyLineT<T> > PolyLineT<T>::calcUnion( const std::vector<PolyLineT<T> > &a, std::vector<PolyLineT<T> > &b )
 {
 	typedef boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double> > polygon;
 
@@ -174,7 +226,7 @@ std::vector<PolyLine<T> > PolyLine<T>::calcUnion( const std::vector<PolyLine<T> 
 }
 
 template<typename T>
-std::vector<PolyLine<T> > PolyLine<T>::calcIntersection( const std::vector<PolyLine<T> > &a, std::vector<PolyLine<T> > &b )
+std::vector<PolyLineT<T> > PolyLineT<T>::calcIntersection( const std::vector<PolyLineT<T> > &a, std::vector<PolyLineT<T> > &b )
 {
 	typedef boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double> > polygon;
 
@@ -193,7 +245,7 @@ std::vector<PolyLine<T> > PolyLine<T>::calcIntersection( const std::vector<PolyL
 }
 
 template<typename T>
-std::vector<PolyLine<T> > PolyLine<T>::calcXor( const std::vector<PolyLine<T> > &a, std::vector<PolyLine<T> > &b )
+std::vector<PolyLineT<T> > PolyLineT<T>::calcXor( const std::vector<PolyLineT<T> > &a, std::vector<PolyLineT<T> > &b )
 {
 	typedef boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double> > polygon;
 
@@ -212,7 +264,7 @@ std::vector<PolyLine<T> > PolyLine<T>::calcXor( const std::vector<PolyLine<T> > 
 }
 
 template<typename T>
-std::vector<PolyLine<T> > PolyLine<T>::calcDifference( const std::vector<PolyLine<T> > &a, std::vector<PolyLine<T> > &b )
+std::vector<PolyLineT<T> > PolyLineT<T>::calcDifference( const std::vector<PolyLineT<T> > &a, std::vector<PolyLineT<T> > &b )
 {
 	typedef boost::geometry::model::polygon<boost::geometry::model::d2::point_xy<double> > polygon;
 
@@ -230,7 +282,7 @@ std::vector<PolyLine<T> > PolyLine<T>::calcDifference( const std::vector<PolyLin
 	return convertBoostGeometryPolygons<T>( output );
 }
 
-template class PolyLine<Vec2f>;
-template class PolyLine<Vec2d>;
+template class PolyLineT<vec2>;
+template class PolyLineT<dvec2>;
 
 } // namespace cinder

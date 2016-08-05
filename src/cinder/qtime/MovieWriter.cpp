@@ -20,16 +20,17 @@
  POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if ( ! defined( __LP64__ ) ) && ( ! defined( _WIN64 ) )
+#include "cinder/qtime/MovieWriter.h"
+
+// This path is not used on 64-bit Mac or Windows. On the Mac we only use this path for <=Mac OS 10.7
+#if ( defined( CINDER_MAC ) && ( ! defined( __LP64__ ) ) && ( MAC_OS_X_VERSION_MIN_REQUIRED < 1080 ) ) || ( defined( CINDER_MSW ) && ( ! defined( _WIN64 ) ) )
 
 #if defined( CINDER_COCOA ) && ( ! defined( __OBJC__ ) )
 	#error "This file must be compiled as Objective-C++ on the Mac"
 #endif
 
-#include "cinder/app/App.h"
+#include "cinder/app/AppBase.h"
 #include "cinder/Utilities.h"
-#include "cinder/CinderAssert.h"
-#include "cinder/qtime/MovieWriter.h"
 #include "cinder/qtime/QuickTimeUtils.h"
 
 #if defined( CINDER_MAC )
@@ -53,6 +54,8 @@
 		#include <QuickTimeComponents.h>
 	#pragma pop_macro( "_STDINT_H" )
 	#pragma pop_macro( "__STDC_CONSTANT_MACROS" )
+	#include <Windows.h>
+	#include "cinder/msw/CinderMsw.h"
 #endif
 
 namespace cinder { namespace qtime {
@@ -103,7 +106,6 @@ MovieWriter::Format::~Format()
 void MovieWriter::Format::initDefaults()
 {
 	OSStatus err = ::ICMCompressionSessionOptionsCreate( NULL, &mOptions );
-	CI_VERIFY( err == noErr );
 
 	mTimeBase = 600;
 	mDefaultTime = 1 / 30.0f;
@@ -120,9 +122,11 @@ MovieWriter::Format& MovieWriter::Format::setQuality( float quality )
 {
 	mQualityFloat = constrain<float>( quality, 0, 1 );
 	CodecQ compressionQuality = CodecQ(0x00000400 * mQualityFloat);
-	OSStatus err = ICMCompressionSessionOptionsSetProperty( mOptions, kQTPropertyClass_ICMCompressionSessionOptions, kICMCompressionSessionOptionsPropertyID_Quality, sizeof( compressionQuality ), &compressionQuality );
-	CI_VERIFY( err == noErr );
-
+	OSStatus err = ICMCompressionSessionOptionsSetProperty( mOptions,
+                                kQTPropertyClass_ICMCompressionSessionOptions,
+                                kICMCompressionSessionOptionsPropertyID_Quality,
+                                sizeof(compressionQuality),
+                                &compressionQuality );	
 	return *this;
 }
 
@@ -134,8 +138,6 @@ bool MovieWriter::Format::isTemporal() const
 MovieWriter::Format& MovieWriter::Format::enableTemporal( bool enable )
 {
 	OSStatus err = ::ICMCompressionSessionOptionsSetAllowTemporalCompression( mOptions, enable );
-	CI_VERIFY( err == noErr );
-
 	return *this;
 }
 
@@ -147,8 +149,6 @@ bool MovieWriter::Format::isReordering() const
 MovieWriter::Format& MovieWriter::Format::enableReordering( bool enable )
 {
 	OSStatus err = ::ICMCompressionSessionOptionsSetAllowFrameReordering( mOptions, enable );
-	CI_VERIFY( err == noErr );
-
 	return *this;
 }
 
@@ -160,8 +160,6 @@ bool MovieWriter::Format::isFrameTimeChanges() const
 MovieWriter::Format& MovieWriter::Format::enableFrameTimeChanges( bool enable )
 {
 	OSStatus err = ::ICMCompressionSessionOptionsSetAllowFrameTimeChanges( mOptions, enable );
-	CI_VERIFY( err == noErr );
-
 	return *this;
 }
 
@@ -173,8 +171,6 @@ int32_t MovieWriter::Format::getMaxKeyFrameRate() const
 MovieWriter::Format& MovieWriter::Format::setMaxKeyFrameRate( int32_t rate )
 {
 	OSStatus err = ::ICMCompressionSessionOptionsSetMaxKeyFrameInterval( mOptions, rate );
-	CI_VERIFY( err == noErr );
-
 	return *this;
 }
 
@@ -401,7 +397,21 @@ void MovieWriter::Obj::createCompressionSession()
 		mDoingMultiPass = ::ICMCompressionSessionSupportsMultiPassEncoding( mCompressionSession, 0, &mMultiPassModeFlags ) != 0;
 		
 		if( mDoingMultiPass ) {
-			mMultiPassFrameCache = readWriteFileStream( getTemporaryFilePath() );
+			fs::path tempPath;
+#if defined( CINDER_MSW )
+			TCHAR tempFileName[MAX_PATH];
+			TCHAR tempPathBuffer[MAX_PATH];
+			DWORD retVal = ::GetTempPath( MAX_PATH, tempPathBuffer );
+			if( retVal > MAX_PATH || (retVal == 0) )
+				goto bail;
+
+			if( ::GetTempFileName( tempPathBuffer, TEXT("multipass"), 0, tempFileName ) == 0 )
+				goto bail;
+			tempPath = fs::path( ci::msw::toUtf8String( tempFileName ) );
+#else
+			tempPath = fs::unique_path( fs::temp_directory_path() / "multipass_%%%%-%%%%-%%%%-%%%%" );
+#endif
+			mMultiPassFrameCache = readWriteFileStream( tempPath );
 			if( ! mMultiPassFrameCache )
 				throw MovieWriterExc();
 			mMultiPassFrameCache->setDeleteOnDestroy();
@@ -492,8 +502,8 @@ void MovieWriter::Obj::finish()
 					else {
 						::ICMValidTimeFlags validTimeFlags = kICMValidTime_DisplayTimeStampIsValid | kICMValidTime_DisplayDurationIsValid;
 						::ICMCompressionFrameOptionsRef frameOptions = NULL;
-						OSStatus err = ::ICMCompressionSessionEncodeFrame( mCompressionSession, NULL, mFrameTimes[frame].first,	mFrameTimes[frame].second, validTimeFlags, frameOptions, NULL, NULL );
-						CI_VERIFY( err == noErr );
+						OSStatus err = ::ICMCompressionSessionEncodeFrame( mCompressionSession, NULL, mFrameTimes[frame].first,
+																		mFrameTimes[frame].second, validTimeFlags, frameOptions, NULL, NULL );
 					}
 				}
 				::ICMCompressionSessionCompleteFrames( mCompressionSession, true, 0, 0 );

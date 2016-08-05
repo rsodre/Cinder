@@ -1,5 +1,5 @@
 /*
- Copyright (c) 2011, The Cinder Project, All rights reserved.
+ Copyright (c) 2011-15, The Cinder Project, All rights reserved.
  This code is intended for use with the Cinder C++ library: http://libcinder.org
  
  Portions of this code (C) Paul Houx
@@ -26,51 +26,64 @@
 #pragma once
 
 #include "cinder/Vector.h"
+#include "cinder/Exception.h"
+
 #include <iostream>
 
 namespace cinder {
 
+//! Represents a Plane, as a geometric primitive, useful in conducting tests in 3D space.
 template<typename T>
-class Plane
-{
+class PlaneT {
   public:
-	Plane() {}
-	Plane( const Vec3<T> &v1, const Vec3<T> &v2, const Vec3<T> &v3 );
-	Plane( const Vec3<T> &point, const Vec3<T> &normal );
-	Plane( T a, T b, T c, T d );
+	typedef glm::tvec3<T, glm::defaultp> Vec3T;
+
+	PlaneT() {}
+	PlaneT( const Vec3T &v1, const Vec3T &v2, const Vec3T &v3 );
+	PlaneT( const Vec3T &point, const Vec3T &normal );
+	PlaneT( T a, T b, T c, T d );
 
 	//! Defines a plane using 3 points. 
-	void	set( const Vec3<T> &v1, const Vec3<T> &v2, const Vec3<T> &v3 );
+	void	set( const Vec3T &v1, const Vec3T &v2, const Vec3T &v3 );
 	//! Defines a plane using a normal vector and a point.
-	void	set( const Vec3<T> &point, const Vec3<T> &normal );
+	void	set( const Vec3T &point, const Vec3T &normal );
 	//! Defines a plane using 4 coefficients.
 	void	set( T a, T b, T c, T d );
 
-	Vec3<T>			getPoint() const { return mNormal * mDistance; };
-	const Vec3<T>&	getNormal() const { return mNormal; };
-	T				getDistance() const { return mDistance; }
-	T				distance( const Vec3<T> &p ) const { return (mNormal.dot(p) - mDistance); };
+	Vec3T			getPoint() const						{ return mNormal * mDistance; };
+	const Vec3T&	getNormal() const						{ return mNormal; };
+	T				getDistance() const						{ return mDistance; }
+	T				distance( const Vec3T &p ) const		{ return dot( mNormal, p ) - mDistance; };
 
-	Vec3<T>			reflectPoint( const Vec3<T> &p ) const { return mNormal * distance( p ) * -2 + p; }
-	Vec3<T>			reflectVector( const Vec3<T> &v ) const { return mNormal * mNormal.dot(v) * 2 - v; }
+	Vec3T			reflectPoint( const Vec3T &p ) const	{ return mNormal * distance( p ) * (T)(-2) + p; }
+	Vec3T			reflectVector( const Vec3T &v ) const	{ return mNormal * dot( mNormal, v ) * (T)2 - v; }
 
-	Vec3<T>		mNormal;
+  private:
+	Vec3T		mNormal;
 	T			mDistance;
+
+  public:
+	// Hack to define the plane using a different type of Vec3 (required for some types that aren't yet templated)
+	template <typename Vec3Y>
+	void	set( const Vec3Y &v1, const Vec3Y &v2, const Vec3Y &v3 )	{ set( Vec3T( v1 ), Vec3T( v2 ), Vec3T( v3 ) ); }
 };
 
-typedef Plane<float>	Planef;
-typedef Plane<double>	Planed;
+typedef PlaneT<float>	Plane;
+typedef PlaneT<float>	Planef;
+typedef PlaneT<double>	Planed;
 
 template<typename T>
-std::ostream& operator<<( std::ostream &o, const Plane<T> &p )
+std::ostream& operator<<( std::ostream &o, const PlaneT<T> &p )
 {
 	return o << "(" << p.mNormal << ", " << p.mDistance << ")";
 }
 
-
-class PlaneExc : public std::exception {
- public:
-	virtual const char* what() const throw() { return "Invalid parameters specified"; }
+//! Exception type thrown when bad values are encountered.
+class PlaneExc : public Exception {
+  public:
+	PlaneExc()
+		: Exception( "Invalid parameters specified" )
+	{}
 };
 
 } // namespace cinder
