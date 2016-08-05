@@ -88,11 +88,11 @@ std::string loadString( const DataSourceRef &dataSource );
 	std::string toUpper( const std::string & s );
 	//! Clamps an angle between 0.0 .. 359.999
 	float clampRadians( float a );
-	Vec2f clampRadians( Vec2f a );
-	Vec3f clampRadians( Vec3f a );
+	vec2 clampRadians( vec2 a );
+	vec3 clampRadians( vec3 a );
 	float clampDegrees( float a );
-	Vec2f clampDegrees( Vec2f a );
-	Vec3f clampDegrees( Vec3f a );
+	vec2 clampDegrees( vec2 a );
+	vec3 clampDegrees( vec3 a );
 	//! Compare angles. Returns -1 if (a < b), 0 if (a == b), +1 if (a > b)
 	int compareAnglesRadians( float a, float b );
 	int compareAnglesDegrees( float a, float b );

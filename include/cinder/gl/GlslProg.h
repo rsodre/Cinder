@@ -545,7 +545,6 @@ class GlslProg {
 	//! Returns a pointer to the Transform Feedback Varyings that matches \a name. Returns nullptr if the attrib doesn't exist.
 	TransformFeedbackVaryings* findTransformFeedbackVaryings( const std::string &name );
 #endif
->>>>>>> d60f0901a0ff654e773345065248cf839ef1d715
 
 	template<typename T>
 	static std::string	cppTypeToGlslTypeName();

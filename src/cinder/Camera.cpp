@@ -256,18 +256,18 @@ void Camera::calcInverseView() const
 }
 
 	// ROGER
-	void Camera::lerpProjection( float fact, const Camera & r )
-	{
-		if( ! mProjectionCached ) calcProjection();
-		Matrix44f rm = r.getProjectionMatrix();
-		mProjectionMatrix.lerp( 1.0 - fact, rm );
-	}
-	void Camera::lerpModelView( float fact, const Camera & r )
-	{
-		if( ! mModelViewCached ) calcModelView(); 
-		Matrix44f rm = r.getModelViewMatrix();
-		mModelViewMatrix.lerp( 1.0 - fact, rm );
-	}
+//	void Camera::lerpProjection( float fact, const Camera & r )
+//	{
+//		if( ! mProjectionCached ) calcProjection();
+//		mat4 rm = r.getProjectionMatrix();
+//		mProjectionMatrix.lerp( 1.0 - fact, rm );
+//	}
+//	void Camera::lerpModelView( float fact, const Camera & r )
+//	{
+//		if( ! mModelViewCached ) calcModelView(); 
+//		mat4 rm = r.getModelViewMatrix();
+//		mModelViewMatrix.lerp( 1.0 - fact, rm );
+//	}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////

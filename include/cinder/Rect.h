@@ -70,9 +70,9 @@ class RectT {
 	RectT		scaled( T scale ) const;
 	
 	// ROGER
-	RectT<T>	flippedX()	{ return RectT<T>( Vec2f(x2,y1), Vec2f(x1,y2) ); }
-	RectT<T>	flippedY()	{ return RectT<T>( Vec2f(x1,y2), Vec2f(x2,y1) ); }
-	RectT<T>	flippedXY() { return RectT<T>( Vec2f(x2,y2), Vec2f(x1,y1) ); }
+	RectT		flippedX()	{ return RectT( vec2(x2,y1), vec2(x1,y2) ); }
+	RectT		flippedY()	{ return RectT( vec2(x1,y2), vec2(x2,y1) ); }
+	RectT		flippedXY() { return RectT( vec2(x2,y2), vec2(x1,y1) ); }
 	
 	RectT		scaled( const Vec2T &scale ) const;
 
@@ -109,10 +109,10 @@ class RectT {
 	Vec2T		getSize() const			{ return Vec2T( x2 - x1, y2 - y1 ); }
 
 	// ROGER
-	Vec2<T>		getUL() const { return this->getUpperLeft(); }
-	Vec2<T>		getUR() const { return this->getUpperRight(); }
-	Vec2<T>		getLL() const { return this->getLowerLeft(); }
-	Vec2<T>		getLR() const { return this->getLowerRight(); }
+	vec2		getUL() const { return this->getUpperLeft(); }
+	vec2		getUR() const { return this->getUpperRight(); }
+	vec2		getLL() const { return this->getLowerLeft(); }
+	vec2		getLR() const { return this->getLowerRight(); }
 
 	/** \return Scaled copy with the same aspect ratio centered relative to and scaled to fit inside \a other. If \a expand then the rectangle is expanded if it is smaller than \a other */
 	RectT		getCenteredFit( const RectT &other, bool expand ) const;
@@ -126,24 +126,19 @@ class RectT {
 	/** Expands the Rect to include \a rect in its interior **/
 	void		include( const RectT &rect );
 
-<<<<<<< HEAD
-	// ROGER
-	//! Add width and height
-	void		add( Vec2<T> &off ) { x2 += off.x; y2 += off.y; }
-	void		add( T addX, T addY ) { x2 += addX; y2 += addY; }
-
-	const RectT<T>		operator+( const Vec2<T> &o ) const { return this->getOffset( o ); }
-	const RectT<T>		operator-( const Vec2<T> &o ) const { return this->getOffset( -o ); }
-=======
 	const RectT<T>		operator+( const Vec2T &o ) const { return this->getOffset( o ); }
 	const RectT<T>		operator-( const Vec2T &o ) const { return this->getOffset( -o ); }
->>>>>>> d60f0901a0ff654e773345065248cf839ef1d715
 	const RectT<T>		operator*( T s ) const { return this->scaled( s ); }
 	const RectT<T>		operator/( T s ) const { return this->scaled( ((T)1) / s ); }
 
 	// ROGER
-	const RectT<T>		operator*( const Vec2<T> s ) const { return this->scaled( s ); }
-	const RectT<T>		operator/( const Vec2<T> s ) const { return this->scaled( (Vec2<T>::one()) / s ); }
+	const RectT<T>		operator*( const vec2 s ) const { return this->scaled( s ); }
+	const RectT<T>		operator/( const vec2 s ) const { return this->scaled( (vec2(1)) / s ); }
+
+	// ROGER
+	//! Add width and height
+	void		add( vec2 &off ) { x2 += off.x; y2 += off.y; }
+	void		add( T addX, T addY ) { x2 += addX; y2 += addY; }
 
 	const RectT<T>		operator+( const RectT<T>& rhs ) const { return RectT<T>( x1 + rhs.x1, y1 + rhs.y1, x2 + rhs.x2, y2 + rhs.y2 ); }
 	const RectT<T>		operator-( const RectT<T>& rhs ) const { return RectT<T>( x1 - rhs.x1, y1 - rhs.y1, x2 - rhs.x2, y2 - rhs.y2 ); }

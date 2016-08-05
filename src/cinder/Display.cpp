@@ -89,12 +89,12 @@ DisplayRef Display::getMainDisplay()
 	// ROGER
 	void Display::refresh()
 	{
-		if( sDisplaysInitialized )
-		{
-			sDisplays.clear();
-			sDisplaysInitialized = false;
-		}
-		enumerateDisplays();
+//		if( sDisplaysInitialized )
+//		{
+//			sDisplays.clear();
+//			sDisplaysInitialized = false;
+//		}
+//		enumerateDisplays();
 	}
 	
 

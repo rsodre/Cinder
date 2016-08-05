@@ -64,7 +64,7 @@ void launchWebBrowser( const Url &url )
 	// ROGER
 	void launchDefaultApplication( const std::string &path )
 	{
-		[[NSWorkspace sharedWorkspace] openFile:[NSString stringWithCString:path.c_str() encoding:NSUTF8StringEncoding]];
+//		[[NSWorkspace sharedWorkspace] openFile:[NSString stringWithCString:path.c_str() encoding:NSUTF8StringEncoding]];
 	}
 
 std::map<std::string, std::string> getEnvironmentVariables()
@@ -199,13 +199,13 @@ string loadString( const DataSourceRef &dataSource )
 			a += M_TWO_PI;
 		return a;
 	}
-	Vec2f clampRadians( Vec2f a )
+	vec2 clampRadians( vec2 a )
 	{
-		return Vec2f( clampRadians(a.x), clampRadians(a.y) );
+		return vec2( clampRadians(a.x), clampRadians(a.y) );
 	}
-	Vec3f clampRadians( Vec3f a )
+	vec3 clampRadians( vec3 a )
 	{
-		return Vec3f( clampRadians(a.x), clampRadians(a.y), clampRadians(a.z) );
+		return vec3( clampRadians(a.x), clampRadians(a.y), clampRadians(a.z) );
 	}
 	float clampDegrees( float a )
 	{
@@ -215,13 +215,13 @@ string loadString( const DataSourceRef &dataSource )
 			a += 360.0;
 		return a;
 	}
-	Vec2f clampDegrees( Vec2f a )
+	vec2 clampDegrees( vec2 a )
 	{
-		return Vec2f( clampDegrees(a.x), clampDegrees( a.y) );
+		return vec2 ( clampDegrees(a.x), clampDegrees( a.y) );
 	}
-	Vec3f clampDegrees( Vec3f a )
+	vec3 clampDegrees( vec3 a )
 	{
-		return Vec3f( clampDegrees(a.x), clampDegrees(a.y), clampDegrees(a.z) );
+		return vec3 ( clampDegrees(a.x), clampDegrees(a.y), clampDegrees(a.z) );
 	}
 	// !!!TESTAR!!!
 	int compareAnglesDegrees( float a, float b )

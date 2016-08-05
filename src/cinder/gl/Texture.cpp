@@ -2131,14 +2131,14 @@ void TextureData::allocateDataStore( size_t requireBytes )
 	mDataStoreSize = requireBytes;
 }
 
-	// ROGER
-	void Texture::enableAndBind( GLuint textureUnit ) const
-	{
-		glEnable( mObj->mTarget );
-		glActiveTexture( GL_TEXTURE0 + textureUnit );
-		glBindTexture( mObj->mTarget, mObj->mTextureID );
-		glActiveTexture( GL_TEXTURE0 );
-	}
+//	// ROGER
+//	void Texture::enableAndBind( GLuint textureUnit ) const
+//	{
+//		glEnable( mObj->mTarget );
+//		glActiveTexture( GL_TEXTURE0 + textureUnit );
+//		glBindTexture( mObj->mTarget, mObj->mTextureID );
+//		glActiveTexture( GL_TEXTURE0 );
+//	}
 	
 void TextureData::mapDataStore()
 {

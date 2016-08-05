@@ -43,7 +43,7 @@ class Perlin
 	// ROGER
 	// z ranging from 0 to t
 	// http://staffwww.itn.liu.se/~stegu/TNM022-2005/perlinnoiselinks/perlin-noise-math-faq.html#loop
-	float	fBmLoop( const Vec3f &v, float t ) const { return fBmLoop( v.x, v.y, v.z, t ); }
+	float	fBmLoop( const vec3 &v, float t ) const { return fBmLoop( v.x, v.y, v.z, t ); }
 	float	fBmLoop( float x, float y, float z, float t ) const { return ( (t - z) * fBm(x, y, z) + (z) * fBm(x, y, z - t) ) / (t); }
 	
 	float	fBm( const vec2 &v ) const;

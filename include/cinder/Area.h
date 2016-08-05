@@ -73,31 +73,21 @@ class Area {
 	void			setX2( int32_t aX2 ) { x2 = aX2; }
 	int32_t			getY2() const { return y2; }
 	void			setY2( int32_t aY2 ) { y2 = aY2; }
-<<<<<<< HEAD
-	Vec2i			getUL() const { return Vec2i( x1, y1 ); } // left-top offset
-	Vec2i			getLR() const { return Vec2i( x2, y2 ); } // right-bottom offset
-	Vec2i			getLL() const { return Vec2i( x2, y1 ); } // ROGER
-	Vec2i			getUR() const { return Vec2i( x2, y1 ); } // ROGER
 
-	bool			contains( const Vec2i &offset ) const;
+	ivec2			getUL() const { return ivec2( x1, y1 ); } // left-top offset
+	ivec2			getLR() const { return ivec2( x2, y2 ); } // right-bottom offset
+	ivec2			getLL() const { return ivec2( x2, y1 ); } // ROGER
+	ivec2			getUR() const { return ivec2( x2, y1 ); } // ROGER
 
 	// ROGER
 	//! Add width and height
-	void			add( Vec2i &off ) { x2 += off.x; y2 += off.y; }
-	void			add( Vec2<float> &off ) { x2 += off.x; y2 += off.y; }	// ROGER -- REMOVER ISTO!!!
+	void			add( ivec2 &off ) { x2 += off.x; y2 += off.y; }
+//	void			add( Vec2<float> &off ) { x2 += off.x; y2 += off.y; }	// ROGER -- REMOVER ISTO!!!
 	void			add( int32_t addX, int32_t addY ) { x2 += addX; y2 += addY; }
-	
-	
-	template<typename Y>
-	bool			contains( const Vec2<Y> &offset ) const { return contains( Vec2i( (int32_t)math<Y>::ceil( offset. x ), (int32_t)math<Y>::ceil( offset.y ) ) ); }
-=======
-	ivec2			getUL() const { return ivec2( x1, y1 ); } // left-top offset
-	ivec2			getLR() const { return ivec2( x2, y2 ); } // right-bottom offset
 
 	bool			contains( const ivec2 &offset ) const;
 	template<typename T>
 	bool			contains( const glm::tvec2<T, glm::defaultp> &offset ) const { return contains( ivec2( (int32_t)math<T>::ceil( offset. x ), (int32_t)math<T>::ceil( offset.y ) ) ); }
->>>>>>> d60f0901a0ff654e773345065248cf839ef1d715
 	bool			intersects( const Area &area ) const;
 
 	//! Expands the Area to include \a point in its interior
@@ -126,13 +116,8 @@ class Area {
 
 	int32_t			x1, y1, x2, y2;
 
-<<<<<<< HEAD
-	bool			operator==( const Area &aArea ) const { return ( ( x1 == aArea.x1 ) && ( y1 == aArea.y1 ) && ( x2 == aArea.x2 ) && ( y2 == aArea.y2 ) ); }
-	bool			operator!=( const Area &aArea ) const { return ! (*this == aArea); }	// ROGER
-=======
 	bool			operator==( const Area &rhs ) const { return ( ( x1 == rhs.x1 ) && ( y1 == rhs.y1 ) && ( x2 == rhs.x2 ) && ( y2 == rhs.y2 ) ); }
 	bool			operator!=( const Area &rhs ) const { return ! ( *this == rhs ); }
->>>>>>> d60f0901a0ff654e773345065248cf839ef1d715
 	bool			operator<( const Area &aArea ) const;
 
 	const Area		operator+( const ivec2 &o ) const { return this->getOffset( o ); }

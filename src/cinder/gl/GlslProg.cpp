@@ -1204,12 +1204,12 @@ GLint GlslProg::getUniformBlockLocation( const std::string &name ) const
 		return -1;
 }
 	
-	// ROGER
-	void GlslProg::uniformMatrix( const std::string &name, const float *data, int count, bool transpose )
-	{
-		GLint loc = getUniformLocation( name );
-		glUniformMatrix4fv( loc, count, ( transpose ) ? GL_TRUE : GL_FALSE, data );
-	}
+//	// ROGER
+//	void GlslProg::uniformMatrix( const std::string &name, const float *data, int count, bool transpose )
+//	{
+//		GLint loc = getUniformLocation( name );
+//		glUniformMatrix4fv( loc, count, ( transpose ) ? GL_TRUE : GL_FALSE, data );
+//	}
 
 
 GLint GlslProg::getUniformBlockSize( GLint blockBinding ) const

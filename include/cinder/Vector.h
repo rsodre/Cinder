@@ -68,52 +68,53 @@ glm::tvec3<T, P> orthogonal( const glm::tvec3<T, P> &vec )
 		return glm::tvec3<T, P>( 0, vec.z, -vec.y ); // cross( this, X )
 }
 
-// ROGER
-//! Calculate the normal of a triangle
-template<typename T>
-static Vec3<T> triangleNormal( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
-{
-	Vec3<T> u( p1 - p0 );
-	Vec3<T> v( p2 - p0 );
-	Vec3<T> n( u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x );
-	return n.normalized();
-}
-
-	// ROGER
-	//! Calculate the centroid of a triangle
-	template<typename T>
-	static Vec2<T> triangleCentroid( Vec2<T> p0, Vec2<T> p1, Vec2<T> p2 )
-	{
-		return Vec2<T>( (p0.x+p1.x+p2.x)/3.0f, (p0.y+p1.y+p2.y)/3.0f );
-	}
-	template<typename T>
-	static Vec3<T> triangleCentroid( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
-	{
-		return Vec3<T>( (p0.x+p1.x+p2.x)/3.0f, (p0.y+p1.y+p2.y)/3.0f, (p0.z+p1.z+p2.z)/3.0f );
-	}
+	template<uint8_t DIM,typename T> struct VECDIM { };
+	
+	template<> struct VECDIM<2,float>	{ typedef vec2	TYPE; };
+	template<> struct VECDIM<3,float>	{ typedef vec3	TYPE; };
+	template<> struct VECDIM<4,float>	{ typedef vec4	TYPE; };
+	template<> struct VECDIM<2,double>	{ typedef dvec2	TYPE; };
+	template<> struct VECDIM<3,double>	{ typedef dvec3	TYPE; };
+	template<> struct VECDIM<4,double>	{ typedef dvec4	TYPE; };
+	template<> struct VECDIM<2,int>		{ typedef ivec2	TYPE; };
+	template<> struct VECDIM<3,int>		{ typedef ivec3	TYPE; };
+	template<> struct VECDIM<4,int>		{ typedef ivec4	TYPE; };
 	
 
-template<uint8_t DIM,typename T> struct VECDIM { };
-
-template<> struct VECDIM<2,float>	{ typedef vec2	TYPE; };
-template<> struct VECDIM<3,float>	{ typedef vec3	TYPE; };
-template<> struct VECDIM<4,float>	{ typedef vec4	TYPE; };
-template<> struct VECDIM<2,double>	{ typedef dvec2	TYPE; };
-template<> struct VECDIM<3,double>	{ typedef dvec3	TYPE; };
-template<> struct VECDIM<4,double>	{ typedef dvec4	TYPE; };
-template<> struct VECDIM<2,int>		{ typedef ivec2	TYPE; };
-template<> struct VECDIM<3,int>		{ typedef ivec3	TYPE; };
-template<> struct VECDIM<4,int>		{ typedef ivec4	TYPE; };
-
-		// ROGER
-		// Should be in CinderMath.h, but it isn't possible
-		inline Vec2f toRadians( const Vec2f & v )
-		{
-			return Vec2f ( toRadians(v.x), toRadians(v.y) );
-		}
-		inline Vec2f toDegrees( const Vec2f & v )
-		{
-			return Vec2f ( toDegrees(v.x), toDegrees(v.y) );
-		}
+//	// ROGER
+//	//! Calculate the normal of a triangle
+//	template<typename T>
+//	static Vec3<T> triangleNormal( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
+//	{
+//		Vec3<T> u( p1 - p0 );
+//		Vec3<T> v( p2 - p0 );
+//		Vec3<T> n( u.y * v.z - u.z * v.y, u.z * v.x - u.x * v.z, u.x * v.y - u.y * v.x );
+//		return n.normalized();
+//	}
+//	
+//	// ROGER
+//	//! Calculate the centroid of a triangle
+//	template<typename T>
+//	static Vec2<T> triangleCentroid( Vec2<T> p0, Vec2<T> p1, Vec2<T> p2 )
+//	{
+//		return Vec2<T>( (p0.x+p1.x+p2.x)/3.0f, (p0.y+p1.y+p2.y)/3.0f );
+//	}
+//	template<typename T>
+//	static Vec3<T> triangleCentroid( Vec3<T> p0, Vec3<T> p1, Vec3<T> p2 )
+//	{
+//		return Vec3<T>( (p0.x+p1.x+p2.x)/3.0f, (p0.y+p1.y+p2.y)/3.0f, (p0.z+p1.z+p2.z)/3.0f );
+//	}
+//	
+//	
+//	// ROGER
+//	// Should be in CinderMath.h, but it isn't possible
+//	inline Vec2f toRadians( const Vec2f & v )
+//	{
+//		return Vec2f ( toRadians(v.x), toRadians(v.y) );
+//	}
+//	inline Vec2f toDegrees( const Vec2f & v )
+//	{
+//		return Vec2f ( toDegrees(v.x), toDegrees(v.y) );
+//	}
 
 } // namespace cinder
