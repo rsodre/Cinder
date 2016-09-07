@@ -1006,6 +1006,9 @@ namespace cinder { namespace sgui {
 		this->postgap = true;
 		this->slim = false;
 		this->label = NULL;
+		this->axisOnDefault = false;
+		this->axisOnZero = false;
+		this->axisOnMax = false;
 
 		//NEW
 		gc = NULL;
@@ -1083,8 +1086,6 @@ namespace cinder { namespace sgui {
 		this->lastValue = *var;
 		this->formatAsTimecode = false;
 		this->formatAsTime = false;
-		this->axisOnDefault = false;
-		this->axisOnZero = false;
 		this->displaySign = false;
 		this->update();
 		//NEW
@@ -1177,6 +1178,11 @@ namespace cinder { namespace sgui {
 			gl::color(SimpleGUI::darkColor);
 			gl::drawSolidRect(activeArea);
 			// color bar
+			if (axisOnMax)
+			{
+				Rectf mr = SimpleGUI::getScaledWidthRectf(activeArea, max);
+				r = Rectf( r.getLowerRight(), mr.getUpperRight() );
+			}
 			if (axisOnDefault || axisOnZero)
 				r = Rectf( r.getLowerRight(), rd.getUpperRight() );
 			gl::color(SLIDER_COLOR);
@@ -2989,7 +2995,7 @@ namespace cinder { namespace sgui {
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect(backArea + pos);
 		
-		gl::color(pressed ? SLIDER_COLOR : SimpleGUI::darkColor);
+		gl::color(locked ? SimpleGUI::lockedColor : (pressed ? SLIDER_COLOR : SimpleGUI::darkColor));
 		gl::drawSolidRect(activeArea);
 		
 		gl::enableAlphaBlending();
@@ -3012,6 +3018,8 @@ namespace cinder { namespace sgui {
 	}
 	
 	void ButtonControl::onMouseDown(app::MouseEvent & event) {
+		if (locked)
+			return;
 		pressed = true;
 		if ( cbFuncDown )
 		{
@@ -3021,6 +3029,8 @@ namespace cinder { namespace sgui {
 	}
 	
 	void ButtonControl::onMouseUp(app::MouseEvent & event) {
+		if (locked)
+			return;
 		if ( cbFuncUp && pressed )
 		{
 			cbFuncUp(event);
@@ -3031,6 +3041,8 @@ namespace cinder { namespace sgui {
 	
 	// ROGER
 	void ButtonControl::onMouseDrag(app::MouseEvent & event) {
+		if (locked)
+			return;
 		pressed = activeArea.contains(event.getPos());
 	}
 	
@@ -3063,7 +3075,7 @@ namespace cinder { namespace sgui {
 		backArea = Rectf(( -SimpleGUI::padding).x,
 						 ( -SimpleGUI::padding).y,
 						 ( SimpleGUI::sliderSize + SimpleGUI::padding).x,
-						 ( h + (postgap ? SimpleGUI::padding.y : 0 ) ) );
+						 ( h + (postgap ? SimpleGUI::padding.y : 2 ) ) );
 		// Hide simple label
 		if ( !enabled || (var == NULL && name.length() == 0 && hideNull) )
 			backArea = Rectf();

@@ -231,6 +231,8 @@ namespace cinder {
 				c = mGui->addParamXY(label, this->getPointerVector2(id), this->getMin(id), this->getMax(id), this->getVector2(id) );
 				if ( this->testFlag(id,CFG_FLAG_XY_VECTOR) )
 					((XYVarControl*)c)->setDrawAsVector();
+				if (precision >= 0)
+					((XYVarControl*)c)->setPrecision( precision );
 			}
 			else
 			{

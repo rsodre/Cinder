@@ -131,9 +131,11 @@ namespace cinder { namespace qb {
 		this->resizeCameras();
 		
 		// Renderer file names
-		os.clear();
+		os.str("");
+		printf(">>>> QB::Base name [%s]\n",os.str().c_str());
 		//os << "__" << SysInfo::getAppName();
 		os << SysInfo::getAppName();
+		printf(">>>> QB::Base name [%s]\n",os.str().c_str());
 		mRenderer.setFileNameBase( os.str() );
 		mRenderer.setFolder( QB_CAPTURE_FOLDER );
 		

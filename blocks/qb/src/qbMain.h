@@ -152,6 +152,7 @@ public:
 	bool		isCameraGround()		{ return mConfig->getBool(QBCFG_CAMERA_GROUND); }
 	bool		isCameraGroundActive()	{ return (this->isCameraGround() && (this->getCameraType() == CAMERA_TYPE_PERSP || this->getCameraType() == CAMERA_TYPE_STEREO)); }
 	float		getCameraGroundShift()	{ return mConfig->get(QBCFG_CAMERA_GROUND_SHIFT); }
+	float		getCameraAngle()		{ return mConfig->get(QBCFG_CAMERA_ANGLE); }
 	
 	//
 	// Playhead Control

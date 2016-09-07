@@ -15,13 +15,14 @@
 #include "cinderSyphon.h"
 #include "qbCube.h"
 
-#ifdef QT64
+#if defined(QT64)
 #include "Avf.h"	// https://github.com/calebjohnston/Cinder-AvfImpl
 #define qtime avf
-#else
+#elif defined(QT32)
 #include "cinder/qtime/Quicktime.h"
 #include "MovieGlHap.h"
 #endif
+
 
 namespace cinder {
 class ciConfig;
@@ -140,6 +141,7 @@ namespace cinder { namespace qb {
 	
 	//
 	// MOVIE Source
+#ifdef QTXX
 	class qbSourceMovie : public qbSourceBase {
 	public:
 		qbSourceMovie() : qbSourceBase()
@@ -175,9 +177,9 @@ namespace cinder { namespace qb {
 		const float			getCurrentFrameRate()	{ return mCurrentFrameRate; }
 		
 	private:
-#if defined QT64 || defined NO_HAP
+#if defined(QT64)
 		qtime::MovieGl		mMovieGl;
-#else
+#elif defined(QT32)
 		qtime::MovieGlHap	mMovieGl;
 #endif
 		qtime::MovieSurface	mMovieSurface;
@@ -196,6 +198,7 @@ namespace cinder { namespace qb {
 
 		double	mTimeProfiler;
 	};
+#endif
 
 	//
 	// SYPHON Source

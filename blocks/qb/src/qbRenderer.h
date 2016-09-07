@@ -12,10 +12,10 @@
 #include "cinder/gl/Texture.h"
 //#include "cinder/audio/Output.h"
 //#include "cinder/audio/Io.h"
-#ifdef QT64
+#if defined(QT64)
 #include "Avf.h"	// https://github.com/calebjohnston/Cinder-AvfImpl
 #define qtime avf
-#else
+#elif defined(QT32)
 #include "cinder/qtime/Quicktime.h"
 #include "cinder/qtime/MovieWriter.h"
 #endif
@@ -61,7 +61,7 @@ namespace cinder { namespace qb {
 		void				commit( const ImageSourceRef & _aframe );
 		void				updateStatus();
 		
-#ifndef QT64
+#ifdef QT32
 		qtime::MovieWriter	mMovieWriter;
 #endif
 		std::string			mStatus;

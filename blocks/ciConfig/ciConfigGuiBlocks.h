@@ -8,6 +8,7 @@
 
 #include "ciConfigGui.h"
 #include "cinder/app/AppBasic.h"
+#include <functional>
 
 #define CICONFIG
 //#define QB
@@ -76,7 +77,7 @@ namespace cinder { namespace sgui {
 	class ciGuiBlockSyphonDirectory;
 	class ciGuiBlockQBSourceTab : public ciConfigGuiBlock {
 	public:
-		ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha=-1 );
+		ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha=-1, std::function<void()> infoBlock=nullptr );
 		~ciGuiBlockQBSourceTab() {}
 		
 		// virtuals

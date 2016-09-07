@@ -130,7 +130,7 @@ namespace cinder { namespace sgui {
 	//
 	// QB Source TAB
 	//
-	ciGuiBlockQBSourceTab::ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha ) : ciConfigGuiBlock(cfg)
+	ciGuiBlockQBSourceTab::ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha, std::function<void()> infoBlock ) : ciConfigGuiBlock(cfg)
 	{
 		mSource = src;
 		cfgName = _cfgName;
@@ -165,6 +165,11 @@ namespace cinder { namespace sgui {
 			mCfg->guiAddPanel("");
 			cfg->guiAddSeparator();
 			mCfg->guiAddParam(cfgIgnoreAlpha,		"Ignore Alpha" );
+			if (infoBlock != nullptr)
+			{
+				cfg->guiAddSeparator();
+				infoBlock();
+			}
 		}
 		// COLUMN
 		mCfg->guiAddGroup( std::string("> TEMPLATES") );
@@ -177,7 +182,11 @@ namespace cinder { namespace sgui {
 		mCfg->guiAddGroup( std::string("> FILE") );
 		{
 			mCfg->guiAddParamBool("ENABLED",&bMovieEnabled)->setAsButton()->setNameOff("Enable");
+#ifdef QTXX
 			mCfg->guiAddButton("Load Movie / Image...", this, &ciGuiBlockQBSourceTab::cbLoad)->setPostGap(false);
+#else
+			mCfg->guiAddButton("Load Image...", this, &ciGuiBlockQBSourceTab::cbLoad)->setPostGap(false);
+#endif
 			mCfg->guiAddText("(or drop files here)");
 			// current movie info
 			mCfg->guiAddSeparator();

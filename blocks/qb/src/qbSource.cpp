@@ -14,7 +14,9 @@
 
 using namespace ci;
 using namespace ci::gl;
+#ifdef QTXX
 using namespace ci::qtime;
+#endif
 
 namespace cinder { namespace qb {
 	
@@ -39,8 +41,10 @@ namespace cinder { namespace qb {
 		// if add any, chage isMovieFile() and isImageFile() as well
 		if ( _qbSourceExt.empty() )
 		{
+#ifdef QTXX
 			_qbSourceExt.push_back( "mov" );
-			_qbSourceExt.push_back( "mp4" );
+//			_qbSourceExt.push_back( "mp4" );
+#endif
 			_qbSourceExt.push_back( "jpg" );
 			_qbSourceExt.push_back( "jpeg" );
 			_qbSourceExt.push_back( "png" );
@@ -84,7 +88,7 @@ namespace cinder { namespace qb {
 			// Load by extension
 			if ( this->isMovieFile(_f) )
 			{
-#ifndef QT64
+#ifdef QTXX
 				qbSourceMovie *newSrc = new qbSourceMovie();
 				if ( newSrc->load(_f,mFlags) == false )
 				{
@@ -92,7 +96,9 @@ namespace cinder { namespace qb {
 					return false;
 				}
 				this->setSource(newSrc);
-#endif	// QT64
+#else
+				return false;
+#endif
 			}
 			else if ( this->isImageFile(_f) )
 			{
@@ -391,7 +397,7 @@ namespace cinder { namespace qb {
 	//
 	// MOVIE
 	//
-#ifndef QT64
+#ifdef QTXX
 	bool qbSourceMovie::load( const std::string & _f, char _flags )
 	{
 		std::string theFile = _qb.getFilePath( _f );
@@ -404,9 +410,9 @@ namespace cinder { namespace qb {
 			
 			if ( TEST_FLAG( _flags, QBFLAG_SURFACE) )
 			{
-#if defined QT64 || defined NO_HAP
+#if defined(QT64)
 				mMovieGl = qtime::MovieGl();
-#else
+#elif defined(QT32)
 				mMovieGl = qtime::MovieGlHap();
 				mMovieGl.setAsRect();
 #endif
@@ -415,9 +421,9 @@ namespace cinder { namespace qb {
 			}
 			else
 			{
-#if defined QT64 || defined NO_HAP
+#if defined(QT64)
 				mMovieGl = qtime::MovieGl( theFile );
-#else
+#elif defined(QT32)
 				mMovieGl = qtime::MovieGlHap( theFile );
 				mMovieGl.setAsRect();
 #endif
@@ -429,7 +435,7 @@ namespace cinder { namespace qb {
 			mMovie->play();
 			mMovie->stop();			// we're gonna play it frame by frame
 			mMovie->setLoop();
-			mMovie->setVolume(0);
+			mMovie->setVolume(1.0f);
 			mSize = mMovie->getSize();
 			bHasAlpha = mMovie->hasAlpha();
 			mFrameCount = mMovie->getNumFrames() + 1;
@@ -477,6 +483,8 @@ namespace cinder { namespace qb {
 		if ( ! mMovie )
 			return false;
 		
+		bool newFrame = false;
+		
 		// start/stop
 		/* no need to play as we do it frame by frame
 		if ( bPlaying && ! mMovie->isPlaying() )
@@ -492,8 +500,6 @@ namespace cinder { namespace qb {
 		// Time Profiler
 		double d = (app::getElapsedSeconds() - mTimeProfiler);
 		mTimeProfiler = app::getElapsedSeconds();
-
-		bool newFrame = false;
 
 		// Always play frame by frame
 		float t = ( _qb.shouldRenderFitSources() ? QB_ANIM_PROG * mDuration : QB_TIME );
@@ -562,7 +568,7 @@ namespace cinder { namespace qb {
 
 		return newFrame;
 	}
-#endif	// QT64
+#endif	// QTXX
 
 	
 	

@@ -26,6 +26,7 @@
 #include "cinder/Vector.h"
 #include "cinder/Quaternion.h"
 #include "cinder/Utilities.h"
+#include "cinder/Xml.h"
 #include <vector>
 #include <map>
 #include <string>
@@ -81,7 +82,7 @@ namespace cinder {
 #define CONFIG_PRESET_COUNT		10
 #define PRESET_KEY(i)			(i<CONFIG_PRESET_COUNT-1?'1'+i:(i==CONFIG_PRESET_COUNT-1?'0':0))
 
-#define MAX_DEFAULTS			8
+#define MAX_DEFAULTS			12
 
 //
 // Types
@@ -406,10 +407,12 @@ public:
 	virtual void postSetCallback(int id, int i) {}		// After a set()
 	virtual void preSaveCallback() {}					// Before a save()
 	virtual void postLoadCallback() {}					// After a load()
-	virtual void setPostSetCallbackFunction(void(*f)(ciConfig*,int,int))	{ postSetCallback_fn = f; }
+	virtual void setPostLoadCallbackFunction(void(*f)(ciConfig*))			{ postLoadCallback_fn = f; }
 	virtual void setPostResetCallbackFunction(void(*f)(ciConfig*))			{ postResetCallback_fn = f; }
-	void(*postSetCallback_fn)(ciConfig*,int,int);
+	virtual void setPostSetCallbackFunction(void(*f)(ciConfig*,int,int))	{ postSetCallback_fn = f; }
+	void(*postLoadCallback_fn)(ciConfig*);
 	void(*postResetCallback_fn)(ciConfig*);
+	void(*postSetCallback_fn)(ciConfig*,int,int);
 
 	char errmsg[256];
 	
@@ -610,30 +613,31 @@ public:
 	Vec4f* getPointerVector(int id)			{ return (params[id]->getPointerVector()); }
 	std::string* getPointerString(int id)	{ return (params[id]->getPointerString()); }
 	// Get limits
-	float getMin(int id)	{ return this->getMin(id, 0); }
-	float getMinR(int id)	{ return this->getMin(id, 0); }
-	float getMinG(int id)	{ return this->getMin(id, 1); }
-	float getMinB(int id)	{ return this->getMin(id, 2); }
-	float getMinX(int id)	{ return this->getMin(id, 0); }
-	float getMinY(int id)	{ return this->getMin(id, 1); }
-	float getMinZ(int id)	{ return this->getMin(id, 2); }
-	float getMinW(int id)	{ return this->getMin(id, 3); }
-	float getMax(int id)	{ return this->getMax(id, 0); }
-	float getMaxR(int id)	{ return this->getMax(id, 0); }
-	float getMaxG(int id)	{ return this->getMax(id, 1); }
-	float getMaxB(int id)	{ return this->getMax(id, 2); }
-	float getMaxX(int id)	{ return this->getMax(id, 0); }
-	float getMaxY(int id)	{ return this->getMax(id, 1); }
-	float getMaxZ(int id)	{ return this->getMax(id, 2); }
-	float getMaxW(int id)	{ return this->getMax(id, 3); }
-	float getProg(int id)	{ return this->getProg(id, 0); }
-	float getProgR(int id)	{ return this->getProg(id, 0); }
-	float getProgG(int id)	{ return this->getProg(id, 1); }
-	float getProgB(int id)	{ return this->getProg(id, 2); }
-	float getProgX(int id)	{ return this->getProg(id, 0); }
-	float getProgY(int id)	{ return this->getProg(id, 1); }
-	float getProgZ(int id)	{ return this->getProg(id, 2); }
-	float getProgW(int id)	{ return this->getProg(id, 4); }
+	float getDefault(int id)		{ return this->getDefault(id, 0); }
+	float getMin(int id)			{ return this->getMin(id, 0); }
+	float getMinR(int id)			{ return this->getMin(id, 0); }
+	float getMinG(int id)			{ return this->getMin(id, 1); }
+	float getMinB(int id)			{ return this->getMin(id, 2); }
+	float getMinX(int id)			{ return this->getMin(id, 0); }
+	float getMinY(int id)			{ return this->getMin(id, 1); }
+	float getMinZ(int id)			{ return this->getMin(id, 2); }
+	float getMinW(int id)			{ return this->getMin(id, 3); }
+	float getMax(int id)			{ return this->getMax(id, 0); }
+	float getMaxR(int id)			{ return this->getMax(id, 0); }
+	float getMaxG(int id)			{ return this->getMax(id, 1); }
+	float getMaxB(int id)			{ return this->getMax(id, 2); }
+	float getMaxX(int id)			{ return this->getMax(id, 0); }
+	float getMaxY(int id)			{ return this->getMax(id, 1); }
+	float getMaxZ(int id)			{ return this->getMax(id, 2); }
+	float getMaxW(int id)			{ return this->getMax(id, 3); }
+	float getProg(int id)			{ return this->getProg(id, 0); }
+	float getProgR(int id)			{ return this->getProg(id, 0); }
+	float getProgG(int id)			{ return this->getProg(id, 1); }
+	float getProgB(int id)			{ return this->getProg(id, 2); }
+	float getProgX(int id)			{ return this->getProg(id, 0); }
+	float getProgY(int id)			{ return this->getProg(id, 1); }
+	float getProgZ(int id)			{ return this->getProg(id, 2); }
+	float getProgW(int id)			{ return this->getProg(id, 4); }
 	Vec2f getProgVector2(int id)	{ return Vec2f(this->getProgX(id), this->getProgY(id)); }
 	Vec3f getProgVector3(int id)	{ return Vec3f(this->getProgX(id), this->getProgY(id), this->getProgZ(id)); }
 	Vec4f getProgVector4(int id)	{ return Vec4f(this->getProgX(id), this->getProgY(id), this->getProgZ(id), this->getProgW(id)); }
@@ -743,11 +747,15 @@ public:
 	bool exportas();
 	void setFile(const std::string & filename);
 	virtual int useFile(const std::string & filename, const std::string & path="");
-	virtual int load()	{ return this->load(NULL); }
-	virtual int save()	{ return this->save(NULL); }
+	virtual int load()			{ return this->load(NULL); }
+	virtual int save()			{ return this->save(NULL); }
 	int load(char preset);
 	int save(char preset);
-	
+	bool presetExist(char preset);
+	std::string presetTimestamp(char preset);
+	bool getPresetXml(char preset, XmlTree & doc);
+	bool getPresetXml(std::string f, XmlTree & doc);
+
 	std::string		mAppName;				// The app name
 	
 protected:
@@ -820,6 +828,7 @@ protected:
 	void post_set(int id);
 	void post_set(int id, int i, bool doCB=true);
 	float get(int id, int i);
+	float getDefault(int id, int i)		{ return params[id]->vec[i].getInitialValue(); };
 	float getMin(int id, int i)			{ return params[id]->vec[i].getMin(); };
 	float getMax(int id, int i)			{ return params[id]->vec[i].getMax(); };
 	float getProg(int id, int i)		{ return params[id]->vec[i].getProg(); };

@@ -40,6 +40,7 @@ void qbConfig::setup() {
 	this->addInt(QBCFG_CAMERA_TYPE, "QBCFG_CAMERA_TYPE", _qb.mDefaultCamera, 0, CAMERA_TYPE_COUNT-1);
 	this->addBool(QBCFG_CAMERA_GROUND, "QBCFG_CAMERA_GROUND", false);
 	this->addFloat(QBCFG_CAMERA_GROUND_SHIFT, "QBCFG_CAMERA_GROUND_SHIFT", 1.0f, 0.0f, 5.0f);
+	this->addFloat(QBCFG_CAMERA_ANGLE, "QBCFG_CAMERA_ANGLE", 0.0f, 0.0f, 90.0f);
 	this->addFloat(QBCFG_METRIC_THROW, "QBCFG_METRIC_THROW", 1.0f, 0.1f, 1.2f);
 	this->addFloat(QBCFG_PERSPECTIVE_PROG, "QBCFG_PERSPECTIVE_PROG", 1.0f, 0.0f, 1.0f);
 	// Animation
@@ -224,6 +225,7 @@ void qbConfig::setup() {
 	this->guiAddParam(QBCFG_METRIC_THROW,			"Camera Throw", 2 );
 	this->guiAddParam(QBCFG_CAMERA_GROUND,			"Camera on Ground" );
 	this->guiAddParam(QBCFG_CAMERA_GROUND_SHIFT,	"Ground Shift" );
+	this->guiAddParam(QBCFG_CAMERA_ANGLE,			"Camera Angle" );
 	this->guiAddParam(QBCFG_SCALE,					"Scale", 2 );
 	this->guiAddParam(QBCFG_OFFSET,					"Offset", 3 );
 	// Syphon
@@ -500,6 +502,7 @@ void qbConfig::postSetCallback(int id, int i)
 			break;
 		case QBCFG_CAMERA_GROUND:
 		case QBCFG_CAMERA_GROUND_SHIFT:
+		case QBCFG_CAMERA_ANGLE:
 		case QBCFG_METRIC_THROW:
 		case QBCFG_PERSPECTIVE_PROG:
 			_qb.resizeCameras();

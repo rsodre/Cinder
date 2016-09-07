@@ -36,11 +36,10 @@
 #include "ciConfig.h"
 #include "cinder/app/AppBasic.h"
 #include "cinder/Utilities.h"
-#include "cinder/Xml.h"
 
 // comment to disable versosity
 #ifndef RELEASE
-//#define VERBOSE
+#define VERBOSE
 //#define OSC_VERBOSE
 #endif
 
@@ -1075,6 +1074,7 @@ namespace cinder {
 					p->strval = p->strvalInitial[def];
 				else
 					this->set( id, i, p->vec[i].getInitialValue(def) );
+				this->setLoaded(id, false);
 			}
 		}
 	}
@@ -1713,20 +1713,66 @@ namespace cinder {
 		return this->saveFile( f, preset );
 	}
 	//
+	// Preset info
+	bool ciConfig::presetExist(char preset)
+	{
+		XmlTree doc;
+		if ( ! this->getPresetXml(preset, doc) )
+			return false;
+		// Get preset
+		std::string nodeName = "config/" + this->makeXmlNodeName( preset );
+		return doc.hasChild( nodeName );
+	}
+	std::string ciConfig::presetTimestamp(char preset)
+	{
+		XmlTree doc;
+		if ( this->getPresetXml(preset, doc) )
+		{
+			// Get preset
+			std::string nodeName = "config/" + this->makeXmlNodeName( preset );
+			if ( doc.hasChild( nodeName ) )
+			{
+				XmlTree node = doc.getChild( nodeName );
+				return node.getAttribute("SAVE_TIME");
+			}
+		}
+		return "";
+	}
+	//
 	// Make names
 	std::string ciConfig::makeFileName(const std::string & path, char preset)
 	{
 		// WARNING :: BLENDY VJ IS USING THIS...
 		//std::string f = path + "/" + mAppName;
 		std::string f = path + "/DEFAULT";
-		if ( preset )
-			f += std::string("_preset") + preset;
+// Commenting to save all presets on the same file
+//		if ( preset )
+//			f += std::string("_preset") + preset;
 		f += "." + fileExt;
 		return f;
 	}
 	std::string ciConfig::makeXmlNodeName(char preset)
 	{
 		return ( preset ? std::string("preset_") + preset : "default" );
+	}
+	bool ciConfig::getPresetXml(char preset, XmlTree & doc)
+	{
+		std::string f = this->makeFileName( mFolderDefault, preset );
+		return this->getPresetXml( f, doc );
+	}
+	bool ciConfig::getPresetXml(std::string f, XmlTree & doc)
+	{
+		if ( ! fs::exists( f ) )
+			return false;
+		try {
+			doc = XmlTree( loadFile( f ) );
+		} catch (std::exception e) {
+			console() << "---------------------------------------------" << std::endl;
+			console() << " XML exception: " << e.what() << std::endl;
+			console() << "---------------------------------------------" << std::endl;
+			return false;
+		}
+		return true;
 	}
 
 	
@@ -1739,18 +1785,11 @@ namespace cinder {
 	int ciConfig::readFile(const std::string & f, char preset)
 	{
 		XmlTree doc;
-		try {
-			if ( fs::exists( f ) )
-				doc = XmlTree( loadFile( f ) );
-		} catch (std::exception e) {
+		if ( ! this->getPresetXml(f, doc) )
+		{
 			// Not XML! try old format...
-			console() << "---------------------------------------------" << std::endl;
-			console() << " XML exception: " << e.what() << std::endl;
-			console() << "---------------------------------------------" << std::endl;
 			return readFile_old( f, preset );
 		}
-		//
-		// Get nodes
 
 		//
 		// Read node "config"
@@ -1763,6 +1802,9 @@ namespace cinder {
 		}
 		node = doc.getChild( nodeName );
 		
+		// reset load status
+		this->reset();
+
 		for( XmlTree::Iter child = node.begin(); child != node.end(); ++child )
 		{
 			std::string name = child->getTag();
@@ -1783,6 +1825,8 @@ namespace cinder {
 #ifdef VERBOSE
 					printf ("READ XML param %d: %s = %s\n",pid,name.c_str(),value.c_str());
 #endif
+					if (name == "DOME_DIAMETER_M")
+						printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
 					this->preserveProg( pid, pp );
 					this->set(pid, value.c_str(), pp);
 					this->setLoaded(pid, true);
@@ -1798,11 +1842,14 @@ namespace cinder {
 
 		//
 		// SAVE!!!
-		doc.write( writeFile( f ) );
+//		doc.write( writeFile( f ) );
 		printf("-------------- READ [%s]\n",f.c_str());
 		printf("-------------- READ %d params OK!\n",(int)params.size());
 		sprintf(errmsg, "READ [%s]", f.c_str());
-		
+
+		if ( postLoadCallback_fn )
+			postLoadCallback_fn(this);
+
 		// remember file
 		this->setDisplayFilename( f, preset );
 
@@ -1815,12 +1862,8 @@ namespace cinder {
 	int ciConfig::saveFile(const std::string & f, char preset)
 	{
 		XmlTree doc;
-		try {
-			if ( fs::exists( f ) )
-				doc = XmlTree( loadFile( f ) );
-		} catch (std::exception e) {
+		if ( ! this->getPresetXml(f, doc) )
 			printf("-------------- SAVE XML ERROR! NOT XML!\n");
-		}
 		
 		// TODO:: TEST IF LOADED A XML!!!
 		
@@ -1829,7 +1872,7 @@ namespace cinder {
 
 		// Get Nodes
 		XmlTree rootNode_new, node_new;
-		XmlTree * rootNode, * node;		// must be pointer necause of getChild()
+		XmlTree * rootNode, * node;		// must be pointer because of getChild()
 		std::string nodeName = this->makeXmlNodeName( preset );
 		if ( doc.hasChild( "config" ) )
 			rootNode = &doc.getChild( "config");
@@ -1916,7 +1959,7 @@ namespace cinder {
 		if ( IS_IN_DEFAULTS(f) )
 		{
 			if (preset)
-				mDisplayFileName = std::string("< preset ") + preset + " >";
+				mDisplayFileName = std::string("< snapshot ") + preset + " >";
 			else
 				mDisplayFileName = "< default >";
 		}
@@ -1969,14 +2012,19 @@ namespace cinder {
 		
 		// Here we go!
 		bStarted = true;
-		
-		// Read file
 		int pid;
 		bool pp;						// is prog?
 		char *p;						// aux pointer
 		char data[CFG_MAX_DATA_LEN];	// full line
 		std::string key;				// param key
 		std::string val;				// param value
+		
+		// reset load status
+		for (pid = 0 ; pid < params.size() ; pid++ )
+			if(params[pid] != nullptr)
+				this->setLoaded(pid, false);
+		
+		// Read file
 		for (int n = 0 ; fgets(data, sizeof(data) ,fp) != NULL ; n++)
 		{
 			// Comment?
@@ -2010,6 +2058,7 @@ namespace cinder {
 #endif
 					this->preserveProg(pid, pp);
 					this->set(pid, val.c_str(), pp);
+					this->setLoaded(pid, true);
 					break;
 				}
 			}

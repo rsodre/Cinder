@@ -313,6 +313,9 @@ namespace cinder { namespace sgui {
 		bool	displayValue;
 		bool	pregap, postgap;				// Y gap at beginning / end
 		bool	slim;
+		bool	axisOnDefault;
+		bool	axisOnZero;
+		bool	axisOnMax;
 		Vec2f	drawOffset;
 		Rectf	backArea;
 		Rectf	activeAreaBase;
@@ -346,10 +349,10 @@ namespace cinder { namespace sgui {
 		virtual bool fileDrop(app::FileDropEvent & event) { return false; };
 		virtual void onResize() {};
 		// ROGER
-		PanelControl* addSwitchPanel(const std::string & name)		{ panelsToSwitch.push_back( parentGui->addPanel(name) ); this->switchPanels(); return panelsToSwitch.back(); }
+		PanelControl* addSwitchPanel(const std::string & name)		{ panelsToSwitch.push_back( parentGui->addPanel(name) );    this->switchPanels(); return panelsToSwitch.back(); }
 		PanelControl* addSwitchPanelInv(const std::string & name)	{ panelsToSwitchInv.push_back( parentGui->addPanel(name) ); this->switchPanels(); return panelsToSwitchInv.back(); }
-		void setName(const std::string & newName)			{ if (name != newName) mustRefresh = true; name = newName; }
-		void setMustRefresh()								{ mustRefresh = true; }
+		void setName(const std::string & newName)	{ if (name != newName) mustRefresh = true; name = newName; }
+		void setMustRefresh()						{ mustRefresh = true; }
 		bool hasChanged()							{ if (unitControl) if (unitControl->valueHasChanged()) mustRefresh = true; return this->valueHasChanged() || this->mustRefresh; }
 		bool controlHasResized()					{ return (this->hasResized() || enabled != lastEnabled); }
 		bool isHighlighted(int ch=0)				{ return ( (channelOver == ch && parentGui->selectedControl == NULL) || (this->isActiveChannel(ch) && parentGui->selectedControl == this) ) && ! this->locked; }
@@ -361,8 +364,11 @@ namespace cinder { namespace sgui {
 		Control* setPreGap(bool b)					{ pregap = b; this->update(); return this; }		// chained setters
 		Control* setPostGap(bool b)					{ postgap = b; this->update(); return this; }		// chained setters
 		Control* setNameOff(const std::string & n)	{ nameOff = n; return this; }						// chained setters
-		Control* setSlim(bool b=true)				{ slim = b; this->update(); return this; }	// chained setters
+		Control* setSlim(bool b=true)				{ slim = b; this->update(); return this; }			// chained setters
 		Control* setSuffix(const std::string & s)	{ suffix = s; mustRefresh = true; return this; }
+		Control* setAxisOnDefault(bool b=true)		{ axisOnDefault=b; return this; }					// chained setters
+		Control* setAxisOnZero(bool b=true)			{ axisOnZero=b; return this; }						// chained setters
+		Control* setAxisOnMax(bool b=true)			{ axisOnMax=b; return this; }						// chained setters
 		virtual void updateFbo()					{}
 		virtual void update()						{}
 		virtual void reset()						{}
@@ -403,8 +409,6 @@ namespace cinder { namespace sgui {
 		float lastValue;
 		bool formatAsTime;
 		bool formatAsTimecode;
-		bool axisOnDefault;
-		bool axisOnZero;
 		bool displaySign;
 		int precision;
 		float step;
@@ -423,8 +427,6 @@ namespace cinder { namespace sgui {
 		void reset()							{ *var = defaultValue; }
 		bool updateMouse();
 		FloatVarControl* setPrecision(int p);														// chamed setters
-		FloatVarControl* setAxisOnDefault(bool b=true)		{ axisOnDefault=b; return this; }		// chamed setters
-		FloatVarControl* setAxisOnZero(bool b=true)			{ axisOnZero=b; return this; }			// chamed setters
 		FloatVarControl* setFormatAsTime(bool b=true)		{ formatAsTime=b; return this; }		// chamed setters
 		FloatVarControl* setFormatAsTimecode(bool b=true)	{ formatAsTimecode=b; return this; }	// chamed setters
 		FloatVarControl* setFormatAsPercentage(bool b=true)	{ percentage=b; return this; }			// chamed setters
