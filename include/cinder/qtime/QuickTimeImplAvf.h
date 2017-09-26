@@ -75,7 +75,7 @@ class MovieBase {
 	//! Returns the height of the movie in pixels
 	int32_t		getHeight() const { return mHeight; }
 	//! Returns the size of the movie in pixels
-	ivec2		getSize() const { return ivec2( getWidth(), getHeight() ); }	
+	Vec2i		getSize() const { return Vec2i( getWidth(), getHeight() ); }
 	//! Returns the movie's aspect ratio, the ratio of its width to its height
 	float		getAspectRatio() const { return static_cast<float>(mWidth) / static_cast<float>(mHeight); }
 	//! the Area defining the Movie's bounds in pixels: [0,0]-[width,height]
@@ -153,12 +153,12 @@ class MovieBase {
 	//! Returns the native AvFoundation Player data structure
 	AVPlayer*	getPlayerHandle() const { return mPlayer; }
 	
-	signals::Signal<void()>&	getNewFrameSignal() { return mSignalNewFrame; }
-	signals::Signal<void()>&	getReadySignal() { return mSignalReady; }
-	signals::Signal<void()>&	getCancelledSignal() { return mSignalCancelled; }
-	signals::Signal<void()>&	getEndedSignal() { return mSignalEnded; }
-	signals::Signal<void()>&	getJumpedSignal() { return mSignalJumped; }
-	signals::Signal<void()>&	getOutputWasFlushedSignal() { return mSignalOutputWasFlushed; }
+	signals::signal<void()>&	getNewFrameSignal() { return mSignalNewFrame; }
+	signals::signal<void()>&	getReadySignal() { return mSignalReady; }
+	signals::signal<void()>&	getCancelledSignal() { return mSignalCancelled; }
+	signals::signal<void()>&	getEndedSignal() { return mSignalEnded; }
+	signals::signal<void()>&	getJumpedSignal() { return mSignalJumped; }
+	signals::signal<void()>&	getOutputWasFlushedSignal() { return mSignalOutputWasFlushed; }
 	
  protected:
 	MovieBase();
@@ -202,7 +202,7 @@ class MovieBase {
 
 	std::mutex					mMutex;
 	
-	signals::Signal<void()>		mSignalNewFrame, mSignalReady, mSignalCancelled, mSignalEnded, mSignalJumped, mSignalOutputWasFlushed;
+	signals::signal<void()>		mSignalNewFrame, mSignalReady, mSignalCancelled, mSignalEnded, mSignalJumped, mSignalOutputWasFlushed;
 
 	// internal callbacks used from NSObject delegate
 	void playerReady();
@@ -226,7 +226,7 @@ class MovieSurface : public MovieBase {
 	static MovieSurfaceRef create( const MovieLoaderRef &loader ) { return MovieSurfaceRef( new MovieSurface( *loader ) ); }
 
 	//! Returns the Surface8u representing the Movie's current frame
-	Surface8uRef		getSurface();
+	Surface8u		getSurface();
 
   protected:
 	MovieSurface() : MovieBase() {}
@@ -240,7 +240,7 @@ class MovieSurface : public MovieBase {
 	void			newFrame( CVImageBufferRef cvImage ) override;
 	void			releaseFrame() override;
 
-	Surface8uRef		mSurface;
+	Surface8u		mSurface;
 };
 
 class MovieResponder {
