@@ -612,7 +612,8 @@ namespace cinder { namespace qb {
 		mSyphonClient.update();
 		mTex = mSyphonClient.getTexture();
 		mSize = mSyphonClient.getSize();
-		mSurface = Surface8u();		// clear surface
+		if(mSurface)
+			mSurface = Surface8u();		// clear surface
 		// calc UV?
 		if (mTex)
 			this->makeUV( mTex.getMaxU(), mTex.getMaxV() );
