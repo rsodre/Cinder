@@ -1540,7 +1540,11 @@ void drawStringHelper( const std::string &str, const Vec2f &pos, const ColorA &c
 	tex.setCleanTexCoords( actualSize.x / (float)pow2Surface.getWidth(), actualSize.y / (float)pow2Surface.getHeight() );
 	baselineOffset += pow2Surface.getHeight();
 #else
-	gl::Texture tex( renderString( str, font, color, &baselineOffset ) );
+	// ROGER
+	Texture::Format fmt = Texture::Format();
+	fmt.setMinFilter(font.getFilter());
+	fmt.setMagFilter(font.getFilter());
+	gl::Texture tex( renderString( str, font, color, &baselineOffset ), fmt );
 #endif
 	glColor4ub( 255, 255, 255, 255 );
 

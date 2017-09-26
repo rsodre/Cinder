@@ -57,6 +57,9 @@
 	}
 #endif
 
+// ROGER
+#include <OpenGL/gl.h>
+
 namespace cinder {
 
 //! Represents an instance of a font at a point size. \ImplShared
@@ -72,6 +75,10 @@ class Font {
 	/** \brief Constructs a Font from a DataSource representing font data (such as a .ttf file) and its \a size in points.
 		\note Assumes a point size relative to 72dpi on Cocoa but 96dpi on Windows. This creates rough parity between the platforms on type size, but in Windows this renders fonts smaller than normal. **/
 	Font( DataSourceRef dataSource, float size );
+
+	// ROGER
+	Font( const std::string &aName, float size, GLenum filter );
+	Font( DataSourceRef dataSource, float size, GLenum filter );
 
 	const std::string&		getName() const;
 	std::string				getFullName() const;
@@ -89,6 +96,9 @@ class Font {
 	Shape2d					getGlyphShape( Glyph glyphIndex ) const;
 	//! Returns the bounding box of a Glyph, relative to the baseline as the origin
 	Rectf					getGlyphBoundingBox( Glyph glyph ) const;
+
+	// ROGER
+	GLenum					getFilter() { return mObj->getFilter(); }
 
 #if defined( CINDER_WINRT )
 	FT_Face					getFace() const { return mObj->mFace; }
@@ -112,11 +122,16 @@ class Font {
 	 public:
 		Obj( const std::string &aName, float aSize );
 		Obj( DataSourceRef dataSource, float size );
+		// ROGER
+		Obj( const std::string &aName, float size, GLenum filter );
+		Obj( DataSourceRef dataSource, float size, GLenum filter );
 		~Obj();
 		
 		void		finishSetup();
 		
-		
+		// ROGER
+		GLenum					getFilter() { return mMinMagFilter; }
+
 		std::string				mName;
 		float					mSize;
 #if defined( CINDER_COCOA )
@@ -135,6 +150,9 @@ class Font {
 		FT_Face mFace;
 #endif 		
 		size_t					mNumGlyphs;
+		
+		// ROGER
+		GLenum					mMinMagFilter;
 	};
 
 	std::shared_ptr<Obj>			mObj;

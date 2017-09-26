@@ -957,6 +957,11 @@
 		C7FA5FC712124B230065683B /* CaptureImplAvFoundation.h in Headers */ = {isa = PBXBuildFile; fileRef = C7FA5FC512124B1C0065683B /* CaptureImplAvFoundation.h */; };
 		C7FA5FC912124B2C0065683B /* CaptureImplQtKit.h in Headers */ = {isa = PBXBuildFile; fileRef = C7FA5FC612124B1C0065683B /* CaptureImplQtKit.h */; };
 		D2AAC088055469A000DB518D /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7B1FEA5585E11CA2CBB /* Cocoa.framework */; };
+		DB0D2C6F1D54C96A00D2FDBC /* MovieWriter.h in Headers */ = {isa = PBXBuildFile; fileRef = DB0D2C6A1D54C96A00D2FDBC /* MovieWriter.h */; };
+		DB0D2C701D54C96A00D2FDBC /* QuickTime.h in Headers */ = {isa = PBXBuildFile; fileRef = DB0D2C6B1D54C96A00D2FDBC /* QuickTime.h */; };
+		DB0D2C731D54C96A00D2FDBC /* QuickTimeUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = DB0D2C6E1D54C96A00D2FDBC /* QuickTimeUtils.h */; };
+		DB0D2C7D1D54D21700D2FDBC /* scoped.h in Headers */ = {isa = PBXBuildFile; fileRef = DB0D2C7C1D54D21700D2FDBC /* scoped.h */; };
+		DB0D2C841D54D35A00D2FDBC /* Noncopyable.h in Headers */ = {isa = PBXBuildFile; fileRef = DB0D2C831D54D35A00D2FDBC /* Noncopyable.h */; };
 		EAC3D1A91011F2E700FFBC9E /* Serial.h in Headers */ = {isa = PBXBuildFile; fileRef = EAC3D1A81011F2E700FFBC9E /* Serial.h */; };
 		EAC3D1AD1011F3AC00FFBC9E /* Serial.cpp in Sources */ = {isa = PBXBuildFile; fileRef = EAC3D1AB1011F3AC00FFBC9E /* Serial.cpp */; };
 /* End PBXBuildFile section */
@@ -1399,6 +1404,20 @@
 		C7FA5FC612124B1C0065683B /* CaptureImplQtKit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CaptureImplQtKit.h; sourceTree = "<group>"; };
 		D2AAC07E0554694100DB518D /* libcinder_d.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libcinder_d.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		D2F7E8BE07B2D77200F64583 /* CoreData.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreData.framework; path = /System/Library/Frameworks/CoreData.framework; sourceTree = "<absolute>"; };
+		DB0D2C651D54C95400D2FDBC /* QuickTimeGlImplAvf.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = QuickTimeGlImplAvf.mm; path = ../src/cinder/qtime/QuickTimeGlImplAvf.mm; sourceTree = "<group>"; };
+		DB0D2C661D54C95400D2FDBC /* QuickTimeImplAvf.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = QuickTimeImplAvf.mm; path = ../src/cinder/qtime/QuickTimeImplAvf.mm; sourceTree = "<group>"; };
+		DB0D2C6A1D54C96A00D2FDBC /* MovieWriter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MovieWriter.h; sourceTree = "<group>"; };
+		DB0D2C6B1D54C96A00D2FDBC /* QuickTime.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QuickTime.h; sourceTree = "<group>"; };
+		DB0D2C6C1D54C96A00D2FDBC /* QuickTimeGlImplAvf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = QuickTimeGlImplAvf.h; path = ../include/cinder/qtime/QuickTimeGlImplAvf.h; sourceTree = "<group>"; };
+		DB0D2C6D1D54C96A00D2FDBC /* QuickTimeImplAvf.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = QuickTimeImplAvf.h; path = ../include/cinder/qtime/QuickTimeImplAvf.h; sourceTree = "<group>"; };
+		DB0D2C6E1D54C96A00D2FDBC /* QuickTimeUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QuickTimeUtils.h; sourceTree = "<group>"; };
+		DB0D2C741D54CCEC00D2FDBC /* AvfUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AvfUtils.h; path = ../include/cinder/qtime/AvfUtils.h; sourceTree = "<group>"; };
+		DB0D2C751D54CCEC00D2FDBC /* AvfWriter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AvfWriter.h; path = ../include/cinder/qtime/AvfWriter.h; sourceTree = "<group>"; };
+		DB0D2C781D54CDCF00D2FDBC /* AvfUtils.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AvfUtils.mm; path = ../src/cinder/qtime/AvfUtils.mm; sourceTree = "<group>"; };
+		DB0D2C791D54CDCF00D2FDBC /* AvfWriter.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AvfWriter.mm; path = ../src/cinder/qtime/AvfWriter.mm; sourceTree = "<group>"; };
+		DB0D2C7C1D54D21700D2FDBC /* scoped.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = scoped.h; path = ../include/cinder/gl/scoped.h; sourceTree = "<group>"; };
+		DB0D2C811D54D2FF00D2FDBC /* scoped.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = scoped.cpp; path = ../src/cinder/gl/scoped.cpp; sourceTree = "<group>"; };
+		DB0D2C831D54D35A00D2FDBC /* Noncopyable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Noncopyable.h; path = ../include/cinder/Noncopyable.h; sourceTree = "<group>"; };
 		EAC3D1A81011F2E700FFBC9E /* Serial.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Serial.h; sourceTree = "<group>"; };
 		EAC3D1AB1011F3AC00FFBC9E /* Serial.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Serial.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -1668,6 +1687,7 @@
 		00BAE5D70E7ED4510018A608 /* Include */ = {
 			isa = PBXGroup;
 			children = (
+				DB0D2C801D54D2F400D2FDBC /* AVF */,
 				00BAE6C50E7EDD7F0018A608 /* cinder */,
 			);
 			name = Include;
@@ -1683,6 +1703,7 @@
 				00C07D8D0FFF1E43004801EA /* ip */,
 				003ADB5F1038844300ACF6F2 /* params */,
 				008B439914F5F37200B55B07 /* svg */,
+				DB0D2C691D54C96A00D2FDBC /* qtime */,
 				008876550F957E7300FD55C5 /* Arcball.h */,
 				008CE8530E94693900644A05 /* Area.h */,
 				0049A34C116EE675007DDFB0 /* AxisAlignedBox.h */,
@@ -2298,6 +2319,34 @@
 			path = audio;
 			sourceTree = "<group>";
 		};
+		DB0D2C691D54C96A00D2FDBC /* qtime */ = {
+			isa = PBXGroup;
+			children = (
+				DB0D2C6A1D54C96A00D2FDBC /* MovieWriter.h */,
+				DB0D2C6B1D54C96A00D2FDBC /* QuickTime.h */,
+				DB0D2C6E1D54C96A00D2FDBC /* QuickTimeUtils.h */,
+			);
+			path = qtime;
+			sourceTree = "<group>";
+		};
+		DB0D2C801D54D2F400D2FDBC /* AVF */ = {
+			isa = PBXGroup;
+			children = (
+				DB0D2C831D54D35A00D2FDBC /* Noncopyable.h */,
+				DB0D2C7C1D54D21700D2FDBC /* scoped.h */,
+				DB0D2C811D54D2FF00D2FDBC /* scoped.cpp */,
+				DB0D2C741D54CCEC00D2FDBC /* AvfUtils.h */,
+				DB0D2C751D54CCEC00D2FDBC /* AvfWriter.h */,
+				DB0D2C781D54CDCF00D2FDBC /* AvfUtils.mm */,
+				DB0D2C791D54CDCF00D2FDBC /* AvfWriter.mm */,
+				DB0D2C6C1D54C96A00D2FDBC /* QuickTimeGlImplAvf.h */,
+				DB0D2C6D1D54C96A00D2FDBC /* QuickTimeImplAvf.h */,
+				DB0D2C651D54C95400D2FDBC /* QuickTimeGlImplAvf.mm */,
+				DB0D2C661D54C95400D2FDBC /* QuickTimeImplAvf.mm */,
+			);
+			name = AVF;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -2655,7 +2704,10 @@
 				111A5EBE191F703D005C3166 /* lsp.h in Headers */,
 				00887AC10F9C279700FD55C5 /* MayaCamUI.h in Headers */,
 				002DFC060FA50D0200E45AE0 /* TriMesh.h in Headers */,
+				DB0D2C701D54C96A00D2FDBC /* QuickTime.h in Headers */,
+				DB0D2C7D1D54D21700D2FDBC /* scoped.h in Headers */,
 				002DFD540FA5602900E45AE0 /* ObjLoader.h in Headers */,
+				DB0D2C6F1D54C96A00D2FDBC /* MovieWriter.h in Headers */,
 				111A5ED1191F703D005C3166 /* setup_32.h in Headers */,
 				008ACC5B0FACCB1600CAAF4D /* Vbo.h in Headers */,
 				111A5EE6191F703D005C3166 /* CDSPBlockConvolver.h in Headers */,
@@ -2705,6 +2757,7 @@
 				00419C8411057CDB007EC9AD /* Hdr.h in Headers */,
 				00419C8511057CDB007EC9AD /* Premultiply.h in Headers */,
 				00419C8611057CDB007EC9AD /* Resize.h in Headers */,
+				DB0D2C841D54D35A00D2FDBC /* Noncopyable.h in Headers */,
 				00419C8711057CDB007EC9AD /* Threshold.h in Headers */,
 				111A5EB9191F703D005C3166 /* lookup.h in Headers */,
 				00419C8811057CDB007EC9AD /* Trim.h in Headers */,
@@ -2726,6 +2779,7 @@
 				111A5EEE191F703D005C3166 /* r8bbase.h in Headers */,
 				007CE1F7127BB13B00799071 /* rapidxml_print.hpp in Headers */,
 				007CE1F8127BB13B00799071 /* rapidxml.hpp in Headers */,
+				DB0D2C731D54C96A00D2FDBC /* QuickTimeUtils.h in Headers */,
 				111A5EC9191F703D005C3166 /* residue_16.h in Headers */,
 				003FAAA31290CCB1002D6860 /* Clipboard.h in Headers */,
 				003FABA71290ED38002D6860 /* AppNative.h in Headers */,
@@ -3497,7 +3551,7 @@
 				);
 				PRELINK_LIBS = "../lib/macosx/libboost_filesystem.a ../lib/macosx/libz.a ../lib/macosx/libboost_system.a ../lib/macosx/libboost_date_time.a";
 				PRODUCT_NAME = cinder_d;
-				SDKROOT = macosx;
+				SDKROOT = macosx10.11;
 				VALID_ARCHS = "i386 x86_64";
 			};
 			name = Debug;
@@ -3531,7 +3585,7 @@
 				);
 				PRELINK_LIBS = "../lib/macosx/libboost_filesystem.a ../lib/macosx/libz.a ../lib/macosx/libboost_system.a ../lib/macosx/libboost_date_time.a";
 				PRODUCT_NAME = cinder;
-				SDKROOT = macosx;
+				SDKROOT = macosx10.11;
 				VALID_ARCHS = "i386 x86_64";
 			};
 			name = Release;

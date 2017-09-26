@@ -201,7 +201,7 @@ Font::Font( const string &name, float size )
 	: mObj( new Font::Obj( name, size ) )
 {
 }
-
+	
 Font::Font( DataSourceRef dataSource, float size )
 	: mObj( new Font::Obj( dataSource, size ) )
 {
@@ -211,6 +211,16 @@ const vector<string>& Font::getNames( bool forceRefresh )
 {
 	return FontManager::instance()->getNames( forceRefresh );
 }
+
+	// ROGER
+	Font::Font( const string &name, float size, GLenum filter )
+	: mObj( new Font::Obj( name, size, filter ) )
+	{
+	}
+	Font::Font( DataSourceRef dataSource, float size, GLenum filter )
+	: mObj( new Font::Obj( dataSource, size, filter ) )
+	{
+	}
 
 Font Font::getDefault()
 {
@@ -714,6 +724,9 @@ Font::Obj::Obj( const string &aName, float aSize )
 	fontCollection->Release();
 	writeFactory->Release();
 #endif
+	
+	// ROGER
+	mMinMagFilter = GL_LINEAR;
 }
 
 #if defined( CINDER_COCOA )
@@ -797,7 +810,28 @@ Font::Obj::Obj( DataSourceRef dataSource, float size )
 	FT_New_Memory_Face(FontManager::instance()->mLibrary, (FT_Byte*)dataSource->getBuffer().getData(), dataSource->getBuffer().getDataSize(), 0, &mFace);
 	FT_Set_Pixel_Sizes(mFace, 0, (int)size);
 #endif
+	
+	// ROGER
+	mMinMagFilter = GL_LINEAR;
 }
+	
+	// ROGER
+	Font::Obj::Obj( const string &aName, float aSize, GLenum filter )
+	: Font::Obj::Obj( aName, aSize )
+#if defined( CINDER_MSW )
+	, mHfont( 0 )
+#endif
+	{
+		mMinMagFilter = filter;
+	}
+	Font::Obj::Obj( DataSourceRef dataSourceame, float aSize, GLenum filter )
+	: Font::Obj::Obj( dataSourceame, aSize )
+#if defined( CINDER_MSW )
+	, mHfont( 0 )
+#endif
+	{
+		mMinMagFilter = filter;
+	}
 
 Font::Obj::~Obj()
 {
