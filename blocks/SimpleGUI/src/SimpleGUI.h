@@ -85,6 +85,7 @@ namespace cinder { namespace sgui {
 		static ColorA lockedColor;
 		static ColorA bgColor;
 		static ColorA textColor;
+		static ColorA textColor2;
 		static ColorA mouseOverColor;
 		static ColorA markerColor;
 		static Vec2f spacing;
@@ -839,12 +840,13 @@ namespace cinder { namespace sgui {
 		void update();
 		void setText(const std::string& text);
 		Vec2f draw(Vec2f pos);
-		LabelControl * setWrap(bool _b)	{ wrap = _b; this->update(); return this; }		// chained setters
+		LabelControl * setWrap(bool _b);	// chained setters
 		bool valueHasChanged();
 		// ROGER
 		std::string * var;
 		std::string lastVar;
 		gl::Texture wrapTex;
+		gl::Texture::Format wrapTexFmt;
 		bool wrap;
 		bool hideNull;
 	};

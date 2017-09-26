@@ -60,6 +60,18 @@ namespace cinder { namespace qb {
 		mTouch.enable( settings );
 	}
 	
+	//
+	// Statics
+	//
+	float qbMain::getScreenDensity()
+	{
+		return app::AppBasic::get()->getWindowContentScale();
+	}
+	bool qbMain::isRetina()
+	{
+		return (qbMain::getScreenDensity() == 2.0f);
+	}
+
 	
 	//
 	// ALL AUTOMATIC
@@ -335,10 +347,11 @@ namespace cinder { namespace qb {
 	//
 	void qbMain::resizeRender( int w, int h )
 	{
-		mRenderWidth = w;
-		mRenderHeight = h;
+		// RETINA
+		mRenderWidth = w * this->getScreenDensity();
+		mRenderHeight = h * this->getScreenDensity();
 		mRenderAspect = (mRenderWidth / (float)mRenderHeight);
-		mRenderSize = Vec2i( w, h );
+		mRenderSize = Vec2i( mRenderWidth, mRenderHeight );
 		mRenderBounds = Area( 0, 0, mRenderWidth, mRenderHeight );
 		if ( mDomeMaster.isEnabled() )
 			mDomeMaster.setup( mRenderWidth, mRenderHeight );
@@ -394,9 +407,10 @@ namespace cinder { namespace qb {
 		mWindowHeight = h;
 		mAspectWindow = (mWindowWidth / (float)mWindowHeight);
 		this->resizePreview();
-		printf(">>>> QB::RESIZE WINDOW qb[%d/%d] win[%d/%d] %s\n",
+		printf(">>>> QB::RESIZE WINDOW qb[%d/%d] win[%d/%d] density[%.2f] %s\n",
 			   mRenderWidth,mRenderHeight,
 			   (int)getWindowWidth(),(int)getWindowHeight(),
+			   this->getScreenDensity(),
 			   (app::isFullScreen()?"FULLSCREEN":"WINDOWED"));
 	}
 	void qbMain::resizePreview()
@@ -642,8 +656,9 @@ namespace cinder { namespace qb {
 	// place WINDOW camera to draw final FBO preview
 	void qbMain::placeCameraWindow()
 	{
-		gl::setMatricesWindow( getWindowSize() );
-		gl::setViewport( getWindowBounds() );
+		// RETINA
+		gl::setMatricesWindow( getRenderSize() );
+		gl::setViewport( getRenderBounds() );
 	}
 
 	//////////////////////////////////////////////////////////////////
@@ -1074,10 +1089,14 @@ namespace cinder { namespace qb {
 				gl::color( Color::white() );
 				gl::enableAlphaBlending();
 				if ( App::get()->getSettings().isResizable() && !App::get()->isFullScreen() )
-					gl::draw( mCorner, Vec2f(getWindowWidth()-mCorner.getWidth(), getWindowHeight()-mCorner.getHeight()) );
+				{
+					float w = mCorner.getWidth() * this->getScreenDensity();
+					float h = mCorner.getHeight() * this->getScreenDensity();
+					gl::draw( mCorner, Rectf(getRenderWidth()-w, getRenderHeight()-h, getRenderWidth(), getRenderHeight()) );
+				}
 				// Syphon Icon
 				if ( mConfig->getBool(QBCFG_SYPHON_OUTPUT) )
-					gl::draw( mSyphonIcon, Rectf( getWindowWidth()-mSyphonIcon.getWidth(), 0, getWindowWidth(), mSyphonIcon.getHeight()) );
+					gl::draw( mSyphonIcon, Rectf( getRenderWidth()-mSyphonIcon.getWidth(), 0, getRenderWidth(), mSyphonIcon.getHeight()) );
 				gl::disableAlphaBlending();
 			}
 		}

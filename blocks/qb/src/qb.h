@@ -36,11 +36,12 @@ namespace cinder { namespace qb {
 #define _sys					(qb::__qb.sys())
 
 // Render unit: The rendered scene size in pixels
+#define QB_RENDER_SIZE			(_qb.getRenderSize())
 #define QB_RENDER_WIDTH			(_qb.getRenderWidth())
 #define QB_RENDER_HEIGHT		(_qb.getRenderHeight())
-#define QB_RENDER_SIZE			(_qb.getRenderSize())
 #define QB_RENDER_ASPECT		(_qb.getRenderAspect())
 #define QB_RENDER_BOUNDS		(_qb.getRenderBounds())
+#define QB_RENDER_DENSITY		(qb::qbMain::getScreenDensity())
 
 // Render unit: The rendered scene size in pixels
 #define QB_WINDOW_WIDTH			(_qb.getWindowWidth())
@@ -89,6 +90,7 @@ namespace cinder { namespace qb {
 //
 // MULTI PURPOSE DEFINES
 // 
+#define IS_RETINA (qbMain::isRetina())
 #ifndef TWO_PI
 #define TWO_PI (M_PI*2.0f)
 #endif

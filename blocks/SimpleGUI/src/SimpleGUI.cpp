@@ -45,6 +45,9 @@
 #include <sstream>
 #include <fstream>
 #include <iosfwd>
+#ifdef QB
+#include "qb.h"
+#endif
 
 #ifndef RELEASE
 //#define DEBUG_FBO
@@ -54,6 +57,20 @@
 
 #define SLIDER_COLOR	( locked ? SimpleGUI::lockedColor : SimpleGUI::sliderColor )
 #define TEXT_COLOR		( important ? SimpleGUI::sliderColor : SimpleGUI::textColor )
+
+#ifdef QB
+#define SGUI_DENSITY	QB_RENDER_DENSITY
+#define SGUI_SIZE		QB_RENDER_SIZE
+#define SGUI_BOUNDS		QB_RENDER_BOUNDS
+#define SGUI_WIDTH		QB_RENDER_WIDTH
+#define SGUI_HEIGHT		QB_RENDER_HEIGHT
+#else
+#define SGUI_DENSITY	1.0f
+#define SGUI_SIZE		app::getWindowSize()
+#define SGUI_BOUNDS		app::getWindowBounds()
+#define SGUI_WIDTH		app::getWindowWidth()
+#define SGUI_HEIGHT		app::getWindowHeight()
+#endif
 
 using namespace ci::app;
 
@@ -68,6 +85,7 @@ namespace cinder { namespace sgui {
 	ColorA SimpleGUI::sliderColor = ColorA(1, 1, 1, 1);
 	ColorA SimpleGUI::bgColor = ColorA(0, 0, 0, 0.75);
 	ColorA SimpleGUI::textColor = ColorA(1,1,1,1);
+	ColorA SimpleGUI::textColor2 = ColorA(0.3, 0.3, 0.3, 1);
 	ColorA SimpleGUI::mouseOverColor = ColorA(0.75,0.75,0.75,1);
 	ColorA SimpleGUI::markerColor = ColorA(0.55,0.55,0.55,1);
 	
@@ -98,8 +116,8 @@ namespace cinder { namespace sgui {
 	}
 	
 	void SimpleGUI::init(App* app) {
-		SimpleGUI::textFont = Font(loadResource("pf_tempesta_seven.ttf"), 8);		// original
-		//SimpleGUI::textFont = Font(loadResource("pf_tempesta_seven_ROGER.ttf"), 8);	// tuned
+		SimpleGUI::textFont = Font(loadResource("pf_tempesta_seven.ttf"), 8, GL_NEAREST);	// original
+		//SimpleGUI::textFont = Font(loadResource("pf_tempesta_seven_ROGER.ttf"), 8);		// tuned
 		//SimpleGUI::textFont = Font("Arial", 12);
 		selectedControl = NULL;
 		app->setFpsSampleInterval( 0.2 );
@@ -378,7 +396,7 @@ namespace cinder { namespace sgui {
 			bool updated = false;
 			if ( !mFbo || bShouldResize )
 			{
-				mFbo = gl::Fbo( app::getWindowWidth(), app::getWindowHeight(), true, true, false );
+				mFbo = gl::Fbo( SGUI_WIDTH, SGUI_HEIGHT, true, true, false );
 				mFbo.getTexture().setFlipped();
 				bShouldResize = false;
 				bForceRedraw = true;
@@ -394,6 +412,7 @@ namespace cinder { namespace sgui {
 				gl::clear( ColorA::zero() );
 			gl::setMatricesWindow( mFbo.getSize() );
 			gl::setViewport( mFbo.getBounds() );
+			gl::scale(SGUI_DENSITY, SGUI_DENSITY);
 			//gl::clear( ColorA(1,0,0,0.5) );	// debug size with color
 			this->drawGui();
 			mFbo.unbindFramebuffer();
@@ -403,10 +422,10 @@ namespace cinder { namespace sgui {
 #endif
 
 			// draw over
-			Rectf bounds = Rectf( Vec2f(0,0), this->getSize() );
-			Area srcFlipped = Area( bounds.x1, app::getWindowHeight()-bounds.y1, bounds.x2, app::getWindowHeight()-bounds.y2 );
-			gl::setMatricesWindow( getWindowSize() );
-			gl::setViewport( getWindowBounds() );
+			Rectf bounds = Rectf( Vec2f(0,0), this->getSize() * SGUI_DENSITY );
+			Area srcFlipped = Area( bounds.x1, SGUI_HEIGHT-bounds.y1, bounds.x2, SGUI_HEIGHT-bounds.y2 );
+			gl::setMatricesWindow( SGUI_SIZE );
+			gl::setViewport( SGUI_BOUNDS );
 			gl::enableAlphaBlending();
 			gl::color( ColorA(1,1,1,mAlpha.value()) );
 			gl::draw( mFbo.getTexture(), srcFlipped, bounds );
@@ -418,8 +437,8 @@ namespace cinder { namespace sgui {
 		}
 		else
 		{
-			gl::setMatricesWindow(getWindowSize());
-			gl::setViewport( getWindowBounds() );
+			gl::setMatricesWindow(SGUI_SIZE);
+			gl::setViewport( SGUI_BOUNDS );
 			gl::color( ColorA::white() );
 			this->drawGui();
 		}
@@ -1755,7 +1774,7 @@ namespace cinder { namespace sgui {
 		
 		float x = pos.x + ( asButton ? SimpleGUI::buttonGap.x : SimpleGUI::radioSize.x + SimpleGUI::padding.x*2 );
 		gl::enableAlphaBlending();
-		gl::drawString( ((*var)?name:nameOff), Vec2f(x, pos.y), (asButton&&(*var) ? SimpleGUI::darkColor : SimpleGUI::textColor), SimpleGUI::textFont);					
+		gl::drawString( ((*var)?name:nameOff), Vec2f(x, pos.y), (asButton&&(*var) ? SimpleGUI::textColor2 : SimpleGUI::textColor), SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 		
 		pos.y += backArea.getHeight() + SimpleGUI::spacing.y;	
@@ -2560,8 +2579,8 @@ namespace cinder { namespace sgui {
 	}
 	void ArcballVarControl::onResize()
 	{
-		mArcball.setWindowSize( getWindowSize() );
-		//mArcball.setRadius( getWindowHeight() / 2.0f );
+		mArcball.setWindowSize( SGUI_SIZE );
+		//mArcball.setRadius( SGUI_HEIGHT / 2.0f );
 	}
 
 
@@ -2792,7 +2811,7 @@ namespace cinder { namespace sgui {
 		for (int i = 0 ; i < items.size() ; i++) {
 			gl::drawString(items[i].label, 
 						   items[i].activeArea.getUpperLeft() + SimpleGUI::buttonGap,
-						   this->isSelected(i) ? SimpleGUI::darkColor : SimpleGUI::textColor, 
+						   this->isSelected(i) ? SimpleGUI::textColor2 : SimpleGUI::textColor,
 						   SimpleGUI::textFont);
 		}
 		gl::disableAlphaBlending();
@@ -3002,11 +3021,11 @@ namespace cinder { namespace sgui {
 		if ( centered )
 		{
 			Vec2f p = pos + Vec2f( SimpleGUI::buttonSize.x * 0.5f, 0);
-			gl::drawStringCentered(name, Vec2f(p), pressed ? SimpleGUI::darkColor : SimpleGUI::textColor, SimpleGUI::textFont);
+			gl::drawStringCentered(name, Vec2f(p), pressed ? SimpleGUI::textColor2 : SimpleGUI::textColor, SimpleGUI::textFont);
 		}
 		else
 		{
-			ColorA c = ( pressed ? SimpleGUI::darkColor : SimpleGUI::textColor );
+			ColorA c = ( pressed ? SimpleGUI::textColor2 : SimpleGUI::textColor );
 			gl::drawString(name, pos + SimpleGUI::buttonGap, c, SimpleGUI::textFont);
 			if (name2.length())
 				gl::drawStringRight(name2, pos + Vec2f(SimpleGUI::buttonSize.x,0) - SimpleGUI::buttonGap/2, c, SimpleGUI::textFont);
@@ -3063,13 +3082,25 @@ namespace cinder { namespace sgui {
 		}
 		this->update();
 	}
+	LabelControl * LabelControl::setWrap(bool _b)
+	{
+		wrap = _b;
+		if (_b)
+		{
+			wrapTexFmt = gl::Texture::Format();
+			wrapTexFmt.setMinFilter(GL_NEAREST);
+			wrapTexFmt.setMagFilter(GL_NEAREST);
+		}
+		this->update();
+		return this;	// chained setters
+	}
 	void LabelControl::update() {
 		float h = SimpleGUI::labelSize.y;
 		if ( wrap && name.length() )
 		{
 			TextBox tbox = TextBox().size(Vec2i(SimpleGUI::sliderSize.x,TextBox::GROW)).font(SimpleGUI::textFont).text(name);
 			tbox.setColor( TEXT_COLOR );
-			wrapTex = gl::Texture( tbox.render() );
+			wrapTex = gl::Texture( tbox.render(), wrapTexFmt );
 			h = floor(tbox.measure().y);
 		}
 		backArea = Rectf(( -SimpleGUI::padding).x,
@@ -3220,7 +3251,7 @@ namespace cinder { namespace sgui {
 		gl::drawSolidRect(activeArea);
 
 		gl::enableAlphaBlending();
-		gl::drawString( (var?(*var?name:nameOff):name), (pos + SimpleGUI::tabGap), (selected ? SimpleGUI::darkColor : SimpleGUI::textColor), SimpleGUI::textFont);
+		gl::drawString( (var?(*var?name:nameOff):name), (pos + SimpleGUI::tabGap), (selected ? SimpleGUI::textColor2 : SimpleGUI::textColor), SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 
 		if (var)

@@ -43,6 +43,10 @@ public:
 	void	init( int _w, int _h, bool _autoWindowSize=true );
 	void	initDomeMaster()						{ mDomeMaster.setup( mRenderWidth, mRenderHeight ); }
 	void	setScreenName(std::string name)			{ mScreenName = name; mConfig->guiSetName(name); };
+	
+	// Statics
+	static float	getScreenDensity();
+	static bool		isRetina();
 
 	// Events
 	void	onResize();
