@@ -8,11 +8,11 @@
 #include "qbRenderer.h"
 #include "qb.h"
 #include "cinder/Filesystem.h"
-#include "QuickTime/ImageCompression.h"
 
 using namespace ci;
 using namespace ci::gl;
 #ifdef QTXX
+#include "QuickTime/ImageCompression.h"
 using namespace ci::qtime;
 #endif
 
