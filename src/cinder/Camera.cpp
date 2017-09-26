@@ -212,7 +212,7 @@ void Camera::calcInverseModelView() const
 // CameraPersp
 
 CameraPersp::CameraPersp( int pixelWidth, int pixelHeight, float fovDegrees )
-	: Camera(), mLensShift( Vec2f::zero() )
+	: Camera(), mLensShift( Vec2f::zero() ), mFlipped(false)
 {
 	float eyeX 		= pixelWidth / 2.0f;
 	float eyeY 		= pixelHeight / 2.0f;
@@ -228,7 +228,7 @@ CameraPersp::CameraPersp( int pixelWidth, int pixelHeight, float fovDegrees )
 }
 
 CameraPersp::CameraPersp( int pixelWidth, int pixelHeight, float fovDegrees, float nearPlane, float farPlane )
-	: Camera(), mLensShift( Vec2f::zero() )
+	: Camera(), mLensShift( Vec2f::zero() ), mFlipped(false)
 {
 	float halfFov, theTan, aspect;
 
@@ -245,7 +245,7 @@ CameraPersp::CameraPersp( int pixelWidth, int pixelHeight, float fovDegrees, flo
 
 // Creates a default camera resembling Maya Persp
 CameraPersp::CameraPersp()
-	: Camera(), mLensShift( Vec2f::zero() )
+	: Camera(), mLensShift( Vec2f::zero() ), mFlipped(false)
 {
 	lookAt( Vec3f( 28.0f, 21.0f, 28.0f ), Vec3f::zero(), Vec3f::yAxis() );
 	setCenterOfInterest( 44.822f );
@@ -268,7 +268,7 @@ void CameraPersp::calcProjection() const
 	mFrustumBottom	= -mFrustumTop;
 	mFrustumRight	=  mFrustumTop * mAspectRatio;
 	mFrustumLeft	= -mFrustumRight;
-
+	
 	// perform lens shift
 	if( mLensShift.y != 0.0f ) {
 		mFrustumTop = ci::lerp<float, float>(0.0f, 2.0f * mFrustumTop, 0.5f + 0.5f * mLensShift.y);
@@ -279,6 +279,14 @@ void CameraPersp::calcProjection() const
 		mFrustumLeft = ci::lerp<float, float>(0.0f, 2.0f * mFrustumLeft, 0.5f - 0.5f * mLensShift.x);
 	}
 
+	// ROGER
+	if (mFlipped)
+	{
+		float top = mFrustumTop;
+		mFrustumTop = mFrustumBottom;
+		mFrustumBottom = top;
+	}
+	
 	float *m = mProjectionMatrix.m;
 	m[ 0] =  2.0f * mNearClip / ( mFrustumRight - mFrustumLeft );
 	m[ 4] =  0.0f;
@@ -400,7 +408,7 @@ void CameraPersp::setLensShift(float horizontal, float vertical)
 		m[15] =  ( mFarClip + mNearClip ) / ( 2.0f * mFarClip*mNearClip );
 	}*/
 	
-	
+
 	
 CameraPersp	CameraPersp::getFrameSphere( const Sphere &worldSpaceSphere, int maxIterations ) const
 {

@@ -174,7 +174,9 @@ class CameraPersp : public Camera {
 
 	// ROGER
 	//virtual void		calcProjectionFromGroundLevel();
-	
+	void flip(bool f=true)	 { mFlipped = f;  mProjectionCached = false; }
+	bool mFlipped;
+
   protected:
 	Vec2f	mLensShift;
 
