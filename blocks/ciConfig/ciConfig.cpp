@@ -39,7 +39,7 @@
 
 // comment to disable versosity
 #ifndef RELEASE
-#define VERBOSE
+//#define VERBOSE
 //#define OSC_VERBOSE
 #endif
 
@@ -60,6 +60,7 @@ namespace cinder {
 		inPostSetCallback = false;
 		postSetCallback_fn = NULL;
 		postResetCallback_fn = NULL;
+		postLoadCallback_fn = NULL;
 		bStarted = false;
 		mCurrentDefault = 0;
 		mAppName = AppBasic::get()->getAppName();
