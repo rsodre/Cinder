@@ -120,12 +120,12 @@ void syphonClient::bind(int unit)
 		this->refresh();
 		[pool drain];
 
-		if (mTex)
+		if (getTexture())
 		{
 			// Save old GL_TEXTURE_RECTANGLE_ARB binding or else we can mess GL_TEXTURE_2D used after
 			glGetBooleanv( GL_TEXTURE_RECTANGLE_ARB, &mOldTargetBinding );
 			
-			mTex.enableAndBind(unit);
+			getTexture().enableAndBind(unit);
 		}
     }
     else
@@ -136,9 +136,9 @@ void syphonClient::unbind(int unit)
 {
     if(bSetup)
     {
-		if (mTex)
+		if (getTexture())
 		{
-			mTex.unbind(unit);
+			getTexture().unbind(unit);
 			
 			if( mOldTargetBinding )
 				glEnable( GL_TEXTURE_RECTANGLE_ARB );
@@ -159,28 +159,34 @@ void syphonClient::unbind(int unit)
 void syphonClient::draw( const Vec2f & pos )
 {
 	if(bSetup){
-		this->bind();
-		if (mTex)
-			gl::draw( mTex, pos );
-		this->unbind();
+		if (getTexture())
+		{
+			this->bind();
+			gl::draw( getTexture(), pos );
+			this->unbind();
+		}
 	}
 }
 void syphonClient::draw( const Rectf & rect )
 {
 	if(bSetup){
-		this->bind();
-		if (mTex)
-			gl::draw( mTex, rect );
-		this->unbind();
+		if (getTexture())
+		{
+			this->bind();
+			gl::draw( getTexture(), rect );
+			this->unbind();
+		}
 	}
 }
 void syphonClient::draw( const Area & srcArea, const Rectf & destRect )
 {
 	if(bSetup){
-		this->bind();
-		if (mTex)
-			gl::draw( mTex, srcArea, destRect );
-		this->unbind();
+		if (getTexture())
+		{
+			this->bind();
+			gl::draw( getTexture(), srcArea, destRect );
+			this->unbind();
+		}
 	}
 }
 
@@ -216,33 +222,71 @@ void syphonClient::refresh( bool force )
 	
 	// Get Client
 	SyphonClient *client = [(SyphonNameboundClient*)mClient client];
-	mCurrentFrame = [(SyphonNameboundClient*)mClient currentFrame];
 	bHasNewFrame = [client hasNewFrame];
-	
-	// Grab Frame
-	SyphonImage* latestImage = [client newFrameImageForContext:CGLGetCurrentContext()];
-	//printf("SyphonImage [%d] current [%d] new [%d]\n",(int)latestImage,(int)mCurrentFrame,bHasNewFrame);
-	if (latestImage)
+	if (bHasNewFrame)
 	{
-		NSSize texSize = [latestImage textureSize];
-		GLuint m_id = [latestImage textureName];
-		[latestImage release];
+		mCurrentFrame = [(SyphonNameboundClient*)mClient currentFrame];
 		
-		bool newTex = false;
-		if ( !mTex )
-			newTex = true;
-		else if ( texSize.width != mTex.getWidth() || texSize.height != mTex.getHeight() || m_id != mTex.getId() )
-			newTex = true;
-		
-		if (newTex)
+		// Grab Frame
+		SyphonImage* latestImage = [client newFrameImage];
+		//printf("SyphonImage [%d] current [%d] new [%d]\n",(int)latestImage,(int)mCurrentFrame,bHasNewFrame);
+		if (latestImage)
 		{
-			mTex = gl::Texture(GL_TEXTURE_RECTANGLE_ARB, m_id, texSize.width, texSize.height, true);
-			mTex.setFlipped();
-			//printf("Syphon NEW TEX id[%d] w[%d] h[%d]\n",(int)m_id,(int)texSize.width,(int)texSize.height);
+			NSSize texSize = [latestImage textureSize];
+			GLuint m_id = [latestImage textureName];
+			[latestImage release];
+			//printf("frame [%d] texSize [%d]\n",mCurrentFrame,m_id);
+			
+			bool newTex = false;
+			if ( !mTex )
+				newTex = true;
+			else if ( texSize.width != mTex.getWidth() || texSize.height != mTex.getHeight() || m_id != mTex.getId() )
+				newTex = true;
+			
+			if (newTex)
+			{
+				mTex = gl::Texture(GL_TEXTURE_RECTANGLE_ARB, m_id, texSize.width, texSize.height, true);
+				mTex.setFlipped();
+#ifdef SYPHON_HARD_COPY
+				gl::Fbo::Format fmt = gl::Fbo::Format();
+				fmt.setTarget( GL_TEXTURE_RECTANGLE_ARB );
+				fmt.setColorInternalFormat( mTex.getInternalFormat() );
+				fmt.enableDepthBuffer( false );
+				mFbo = gl::Fbo(texSize.width, texSize.height, fmt);
+				mFbo.getTexture().setFlipped();
+#endif
+				//printf("Syphon NEW TEX id[%d] w[%d] h[%d]\n",(int)m_id,(int)texSize.width,(int)texSize.height);
+			}
 		}
+		// Do not erase! Keep last received frame
+		//	else if ( mTex )
+		//		mTex = gl::Texture();
+		
+#ifdef SYPHON_HARD_COPY
+		if (mTex && latestImage)
+		{
+			Area vp = gl::getViewport();
+			gl::pushMatrices();
+			
+			mFbo.bindFramebuffer();
+			gl::setMatricesWindow( mFbo.getSize() );
+			gl::setViewport( mFbo.getBounds() );
+			gl::clear( Color::yellow() );
+			mTex.enableAndBind();
+//			glPushMatrix();
+//			gl::translate( 0, mFbo.getHeight() );
+//			gl::scale( 1.0, -1.0 );
+			gl::draw(mTex);
+//			glPopMatrix();
+			mTex.unbind();
+			mFbo.unbindFramebuffer();
+			
+			gl::popMatrices();
+			gl::setViewport( vp );
+		}
+#endif
 	}
-	else if ( mTex )
-		mTex = gl::Texture();
+	
 }
 
 //

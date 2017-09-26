@@ -169,6 +169,17 @@ YES if clients are currently attached, NO otherwise. If you generate frames freq
 - (void)publishFrameTexture:(GLuint)texID textureTarget:(GLenum)target imageRegion:(NSRect)region textureDimensions:(NSSize)size flipped:(BOOL)isFlipped;
 
 /*! 
+ Renders the OpenGL code of a block to the server texture, then publish it.
+ The render block should do all the OpenGL rendering, but not bind a framebuffer or change the viewport
+	or it will
+ 
+ This method does not lock the server's CGL context. If there is a chance of other threads using the context during calls to this method, bracket it with calls to CGLLockContext() and CGLUnlockContext(), passing in the value of the server's context property as the argument.
+ @param renderBlock A block where you do your actual rendering
+ @param size The full size of render buffer
+*/
+- (void)publishRenderBlock:(void (^)(void))renderBlock size:(NSSize)size;
+
+/*! 
  Binds an FBO for you to publish a frame of the given dimensions by drawing into the server's context (check it using the context property). If YES is returned, you must pair this with a call to -unbindAndPublish once you have finished drawing. If NO is returned you should abandon drawing and not call -unbindAndPublish.
  This method does not lock the server's CGL context. If there is a chance other threads may use the context during calls to this method, bracket it with calls to CGLLockContext() and CGLUnlockContext(), passing in the value of the server's context property as the argument.
  @param size The size the frame you wish to publish.
@@ -194,7 +205,7 @@ YES if clients are currently attached, NO otherwise. If you generate frames freq
 - (SyphonImage *)newFrameImage;
 
 /*! 
- Stops the server instance. In garbage-collected applications you must call this method prior to removing strong references to the server. In non-garbage-collected applications, use of this method is optional.
+ Stops the server instance. Use of this method is optional and releasing all references to the server has the same effect.
 */
 
 - (void)stop;

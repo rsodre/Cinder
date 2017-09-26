@@ -31,6 +31,7 @@
 #pragma once
 
 #include "cinder/gl/Texture.h"
+#include "cinder/gl/Fbo.h"
 
 class syphonClient {
 	public:
@@ -53,7 +54,11 @@ class syphonClient {
 	void draw( const ci::Rectf & rect );
 	void draw( const ci::Area & srcArea, const ci::Rectf & destRect );
 
+#ifdef SYPHON_HARD_COPY
+	ci::gl::Texture & getTexture()	{ return (mFbo ? mFbo.getTexture() : mTex); }
+#else
 	ci::gl::Texture & getTexture()	{ return mTex; }
+#endif
 	std::string & getAppName()		{ return mAppName; }
 	std::string & getServerName()	{ return mServerName; }
 	int getWidth()					{ return ( mTex ? mTex.getWidth() : 0 ); }
@@ -77,6 +82,9 @@ protected:
 	bool bHasNewFrame;
 	uint32_t refreshFrame;
 	unsigned int mCurrentFrame;
+#ifdef SYPHON_HARD_COPY
+	ci::gl::Fbo mFbo;
+#endif
 	
 	void refresh( bool force=false );
 };

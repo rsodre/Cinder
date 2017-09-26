@@ -205,7 +205,10 @@
         }
         else
         {
-            newClient = [[SyphonClient alloc] initWithServerDescription:[matches lastObject] options:nil newFrameHandler:^(SyphonClient *client) {
+            newClient = [[SyphonClient alloc] initWithServerDescription:[matches lastObject]
+																context:CGLGetCurrentContext()
+																options:nil
+														newFrameHandler:^(SyphonClient *client) {
 				[self handleNewFrame];
 			}];
         }
@@ -224,7 +227,10 @@
 	if ((_client == nil || ![self parametersMatchDescription:[_client serverDescription]])
 		&& [self parametersMatchDescription:newInfo])
 	{
-		SyphonClient *newClient = [[SyphonClient alloc] initWithServerDescription:newInfo options:nil newFrameHandler:^(SyphonClient *client) {
+		SyphonClient *newClient = [[SyphonClient alloc] initWithServerDescription:newInfo
+																		  context:CGLGetCurrentContext()
+																		  options:nil
+																  newFrameHandler:^(SyphonClient *client) {
 			[self handleNewFrame];
 		}];
 		
@@ -251,7 +257,10 @@
 	// If we don't have a matching client but this client's new details match, then set up a new client
 	if (_client == nil && [self parametersMatchDescription:newInfo])
 	{
-		SyphonClient *newClient = [[SyphonClient alloc] initWithServerDescription:newInfo options:nil newFrameHandler:^(SyphonClient *client) {
+		SyphonClient *newClient = [[SyphonClient alloc] initWithServerDescription:newInfo
+																		  context:CGLGetCurrentContext()
+																		  options:nil
+																  newFrameHandler:^(SyphonClient *client) {
 			[self handleNewFrame];
 		}];
 		
