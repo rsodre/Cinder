@@ -65,7 +65,11 @@ namespace cinder { namespace qb {
 	//
 	float qbMain::getScreenDensity()
 	{
+#if defined RETINA_DISPLAY && RETINA_DISPLAY==1
 		return app::AppBasic::get()->getWindowContentScale();
+#else
+		return 1.0f;
+#endif
 	}
 	bool qbMain::isRetina()
 	{
@@ -131,6 +135,7 @@ namespace cinder { namespace qb {
 				}
 				// Force window resize
 				app::setWindowSize( ww, wh );
+				this->resizeWindow( ww, wh );
 			}
 		}
 		
