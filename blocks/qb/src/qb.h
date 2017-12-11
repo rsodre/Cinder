@@ -71,7 +71,7 @@ namespace cinder { namespace qb {
 #define QB_APP_NAME				(sysinfo::SysInfo::getAppName())
 #define QB_APP_VERSION			(sysinfo::SysInfo::getAppVersion())
 #define QB_APP_VERSION_LONG		(sysinfo::SysInfo::getAppVersionLong())
-#define QB_CAPTURE_FOLDER		"/Volumes/HDD/CAPTURE/"
+#define QB_CAPTURE_FOLDER		"/Users/roger/Movies/CAPTURE/"
 #define QB_FONT					(_qb.mFont)
 
 // Flags
