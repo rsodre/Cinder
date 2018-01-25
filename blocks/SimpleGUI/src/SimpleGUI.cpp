@@ -677,11 +677,11 @@ namespace cinder { namespace sgui {
 		{
 			if ( mAlpha == 0.0 )
 				mAlpha = 0.001f;	// already ON
-			timeline().apply( &mAlpha, 1.0f, 0.333f, EaseInCubic() );
+			timeline().apply( &mAlpha, 1.0f, 0.2f, EaseInCubic() );
 			bForceRedraw = true;
 		}
 		else
-			timeline().apply( &mAlpha, 0.0f, 0.333f, EaseOutCubic() );
+			timeline().apply( &mAlpha, 0.0f, 0.2f, EaseOutCubic() );
 	}
 	
 	void SimpleGUI::dump() {
