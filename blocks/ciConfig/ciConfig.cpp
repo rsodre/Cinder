@@ -1517,7 +1517,7 @@ namespace cinder {
 		ciConfigParam *p = params[id];
 		if ( p == NULL )
 		{
-			printf("config GET NULL [%d,%d]\n",id,i);
+			//printf("config GET NULL [%d,%d]\n",id,i);
 			return 0.0;
 		}
 		switch (p->type)
@@ -1826,8 +1826,6 @@ namespace cinder {
 #ifdef VERBOSE
 					printf ("READ XML param %d: %s = %s\n",pid,name.c_str(),value.c_str());
 #endif
-					if (name == "DOME_DIAMETER_M")
-						printf("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
 					this->preserveProg( pid, pp );
 					this->set(pid, value.c_str(), pp);
 					this->setLoaded(pid, true);
