@@ -128,9 +128,9 @@ class MovieWriter {
 
 
 	MovieWriter() {}
-	MovieWriter( const fs::path &path, int32_t width, int32_t height, const Format &format = Format::Format() );
+	MovieWriter( const fs::path &path, int32_t width, int32_t height, const Format &format = Format() );
 
-	static MovieWriterRef	create( const fs::path &path, int32_t width, int32_t height, const Format &format = Format::Format() )
+	static MovieWriterRef	create( const fs::path &path, int32_t width, int32_t height, const Format &format = Format() )
 		{ return std::shared_ptr<MovieWriter>( new MovieWriter( path, width, height, format ) ); }
 
 	//! Returns the Movie's default frame duration measured in seconds. You can also think of this as the Movie's frameRate.
