@@ -231,7 +231,7 @@ namespace cinder { namespace qb {
 		}
 		
 		// update Frame
-		bNewFrame = mSrc->updateFrame();
+		bNewFrame = ( playing ? mSrc->updateFrame() : false );
 	}
 
 	

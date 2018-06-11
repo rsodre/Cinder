@@ -419,6 +419,10 @@ namespace cinder { namespace qb {
 					mTrisExtrude.appendVertex( p1 );
 					mTrisExtrude.appendVertex( p2 );
 					mTrisExtrude.appendVertex( p3 );
+					mTrisExtrude.appendTexCoord( Vec2f( 0, 0 ) );
+					mTrisExtrude.appendTexCoord( Vec2f( 0, 1 ) );
+					mTrisExtrude.appendTexCoord( Vec2f( 1, 0 ) );
+					mTrisExtrude.appendTexCoord( Vec2f( 1, 1 ) );
 					// Save face Normal
 					normals.push_back( triangleNormal(p0, p1, p2) );
 					// line from up face to bottom face
