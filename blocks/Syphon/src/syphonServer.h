@@ -55,7 +55,7 @@ class syphonServer {
 	std::string getUUID();
 	NSDictionary * getDescription();
 
-	void publishScreen();
+	void publishScreen( bool displayMousePos=false );
     void publishTexture(ci::gl::Texture & inputTexture);
 	
     

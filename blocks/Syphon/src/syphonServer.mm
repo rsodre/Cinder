@@ -34,6 +34,14 @@
 #import <Syphon/Syphon.h>
 #include "syphonServer.h"
 
+#include "cinder/Cinder.h"
+#include "cinder/app/AppBasic.h"
+
+#ifdef QB
+#include "qb.h"
+#endif
+
+
 syphonServer::syphonServer()
 {
 	mSyphon = nil;
@@ -106,9 +114,28 @@ std::string syphonServer::getUUID()
 	return uuid;
 }
 
-void syphonServer::publishScreen()
+void syphonServer::publishScreen( bool displayMousePos )
 {
-	ci::gl::Texture mTex =  ci::gl::Texture(ci::app::copyWindowSurface());
+	ci::Surface surf = ci::app::copyWindowSurface();
+	if (displayMousePos)
+	{
+		ci::Surface::Iter it( surf.getIter() );
+		ci::Vec2i mousePos = ci::app::AppBasic::get()->getMousePosMainWindow() * QB_RENDER_DENSITY;
+		float maxDistance = 1;
+		while( it.line() ) {
+			while( it.pixel() ) {
+				ci::Vec2f pos = it.getPos();
+				float distance = fmin( abs(mousePos.x - pos.x), abs(mousePos.y - pos.y) );
+				if ( distance <= maxDistance )
+				{
+					it.r() = 255;
+					it.g() = 255;
+					it.b() = 255;
+				}
+			}
+		}
+	}
+	ci::gl::Texture mTex =  ci::gl::Texture( surf );
 	this->publishTexture( mTex );
 }
 
