@@ -273,11 +273,11 @@ namespace cinder { namespace qb {
 		gl::draw( mMaskTexture, QB_BOUNDS );
 		gl::disableAlphaBlending();
 	}
-	void qbDomeMaster::drawHorizonLine( float horizon )
+	void qbDomeMaster::drawHorizonLine( float horizon, Color lineColor )
 	{
 		// make?
 		glLineWidth( 1 );
-		gl::color( Color::gray(0.5f) );
+		gl::color( lineColor );
 		//glLineWidth( 2 );
 		//gl::color( Color::red() );
 		if ( mMeshBorder.start( horizon ) )

@@ -90,7 +90,7 @@ namespace cinder { namespace qb {
 		void			drawNormals();
 		void			drawNormals( Rectf bounds );
 		void			drawMask();
-		void			drawHorizonLine( float horizon=180.0 );
+		void			drawHorizonLine( float horizon=180.0, Color lineColor=Color::gray(0.5f) );
 		void			drawGrid( float horizon=180.0 );
 		void			drawMesh( Vec2f uv=Vec2f::one(), float horizon=180.0 );
 		
