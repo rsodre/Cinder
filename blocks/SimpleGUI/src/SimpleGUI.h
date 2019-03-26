@@ -38,7 +38,7 @@
 
 #include <vector>
 #include "cinder/app/App.h"
-#include "cinder/ArcBall.h"
+#include "cinder/Arcball.h"
 #include "cinder/Text.h"
 #include "cinder/gl/Texture.h"
 #include "cinder/gl/Fbo.h"

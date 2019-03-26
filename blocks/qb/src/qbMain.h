@@ -222,8 +222,10 @@ public:
 	qbRenderer		mRenderer;
 	qbPlayhead		mPlayhead;
 	qbDomeMaster	mDomeMaster;
-	qbPalette		mPalette;
 	qbTouch			mTouch;
+#ifdef QB_PALETTE
+	qbPalette		mPalette;
+#endif
 	Font			mFontHelvetica, mFont;
 	bool			bVerbose;
 	int				mDefaultCamera;

@@ -194,9 +194,11 @@ namespace cinder { namespace qb {
 		// Sources
 		this->addPath( getPathDirectory( app::getAppPath().string() ) + "Resources/" );
 		
+#ifdef QB_PALETTE
 		// Palette manager
 		mPalette.setupOsc();
-
+#endif
+		
 		bInited = true;
 	}
 
@@ -320,6 +322,7 @@ namespace cinder { namespace qb {
 		 */
 		
 		// Reduce palette?
+#ifdef QB_PALETTE
 		if ( bPaletteControls )
 		{
 			mPalette.reduce( theFile );
@@ -327,6 +330,7 @@ namespace cinder { namespace qb {
 			event.setHandled();
 			return;
 		}
+#endif
 		
 		// Send to sources
 		/*
@@ -922,8 +926,10 @@ namespace cinder { namespace qb {
 		mConfig->set(DUMMY_MOUSE_X, mMousePos.x);
 		mConfig->set(DUMMY_MOUSE_Y, mMousePos.y);
 		
+#ifdef QB_PALETTE
 		// Palette networking
 		mPalette.receiveOsc();
+#endif
 		
 		// Update timer
 		mPlayhead.update();

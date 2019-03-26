@@ -103,7 +103,9 @@ namespace cinder {
 		// init MIDI
 		midiPort = 0;
 		midiChannel = 1;
+#ifdef CFG_USE_MIDI
 		midiHub = NULL;
+#endif
 		// Do not enable devices for presets (if has parent, it's a preset)
 		if (parent == NULL)
 		{

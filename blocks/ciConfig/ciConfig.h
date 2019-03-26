@@ -33,12 +33,15 @@
 #define CFG_CATCH_LOOP_EVENTS
 // Cinder Touch
 #ifndef CINDER_COCOA_TOUCH
-//#define CFG_USE_OSC
 #define CFG_USE_MIDI
+//#define CFG_USE_OSC
 #endif
 
 //
 // Config OSC
+#if defined(CFG_USE_OSC) && defined(NO_CFG_USE_OSC)
+#undef CFG_USE_OSC
+#endif
 #ifdef CFG_USE_OSC
 #include "OscListener.h"
 #include "OscSender.h"
@@ -54,6 +57,9 @@ typedef osc::Message ofxOscMessage;
 //
 // MIDI
 //
+#if defined(CFG_USE_MIDI) && defined(NO_CFG_USE_MIDI)
+#undef CFG_USE_MIDI
+#endif
 #ifdef CFG_USE_MIDI
 #include "MidiHub.h"
 #endif

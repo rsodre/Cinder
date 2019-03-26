@@ -522,6 +522,7 @@ void qbConfig::postSetCallback(int id, int i)
 				pc5->enabled = ( this->getInt(QBCFG_PALETTE_COUNT) < 5 ? false : true );
 			 */
 			break;
+#ifdef QB_PALETTE
 		case QBCFG_PALETTE_NET_STATE:
 			_palette.setupOsc();
 			break;
@@ -540,6 +541,6 @@ void qbConfig::postSetCallback(int id, int i)
 		case QBCFG_PALETTE_5:
 			_palette.sendOsc(4);
 			break;
-
+#endif
 	}
 }

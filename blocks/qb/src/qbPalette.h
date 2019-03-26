@@ -5,6 +5,8 @@
 //  Copyright 2011 Studio Avante. All rights reserved.
 //
 #pragma once
+#ifndef NO_QB_PALETTE
+#define QB_PALETTE
 
 #include "cinder/Cinder.h"
 #include "cinder/app/AppBasic.h"
@@ -105,3 +107,4 @@ namespace cinder { namespace qb {
 	
 } } // cinder::qb
 
+#endif

@@ -78,11 +78,13 @@ namespace cinder { namespace qb {
 		{
 			this->loadSyphon( _f.substr(8), "" );
 		}
+#ifdef QB_PALETTE
 		else if ( _f.compare("qbSourcePalette") == 0 )
 		{
 			qbSourcePalette *newSrc = new qbSourcePalette();
 			this->setSource(newSrc);
 		}
+#endif
 		else
 		{
 			// Load by extension
