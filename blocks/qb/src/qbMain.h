@@ -27,7 +27,6 @@
 #include "qbDomeMaster.h"
 #include "qbPalette.h"
 #include "qbTouch.h"
-#include "SysInfo.h"
 
 #define QB_MAX_UNITS	8
 

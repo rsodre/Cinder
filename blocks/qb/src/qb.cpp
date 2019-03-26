@@ -212,13 +212,13 @@ namespace cinder { namespace qb {
 			}
 		}
 		
-		delete r;
-		delete g;
-		delete b;
+		delete[] r;
+		delete[] g;
+		delete[] b;
 		
-		delete vMIN;
-		delete vMAX;
-		delete dv;
+		delete[] vMIN;
+		delete[] vMAX;
+		delete[] dv;
 	}
 	
 	

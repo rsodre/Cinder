@@ -9,6 +9,7 @@
 #include <sstream>
 #include "qbConfig.h"
 #include "qb.h"
+#include "SysInfo.h"
 
 using namespace ci;
 using namespace ci::sgui;

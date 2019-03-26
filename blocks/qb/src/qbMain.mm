@@ -6,6 +6,7 @@
 //
 #include "qbMain.h"
 #include "qb.h"
+#include "SysInfo.h"
 #include "cinder/Display.h"
 
 const float winScales[] = { 0.8, 0.75, 0.5, 0.25, 0.2, 0.1, 0.08, 0.075, 0.05, 0.025, 0.01, 0.0 };
