@@ -115,6 +115,12 @@ void GlslProg::loadShader( const char *shaderSource, GLint shaderType )
 	glGetShaderiv( (GLuint) handle, GL_COMPILE_STATUS, &status );
 	if( status != GL_TRUE ) {
 		std::string log = getShaderLog( (GLuint)handle );
+		
+		std::string line;
+		std::istringstream iss(shaderSource);
+		for ( auto lineNumber = 1u ; std::getline(iss, line); ++lineNumber )
+			std::cout << lineNumber << ": " << line << std::endl;
+		
 		throw GlslProgCompileExc( log, shaderType );
 	}
 	glAttachShader( mObj->mHandle, handle );
