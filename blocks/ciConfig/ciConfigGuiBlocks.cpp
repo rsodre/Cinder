@@ -7,6 +7,9 @@
 
 #include "ciConfigGuiBlocks.h"
 #include "cinder/Utilities.h"
+#ifdef BDVJ
+#include "lacy.h"
+#endif
 
 
 /////////////////////////////////////////////////////////////////
@@ -177,6 +180,11 @@ namespace cinder { namespace sgui {
 			mCfg->setValueLabels(_cfgSelector,	src->getList());
 			mSelectorControl = (IntVarControl*) mCfg->guiAddParam( _cfgSelector, "" );
 			mSelectorControl->setDisplayValue(false);
+#ifdef BDVJ
+			mCfg->guiAddSeparator();
+			mCfg->guiAddText("Test Patterns\nby Paul Bourke", true);
+			mCfg->guiAddButton("How to use", this, &ciGuiBlockQBSourceTab::cbDomePatterns);
+#endif
 		}
 		// COLUMN
 		mCfg->guiAddGroup( std::string("> FILE") );
@@ -314,6 +322,11 @@ namespace cinder { namespace sgui {
 	void ciGuiBlockQBSourceTab::cbRewind( ci::app::MouseEvent & event )
 	{
 		_qb.rewind();
+		event.setHandled();
+	}
+	void ciGuiBlockQBSourceTab::cbDomePatterns( ci::app::MouseEvent & event )
+	{
+		lacy::Lacy::OpenUrl( "http://paulbourke.net/dome/testpattern/" );
 		event.setHandled();
 	}
 	// get dropped file
