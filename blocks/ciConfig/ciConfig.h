@@ -488,7 +488,11 @@ public:
 	void setDefault(int def, int id, int i, float v);
 	void resetDefault(int def);
 	void resetDefault(int id, int def);
+#ifdef BLENDY_DOME_VJ
 	void reset()			{ this->resetDefault(0); }
+#else
+	void reset()			{ this->resetDefault(0); }
+#endif
 	void reset(int id)		{ this->resetDefault(id,0); }
 	virtual void setCurrentDefault(int def)	{ if (def < MAX_DEFAULTS ) mCurrentDefault = def; };
 
