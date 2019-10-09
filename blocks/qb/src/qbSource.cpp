@@ -78,6 +78,10 @@ namespace cinder { namespace qb {
 		{
 			this->loadSyphon( _f.substr(8), "" );
 		}
+		else if ( _f.compare(0,8,"ndi::") == 0 )
+		{
+			this->loadNDI( _f.substr(5), "" );
+		}
 #ifdef QB_PALETTE
 		else if ( _f.compare("qbSourcePalette") == 0 )
 		{
@@ -123,6 +127,13 @@ namespace cinder { namespace qb {
 	bool qbSourceSelector::loadSyphon( const std::string & _app, const std::string & _tex )
 	{
 		qbSourceSyphon *newSrc = new qbSourceSyphon();
+		newSrc->load( _app, _tex, mFlags );
+		this->setSource(newSrc);
+		return true;
+	}
+	bool qbSourceSelector::loadNDI( const std::string & _app, const std::string & _tex )
+	{
+		qbSourceNDI *newSrc = new qbSourceNDI();
 		newSrc->load( _app, _tex, mFlags );
 		this->setSource(newSrc);
 		return true;
@@ -622,6 +633,59 @@ namespace cinder { namespace qb {
 		// update desc
 		std::stringstream os;
 		os << "Syphon: " << mSize.x << " x " << mSize.y;
+		mDesc = os.str();
+		return true;
+	}
+	
+	
+	///////////////////////////////////////////
+	//
+	// NDI
+	//
+	bool qbSourceNDI::load( const std::string & _app, char _flags )
+	{
+		return this->load( _app, "", _flags );
+	}
+	bool qbSourceNDI::load( const std::string & _app, const std::string & _tex, char _flags )
+	{
+		mSyphonClient.setApplicationName( _app );
+		mSyphonClient.setServerName(_tex);
+		this->updateFrame(true);
+		
+		// source properties
+		bHasAlpha = true;
+		
+		// Make name
+		std::stringstream os;
+		os << _app;
+		if ( _tex.length() )
+			os << " - " << _tex;
+		mName = os.str();
+		mDesc2 = "";
+		mSpawnedAtFrame = app::getElapsedFrames();
+		this->play();	// Always playing
+		
+		printf("SOURCE NDI [%s] loaded!\n",_app.c_str());
+		return true;
+	}
+	//
+	// Get new Frame
+	// qbUpdateObject VIRTUAL
+	bool qbSourceNDI::updateFrame( bool _force )
+	{
+		if ( ! _force && ! mSyphonClient.hasNewFrame() )
+			return false;
+		mSyphonClient.update();
+		mTex = mSyphonClient.getTexture();
+		mSize = mSyphonClient.getSize();
+		if(mSurface)
+			mSurface = Surface8u();		// clear surface
+		// calc UV?
+		if (mTex)
+			this->makeUV( mTex.getMaxU(), mTex.getMaxV() );
+		// update desc
+		std::stringstream os;
+		os << "NDI: " << mSize.x << " x " << mSize.y;
 		mDesc = os.str();
 		return true;
 	}

@@ -203,9 +203,16 @@ namespace cinder { namespace sgui {
 		// COLUMN
 		mCfg->guiAddGroup( std::string("> SYPHON") );
 		{
-			mDir = new ciGuiBlockSyphonDirectory( cfg, _cfgName );
-			_cfg.guiAddBlock( mDir );
+			mDirSyphon = new ciGuiBlockSyphonDirectory( cfg, _cfgName );
+			_cfg.guiAddBlock( mDirSyphon );
 			mCfg->guiAddParam("Client Framerate",	&mCurrFPSSyphon, 1, true );
+		}
+		// COLUMN
+		mCfg->guiAddGroup( std::string("> NDI") );
+		{
+			mDirNDI = new ciGuiBlockNDIDirectory( cfg, _cfgName );
+			_cfg.guiAddBlock( mDirNDI );
+			mCfg->guiAddParam("Client Framerate",	&mCurrFPSNDI, 1, true );
 		}
 	}
 	void ciGuiBlockQBSourceTab::update()
@@ -222,19 +229,30 @@ namespace cinder { namespace sgui {
 		//	mDir->refresh();
 		
 		// New Syphon source selected
-		if ( mDir->isFresh() )
+		if ( mDirSyphon->isFresh() )
 		{
-			if ( ! mDir->getCurrentName().empty() )
-				mCfg->set( cfgName, std::string("syphon::") + mDir->getCurrentName() );
+			if ( ! mDirSyphon->getCurrentName().empty() )
+				mCfg->set( cfgName, std::string("syphon::") + mDirSyphon->getCurrentName() );
+		}
+		// New NDI source selected
+		else if ( mDirNDI->isFresh() )
+		{
+			if ( ! mDirNDI->getCurrentName().empty() )
+				mCfg->set( cfgName, std::string("syphon::") + mDirNDI->getCurrentName() );
 		}
 		// New media loaded
 		else if ( mSource->isFresh() )
 		{
 			// Unselect Syphon
 			if ( mSource->getType() == QB_SOURCE_SYPHON )
-				;//mDir->refresh();
+				;//mDirSyphon->refresh();
+			else if ( mSource->getType() == QB_SOURCE_NDI )
+				;//mDirNDI->refresh();
 			else
-				mDir->unselect();
+			{
+				mDirSyphon->unselect();
+				mDirNDI->unselect();
+			}
 			// Adjust QB tiome to movie
 			if ( mSource->getType() == QB_SOURCE_MOVIE )
 				mCfg->set( QBCFG_RENDER_SECONDS, mSource->getDuration() );
@@ -283,6 +301,7 @@ namespace cinder { namespace sgui {
 		mFPS			= mSource->getFrameRate();
 		mCurrFPS		= ( mSource->getType() == QB_SOURCE_MOVIE ? mSource->getCurrentFrameRate() : 0.0 );
 		mCurrFPSSyphon	= ( mSource->getType() == QB_SOURCE_SYPHON ? mSource->getCurrentFrameRate() : 0.0 );
+		mCurrFPSNDI		= ( mSource->getType() == QB_SOURCE_NDI ? mSource->getCurrentFrameRate() : 0.0 );
 		if (mName.empty())
 			mName = "< none >";
 		if (mFileName.empty())
@@ -338,7 +357,6 @@ namespace cinder { namespace sgui {
 } } // namespace cinder::sgui
 #endif
 	
-	
 
 
 
@@ -346,7 +364,7 @@ namespace cinder { namespace sgui {
 //
 // SYPHON BLOCK
 //
-#ifdef SYPHON
+#ifdef CFG_BLOCK_SYPHON
 namespace cinder { namespace sgui {
 	//
 	// Syphon Directory
@@ -482,3 +500,144 @@ namespace cinder { namespace sgui {
 #endif
 	
 	
+
+
+/////////////////////////////////////////////////////////////////
+//
+// NDI BLOCK
+//
+#ifdef CFG_BLOCK_NDI
+namespace cinder { namespace sgui {
+	//
+	// NDI Directory
+	//
+	syphonServerDirectory _NDIDirectory;
+	ciGuiBlockNDIDirectory::ciGuiBlockNDIDirectory( ciConfigGui *cfg, int _cfgName ) : ciConfigGuiBlock(cfg)
+	{
+		cfgName = _cfgName;
+		mListId = mLastId = -1;
+		mServerCount = 0;
+		bFreshness = false;
+		
+		// Setup Directory
+		_NDIDirectory.setup();
+		
+		// Setup GUI
+		mPanel = mCfg->guiAddPanel("ciGuiBlockNDIDirectory");
+		mLabel = cfg->guiAddText("---");	// update() will set
+		std::map<int,std::string> valueLabels;
+		mListControl = mCfg->guiAddParamList("", &mListId, valueLabels);
+		this->update();
+	}
+	
+	void ciGuiBlockNDIDirectory::update()
+	{
+		bFreshness = false;
+		
+		// Current Server we're using
+		std::string current = mCfg->getString(cfgName);
+		if ( current.compare(0,8,"ndi::") == 0 )		// remove qbSource prefix
+			current = current.substr(8);
+		//else
+		//	current = "";
+		
+		// Changed?
+		if ( _NDIDirectory.hasChanged() || mCfg->isFresh(cfgName) )
+		{
+			//std::string current = ( mListId >= 0 ? mListControl->getValueLabel( mListId ) : "" );
+			// Make new NDI list
+			int key = 0;
+			std::map<int,std::string> valueLabels;
+			for (int i = 0 ; i < _NDIDirectory.getServerCount() ; i++)
+			{
+				std::string servername = _NDIDirectory.getServer(i).getAppName();
+				// no feedback!!
+				if ( servername.compare( mExclude ) == 0 )
+					continue;
+				// Set label
+				valueLabels[key++] = servername;
+			}
+			// Update list
+			mListControl->update( valueLabels );
+			mServerCount = (int) valueLabels.size();
+			// Unselect / Select
+			this->reselect( current );
+		}
+		
+		// New NDI source selected
+		// Checo newNDISource porque se os indices de NDI_SOURCE sao dinamicos
+		if ( _NDIDirectory.hasChanged() || mLastId != mListId )
+		{
+			if (mListId >= 0)
+			{
+				mCurrentName = mListControl->getValueLabel( mListId );
+				mCfg->set( cfgName, mCurrentName );
+			}
+			else
+				mCurrentName = "";
+			this->reselect( mCurrentName );
+			bFreshness = true;
+		}
+		mLastId = mListId;
+		
+		// Refresh Data
+		mLabel->setName( mServerCount == 0 ? "No Available Clients!" : "Available Clients..." );
+	}
+	
+	void ciGuiBlockNDIDirectory::reselect( const std::string & name )
+	{
+		mListId = -1;
+		for (int i = 0 ; i < mListControl->items.size() ; i++ ) {
+			if ( name.compare( mListControl->getValueLabel(i) ) == 0 )
+			{
+				mListId = i;
+				break;
+			}
+		}
+	}
+	
+	
+	//////////////////////////////////////
+	//
+	// NDI Client
+	//
+	ciGuiBlockNDI::ciGuiBlockNDI( ciConfigGui *cfg, int _cfgName, int _cfgEnabled ) : ciConfigGuiBlock(cfg)
+	{
+		cfgEnabled = _cfgEnabled;
+		
+		// Setup Directory
+		mDir = new ciGuiBlockNDIDirectory( cfg, _cfgName );
+		mCfg->guiAddBlock( mDir );
+		
+		// Setup Client
+		mClient.setup();
+		mClient.setApplicationName( mCfg->getString( _cfgName ) );
+		mClient.setServerName("");
+		mClient.update();
+		
+		// Setup GUI
+		mCfg->guiAddParam("Width",		&mClientWidth, true );
+		mCfg->guiAddParam("Height",		&mClientHeight, true );
+		mCfg->guiAddParam("Framerate",	&mClientFPS, 1, true );
+		
+		this->update();
+	}
+	
+	void ciGuiBlockNDI::update()
+	{
+		// New NDI source selected
+		if ( mDir->isFresh() )
+			mClient.setApplicationName( mDir->getCurrentName() );
+		
+		// Update client
+		if ( ! mDir->getCurrentName().empty() && mCfg->getBool(cfgEnabled) )
+			mClient.update();
+		
+		// Refresh Data
+		mClientFPS = mClient.getCurrentFrameRate();
+		mClientWidth = mClient.getWidth();
+		mClientHeight = mClient.getHeight();
+	}
+} } // namespace cinder::sgui
+#endif
+

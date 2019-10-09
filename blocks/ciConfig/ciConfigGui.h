@@ -13,9 +13,6 @@
 #include "ciConfig.h"
 #include "SimpleGUI.h"
 
-// Allow Syphon params
-#define SYPHON
-
 namespace cinder { namespace qb {
 	class qbSourceSelector;
 } }

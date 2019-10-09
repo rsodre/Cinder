@@ -12,8 +12,10 @@
 
 #define CICONFIG
 //#define QB
-#define SYPHON
 
+// Allow Syphon params
+#define CFG_BLOCK_SYPHON
+#define CFG_BLOCK_NDI
 
 
 /////////////////////////////////
@@ -75,6 +77,7 @@ namespace cinder { namespace sgui {
 	//
 	// QB Source TAB
 	class ciGuiBlockSyphonDirectory;
+	class ciGuiBlockNDIDirectory;
 	class ciGuiBlockQBSourceTab : public ciConfigGuiBlock {
 	public:
 		ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha=-1, std::function<void()> infoBlock=nullptr );
@@ -84,7 +87,8 @@ namespace cinder { namespace sgui {
 		void update();
 
 	protected:
-		ciGuiBlockSyphonDirectory	* mDir;
+		ciGuiBlockSyphonDirectory	* mDirSyphon;
+		ciGuiBlockNDIDirectory		* mDirNDI;
 		qb::qbSourceSelector		* mSource;
 		TextureVarControl			* mTextureControl;
 		IntVarControl				* mSelectorControl;
@@ -112,7 +116,7 @@ namespace cinder { namespace sgui {
 		int					mWidth;
 		int					mHeight;
 		float				mFPS;
-		float				mCurrFPS, mCurrFPSSyphon;
+		float				mCurrFPS, mCurrFPSSyphon, mCurrFPSNDI;
 
 		// callbacks
 		void cbLoad( ci::app::MouseEvent & event );
@@ -130,7 +134,7 @@ namespace cinder { namespace sgui {
 //
 // Syphon
 //
-#ifdef SYPHON
+#ifdef CFG_BLOCK_SYPHON
 #include "cinderSyphon.h"
 namespace cinder { namespace sgui {
 	//
@@ -191,4 +195,71 @@ namespace cinder { namespace sgui {
 	};
 } } // namespace cinder::sgui
 #endif
-	
+
+
+/////////////////////////////////
+//
+// NDI
+//
+#ifdef CFG_BLOCK_NDI
+//#include "cinderSyphon.h"
+namespace cinder { namespace sgui {
+	//
+	// NDI Directory block
+	extern syphonServerDirectory _NDIDirectory;
+	class ciGuiBlockNDIDirectory : public ciConfigGuiBlock {
+	public:
+		ciGuiBlockNDIDirectory( ciConfigGui *cfg, int _cfgName );
+		~ciGuiBlockNDIDirectory() {}
+		
+		void exclude( const std::string & name )	{ mExclude = name; }
+		void unselect()								{ mListId = -1; }
+		void refresh();
+		
+		bool isFresh()					{ return bFreshness; }
+		std::string getCurrentName()	{ return mCurrentName; }
+		bool isSelected()				{ return (mListId >= 0); }
+		
+		// virtuals
+		void update();
+		
+	protected:
+		
+		void reselect( const std::string & name );
+		
+		ListVarControl *	mListControl;
+		LabelControl *		mLabel;
+		
+		int				cfgName;
+		int				mListId, mLastId;	// List id watcher
+		bool			bFreshness;			// selected/unselected new
+		int				mServerCount;
+		std::string		mExclude;
+		std::string		mCurrentName;
+	};
+	//
+	// NDI Client block
+	class ciGuiBlockNDI : public ciConfigGuiBlock {
+	public:
+		ciGuiBlockNDI( ciConfigGui *cfg, int _cfgName, int _cfgEnabled=-1 );
+		~ciGuiBlockNDI() {}
+		
+		void exclude( const std::string & name )	{ mDir->exclude(name); }
+		
+		syphonClient * getClient()					{ return &mClient; }
+		
+		// virtuals
+		void update();
+		
+	protected:
+		ciGuiBlockNDIDirectory	*mDir;
+		syphonClient			mClient;
+		
+		int			cfgEnabled;
+		float		mClientFPS;
+		int			mClientWidth;
+		int			mClientHeight;
+	};
+} } // namespace cinder::sgui
+#endif
+

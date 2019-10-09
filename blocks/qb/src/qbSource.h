@@ -40,7 +40,8 @@ namespace cinder { namespace qb {
 #define QB_SOURCE_IMAGE			"Image"
 #define QB_SOURCE_MOVIE			"Movie"
 #define QB_SOURCE_SYPHON		"Syphon"
-	
+#define QB_SOURCE_NDI			"NDI"
+
 	extern std::vector<std::string> _qbSourceExt;
 
 	//
@@ -228,6 +229,34 @@ namespace cinder { namespace qb {
 	};
 	
 	
+	//
+	// NDI Source
+	class qbSourceNDI : public qbSourceBase {
+	public:
+		qbSourceNDI() : qbSourceBase()
+		{
+			mSyphonClient.setup();
+			mSyphonClient.setApplicationName( "" );
+			mSyphonClient.setServerName("");
+			mDesc = "NDI";
+		}
+		//~qbSourceNDI()
+		
+		bool load(const std::string & _app, char _flags=0);
+		bool load(const std::string & _app, const std::string & _tex, char _flags=0);
+		bool updateFrame( bool _force=false );
+		
+		const std::string getType()			{ return QB_SOURCE_NDI; }
+		const float	getCurrentFrameRate()	{ return mSyphonClient.getCurrentFrameRate(); }
+		
+		void bind(int unit=0)	{ mSyphonClient.bind(unit); }
+		void unbind()			{ mSyphonClient.unbind(); }
+		
+	private:
+		syphonClient			mSyphonClient;
+	};
+	
+	
 	//////////////////////////////////////
 	//
 	// SOURCE WRAPPER
@@ -303,6 +332,7 @@ namespace cinder { namespace qb {
 		
 		void	onFileDrop( app::FileDropEvent & event );
 		bool	loadSyphon( const std::string & _app, const std::string & _tex="" );
+		bool	loadNDI( const std::string & _app, const std::string & _tex="" );
 
 		std::shared_ptr<qbSourceBase>	mSrc;
 		std::map<int,std::string>		mList;
