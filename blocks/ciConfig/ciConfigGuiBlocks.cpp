@@ -7,6 +7,7 @@
 
 #include "ciConfigGuiBlocks.h"
 #include "cinder/Utilities.h"
+#include "CinderNDIFinder.h"
 #ifdef BDVJ
 #include "lacy.h"
 #endif
@@ -246,21 +247,16 @@ namespace cinder { namespace sgui {
 		else if ( mDirNDI->isFresh() )
 		{
 			if ( ! mDirNDI->getCurrentName().empty() )
-				mCfg->set( cfgName, std::string("syphon::") + mDirNDI->getCurrentName() );
+				mCfg->set( cfgName, std::string("ndi::") + mDirNDI->getCurrentName() );
 		}
 		// New media loaded
 		else if ( mSource->isFresh() )
 		{
 			// Unselect Syphon
-			if ( mSource->getType() == QB_SOURCE_SYPHON )
-				;//mDirSyphon->refresh();
-			else if ( mSource->getType() == QB_SOURCE_NDI )
-				;//mDirNDI->refresh();
-			else
-			{
+			if ( mSource->getType() != QB_SOURCE_SYPHON )
 				mDirSyphon->unselect();
+			if ( mSource->getType() != QB_SOURCE_NDI )
 				mDirNDI->unselect();
-			}
 			// Adjust QB tiome to movie
 			if ( mSource->getType() == QB_SOURCE_MOVIE )
 				mCfg->set( QBCFG_RENDER_SECONDS, mSource->getDuration() );
@@ -477,37 +473,40 @@ namespace cinder { namespace sgui {
 		cfgEnabled = _cfgEnabled;
 		
 		// Setup Directory
-		mDir = new ciGuiBlockSyphonDirectory( cfg, _cfgName );
-		mCfg->guiAddBlock( mDir );
+		mDirBlock = new ciGuiBlockSyphonDirectory( cfg, _cfgName );
+		mCfg->guiAddBlock( mDirBlock );
 		
-		// Setup Client
-		mClient.setup();
-		mClient.setApplicationName( mCfg->getString( _cfgName ) );
-		mClient.setServerName("");
-		mClient.update();
-		
-		// Setup GUI
-		mCfg->guiAddParam("Width",		&mClientWidth, true );
-		mCfg->guiAddParam("Height",		&mClientHeight, true );
-		mCfg->guiAddParam("Framerate",	&mClientFPS, 1, true );
+//		// Setup Client
+//		mClient.setup();
+//		mClient.setApplicationName( mCfg->getString( _cfgName ) );
+//		mClient.setServerName("");
+//		mClient.update();
+//
+//		// Setup GUI
+//		mCfg->guiAddParam("Width",		&mClientWidth, true );
+//		mCfg->guiAddParam("Height",		&mClientHeight, true );
+//		mCfg->guiAddParam("Framerate",	&mClientFPS, 1, true );
 
 		this->update();
 	}
 	
 	void ciGuiBlockSyphon::update()
 	{
-		// New Syphon source selected
-		if ( mDir->isFresh() )
-			mClient.setApplicationName( mDir->getCurrentName() );
-		
-		// Update client
-		if ( ! mDir->getCurrentName().empty() && mCfg->getBool(cfgEnabled) )
-			mClient.update();
-		
-		// Refresh Data
-		mClientFPS = mClient.getCurrentFrameRate();
-		mClientWidth = mClient.getWidth();
-		mClientHeight = mClient.getHeight();
+//		// New Syphon source selected
+//		if ( mDirBlock->isFresh() )
+//			mClient.setApplicationName( mDirBlock->getCurrentName() );
+//
+//		// Update client
+//		if ( ! mDirBlock->getCurrentName().empty() && mCfg->getBool(cfgEnabled) )
+//		{
+//			mClient.update();
+//			//printf("SyphonClient.update() > ciGuiBlockSyphon\n");
+//		}
+//
+//		// Refresh Data
+//		mClientFPS = mClient.getCurrentFrameRate();
+//		mClientWidth = mClient.getWidth();
+//		mClientHeight = mClient.getHeight();
 	}
 } } // namespace cinder::sgui
 #endif
@@ -524,17 +523,22 @@ namespace cinder { namespace sgui {
 	//
 	// NDI Directory
 	//
-	syphonServerDirectory _NDIDirectory;
+	CinderNDIFinderPtr _NDIDirectory;
 	ciGuiBlockNDIDirectory::ciGuiBlockNDIDirectory( ciConfigGui *cfg, int _cfgName ) : ciConfigGuiBlock(cfg)
 	{
 		cfgName = _cfgName;
 		mListId = mLastId = -1;
 		mServerCount = 0;
 		bFreshness = false;
+		bDirChanged = false;
 		
-		// Setup Directory
-		_NDIDirectory.setup();
+		// Setup Directory / Create the NDI finder
+		CinderNDIFinder::Description finderDscr;
+		_NDIDirectory = std::make_unique<CinderNDIFinder>( finderDscr );
 		
+		mNDISourceAdded = _NDIDirectory->getSignalNDISourceAdded().connect( std::bind( &ciGuiBlockNDIDirectory::sourceAdded, this, std::placeholders::_1 ) );
+		mNDISourceRemoved = _NDIDirectory->getSignalNDISourceRemoved().connect( std::bind( &ciGuiBlockNDIDirectory::sourceRemoved, this, std::placeholders::_1 ) );
+
 		// Setup GUI
 		mPanel = mCfg->guiAddPanel("ciGuiBlockNDIDirectory");
 		mLabel = cfg->guiAddText("---");	// update() will set
@@ -543,6 +547,27 @@ namespace cinder { namespace sgui {
 		this->update();
 	}
 	
+	void ciGuiBlockNDIDirectory::sourceAdded( const NDISource& source )
+	{
+		std::cout << "NDI source added: " << source.p_ndi_name <<std::endl;
+		bDirChanged = true;
+	}
+	
+	void ciGuiBlockNDIDirectory::sourceRemoved( std::string sourceName )
+	{
+		std::cout << "NDI source removed: " << sourceName <<std::endl;
+		bDirChanged = true;
+	}
+
+	ciGuiBlockNDIDirectory::~ciGuiBlockNDIDirectory()
+	{
+		if( _NDIDirectory )
+		{
+			mNDISourceAdded.disconnect();
+			mNDISourceRemoved.disconnect();
+		}
+	}
+
 	void ciGuiBlockNDIDirectory::update()
 	{
 		bFreshness = false;
@@ -555,15 +580,15 @@ namespace cinder { namespace sgui {
 		//	current = "";
 		
 		// Changed?
-		if ( _NDIDirectory.hasChanged() || mCfg->isFresh(cfgName) )
+		if ( bDirChanged || mCfg->isFresh(cfgName) )
 		{
 			//std::string current = ( mListId >= 0 ? mListControl->getValueLabel( mListId ) : "" );
 			// Make new NDI list
 			int key = 0;
 			std::map<int,std::string> valueLabels;
-			for (int i = 0 ; i < _NDIDirectory.getServerCount() ; i++)
+			for (auto i = 0u ; i < _NDIDirectory->getSourcesCount() ; i++)
 			{
-				std::string servername = _NDIDirectory.getServer(i).getAppName();
+				std::string servername = _NDIDirectory->getSourceName(i);
 				// no feedback!!
 				if ( servername.compare( mExclude ) == 0 )
 					continue;
@@ -579,7 +604,7 @@ namespace cinder { namespace sgui {
 		
 		// New NDI source selected
 		// Checo newNDISource porque se os indices de NDI_SOURCE sao dinamicos
-		if ( _NDIDirectory.hasChanged() || mLastId != mListId )
+		if ( bDirChanged || mLastId != mListId )
 		{
 			if (mListId >= 0)
 			{
@@ -591,7 +616,9 @@ namespace cinder { namespace sgui {
 			this->reselect( mCurrentName );
 			bFreshness = true;
 		}
+		
 		mLastId = mListId;
+		bDirChanged = false;
 		
 		// Refresh Data
 		mLabel->setName( mServerCount == 0 ? "No Available Clients!" : "Available Clients..." );
@@ -619,37 +646,40 @@ namespace cinder { namespace sgui {
 		cfgEnabled = _cfgEnabled;
 		
 		// Setup Directory
-		mDir = new ciGuiBlockNDIDirectory( cfg, _cfgName );
-		mCfg->guiAddBlock( mDir );
+		mDirBlock = new ciGuiBlockNDIDirectory( cfg, _cfgName );
+		mCfg->guiAddBlock( mDirBlock );
 		
-		// Setup Client
-		mClient.setup();
-		mClient.setApplicationName( mCfg->getString( _cfgName ) );
-		mClient.setServerName("");
-		mClient.update();
-		
-		// Setup GUI
-		mCfg->guiAddParam("Width",		&mClientWidth, true );
-		mCfg->guiAddParam("Height",		&mClientHeight, true );
-		mCfg->guiAddParam("Framerate",	&mClientFPS, 1, true );
+//		// Setup Client
+//		mClient.setup();
+//		mClient.setApplicationName( mCfg->getString( _cfgName ) );
+//		mClient.setServerName("");
+//		mClient.update();
+//
+//		// Setup GUI
+//		mCfg->guiAddParam("Width",		&mClientWidth, true );
+//		mCfg->guiAddParam("Height",		&mClientHeight, true );
+//		mCfg->guiAddParam("Framerate",	&mClientFPS, 1, true );
 		
 		this->update();
 	}
 	
 	void ciGuiBlockNDI::update()
 	{
-		// New NDI source selected
-		if ( mDir->isFresh() )
-			mClient.setApplicationName( mDir->getCurrentName() );
-		
-		// Update client
-		if ( ! mDir->getCurrentName().empty() && mCfg->getBool(cfgEnabled) )
-			mClient.update();
-		
-		// Refresh Data
-		mClientFPS = mClient.getCurrentFrameRate();
-		mClientWidth = mClient.getWidth();
-		mClientHeight = mClient.getHeight();
+//		// New NDI source selected
+//		if ( mDirBlock->isFresh() )
+//			mClient.setApplicationName( mDirBlock->getCurrentName() );
+//
+//		// Update client
+//		if ( ! mDirBlock->getCurrentName().empty() && mCfg->getBool(cfgEnabled) )
+//		{
+//			mClient.update();
+//			//printf("SyphonClient.update() > ciGuiBlockNDI\n");
+//		}
+//
+//		// Refresh Data
+//		mClientFPS = mClient.getCurrentFrameRate();
+//		mClientWidth = mClient.getWidth();
+//		mClientHeight = mClient.getHeight();
 	}
 } } // namespace cinder::sgui
 #endif

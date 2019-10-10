@@ -12,6 +12,9 @@
 #include "ciConfig.h"
 #include "qb.h"
 
+#include "CinderNDIReceiver.h"
+ #include "CinderNDIFinder.h"
+
 using namespace ci;
 using namespace ci::gl;
 #ifdef QTXX
@@ -78,7 +81,7 @@ namespace cinder { namespace qb {
 		{
 			this->loadSyphon( _f.substr(8), "" );
 		}
-		else if ( _f.compare(0,8,"ndi::") == 0 )
+		else if ( _f.compare(0,5,"ndi::") == 0 )
 		{
 			this->loadNDI( _f.substr(5), "" );
 		}
@@ -623,6 +626,7 @@ namespace cinder { namespace qb {
 		if ( ! _force && ! mSyphonClient.hasNewFrame() )
 			return false;
 		mSyphonClient.update();
+		//printf("SyphonClient.update() > qbSourceSyphon\n");
 		mTex = mSyphonClient.getTexture();
 		mSize = mSyphonClient.getSize();
 		if(mSurface)
@@ -642,14 +646,58 @@ namespace cinder { namespace qb {
 	//
 	// NDI
 	//
+	qbSourceNDI::qbSourceNDI() : qbSourceBase()
+	{
+		// Create the NDI finder
+		CinderNDIFinder::Description finderDscr;
+		mCinderNDIFinder = std::make_unique<CinderNDIFinder>( finderDscr );
+		
+		mNDIVoice = ci::audio::Voice::create( [ this ] ( ci::audio::Buffer* buffer, size_t sampleRate ) {
+			if( mCinderNDIReceiver ) {
+				auto audioBuffer = mCinderNDIReceiver->getAudioBuffer();
+				if( audioBuffer && ! audioBuffer->isEmpty() ) {
+					buffer->copy( *audioBuffer.get() );
+				}
+			}
+		}, ci::audio::Voice::Options().channels( 2 ));
+		mNDIVoice->start();
+		
+		mDesc = "NDI";
+	}
+
+	void qbSourceNDI::bind(int unit)
+	{
+		if(mCinderNDIReceiver)
+			mCinderNDIReceiver->bind(unit);
+	}
+	void qbSourceNDI::unbind()
+	{
+		if(mCinderNDIReceiver)
+			mCinderNDIReceiver->unbind();
+	}
+
 	bool qbSourceNDI::load( const std::string & _app, char _flags )
 	{
 		return this->load( _app, "", _flags );
 	}
 	bool qbSourceNDI::load( const std::string & _app, const std::string & _tex, char _flags )
 	{
-		mSyphonClient.setApplicationName( _app );
-		mSyphonClient.setServerName(_tex);
+		// Create the NDI receiver for this source
+		NDISource source;
+		if( mCinderNDIFinder->getSource( _app, source ) )
+		{
+			if( ! mCinderNDIReceiver )
+			{
+				CinderNDIReceiver::Description recvDscr;
+				recvDscr.source = &source;
+				mCinderNDIReceiver = std::make_unique<CinderNDIReceiver>( recvDscr );
+			}
+			else
+			{
+				mCinderNDIReceiver->connect( source );
+			}
+		}
+		
 		this->updateFrame(true);
 		
 		// source properties
@@ -673,11 +721,15 @@ namespace cinder { namespace qb {
 	// qbUpdateObject VIRTUAL
 	bool qbSourceNDI::updateFrame( bool _force )
 	{
-		if ( ! _force && ! mSyphonClient.hasNewFrame() )
+		auto videoTex = mCinderNDIReceiver != nullptr ? mCinderNDIReceiver->getVideoTexture() : nullptr;
+
+//		if ( ! _force && ! videoTex )
+		if ( !videoTex )
 			return false;
-		mSyphonClient.update();
-		mTex = mSyphonClient.getTexture();
-		mSize = mSyphonClient.getSize();
+		
+		//printf("SyphonClient.update() > qbSourceNDI\n");
+		mTex = *videoTex;
+		mSize = videoTex->getSize();
 		if(mSurface)
 			mSurface = Surface8u();		// clear surface
 		// calc UV?
@@ -689,7 +741,6 @@ namespace cinder { namespace qb {
 		mDesc = os.str();
 		return true;
 	}
-	
 	
 	
 } } // cinder::qb

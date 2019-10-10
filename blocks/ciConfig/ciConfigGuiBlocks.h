@@ -8,6 +8,7 @@
 
 #include "ciConfigGui.h"
 #include "cinder/app/AppBasic.h"
+#include "CinderNDIFinder.h"
 #include <functional>
 
 #define CICONFIG
@@ -157,7 +158,7 @@ namespace cinder { namespace sgui {
 		// virtuals
 		void update();
 		
-	protected:
+	private:
 
 		void reselect( const std::string & name );
 
@@ -171,6 +172,7 @@ namespace cinder { namespace sgui {
 		std::string		mExclude;
 		std::string		mCurrentName;
 	};
+	
 	//
 	// Syphon Client block
 	class ciGuiBlockSyphon : public ciConfigGuiBlock {
@@ -178,17 +180,16 @@ namespace cinder { namespace sgui {
 		ciGuiBlockSyphon( ciConfigGui *cfg, int _cfgName, int _cfgEnabled=-1 );
 		~ciGuiBlockSyphon() {}
 		
-		void exclude( const std::string & name )	{ mDir->exclude(name); }
-
-		syphonClient * getClient()					{ return &mClient; }
+		void exclude( const std::string & name )	{ mDirBlock->exclude(name); }
 		
 		// virtuals
 		void update();
 		
-	protected:
-		ciGuiBlockSyphonDirectory	*mDir;
-		syphonClient				mClient;
+	private:
 		
+		ciGuiBlockSyphonDirectory	*mDirBlock;
+//		syphonClient			mClient;
+
 		int			cfgEnabled;
 		float		mClientFPS;
 		int			mClientWidth;
@@ -196,6 +197,8 @@ namespace cinder { namespace sgui {
 	};
 } } // namespace cinder::sgui
 #endif
+
+
 
 
 /////////////////////////////////
@@ -207,11 +210,10 @@ namespace cinder { namespace sgui {
 namespace cinder { namespace sgui {
 	//
 	// NDI Directory block
-	extern syphonServerDirectory _NDIDirectory;
 	class ciGuiBlockNDIDirectory : public ciConfigGuiBlock {
 	public:
 		ciGuiBlockNDIDirectory( ciConfigGui *cfg, int _cfgName );
-		~ciGuiBlockNDIDirectory() {}
+		~ciGuiBlockNDIDirectory();
 		
 		void exclude( const std::string & name )	{ mExclude = name; }
 		void unselect()								{ mListId = -1; }
@@ -224,7 +226,7 @@ namespace cinder { namespace sgui {
 		// virtuals
 		void update();
 		
-	protected:
+	private:
 		
 		void reselect( const std::string & name );
 		
@@ -237,7 +239,15 @@ namespace cinder { namespace sgui {
 		int				mServerCount;
 		std::string		mExclude;
 		std::string		mCurrentName;
+		bool			bDirChanged;
+		
+		ci::signals::connection mNDISourceAdded;
+		ci::signals::connection mNDISourceRemoved;
+		
+		void sourceAdded( const NDISource& source );
+		void sourceRemoved( const std::string sourceName );
 	};
+	
 	//
 	// NDI Client block
 	class ciGuiBlockNDI : public ciConfigGuiBlock {
@@ -245,17 +255,16 @@ namespace cinder { namespace sgui {
 		ciGuiBlockNDI( ciConfigGui *cfg, int _cfgName, int _cfgEnabled=-1 );
 		~ciGuiBlockNDI() {}
 		
-		void exclude( const std::string & name )	{ mDir->exclude(name); }
-		
-		syphonClient * getClient()					{ return &mClient; }
+		void exclude( const std::string & name )	{ mDirBlock->exclude(name); }
 		
 		// virtuals
 		void update();
 		
-	protected:
-		ciGuiBlockNDIDirectory	*mDir;
-		syphonClient			mClient;
+	private:
 		
+		ciGuiBlockNDIDirectory*	mDirBlock;
+//		syphonClient			mClient;
+
 		int			cfgEnabled;
 		float		mClientFPS;
 		int			mClientWidth;

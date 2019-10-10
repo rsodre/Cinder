@@ -12,6 +12,8 @@
 #include "cinder/gl/Texture.h"
 #include "cinder/ImageIo.h"
 #include "cinder/Utilities.h"
+#include "cinder/audio/Voice.h"
+#include "cinder/audio/Context.h"
 #include "cinderSyphon.h"
 #include "qbCube.h"
 
@@ -23,6 +25,10 @@
 #include "MovieGlHap.h"
 #endif
 
+class CinderNDIFinder;
+using CinderNDIFinderPtr = std::unique_ptr<CinderNDIFinder>;
+class CinderNDIReceiver;
+using CinderNDIReceiverPtr = std::unique_ptr<CinderNDIReceiver>;
 
 namespace cinder {
 class ciConfig;
@@ -233,13 +239,7 @@ namespace cinder { namespace qb {
 	// NDI Source
 	class qbSourceNDI : public qbSourceBase {
 	public:
-		qbSourceNDI() : qbSourceBase()
-		{
-			mSyphonClient.setup();
-			mSyphonClient.setApplicationName( "" );
-			mSyphonClient.setServerName("");
-			mDesc = "NDI";
-		}
+		qbSourceNDI();
 		//~qbSourceNDI()
 		
 		bool load(const std::string & _app, char _flags=0);
@@ -247,13 +247,16 @@ namespace cinder { namespace qb {
 		bool updateFrame( bool _force=false );
 		
 		const std::string getType()			{ return QB_SOURCE_NDI; }
-		const float	getCurrentFrameRate()	{ return mSyphonClient.getCurrentFrameRate(); }
-		
-		void bind(int unit=0)	{ mSyphonClient.bind(unit); }
-		void unbind()			{ mSyphonClient.unbind(); }
+//		const float	getCurrentFrameRate()	{ return mSyphonClient.getCurrentFrameRate(); }
+		const float	getCurrentFrameRate()	{ return -1; }
+
+		void bind(int unit=0);
+		void unbind();
 		
 	private:
-		syphonClient			mSyphonClient;
+		CinderNDIFinderPtr		mCinderNDIFinder;
+		CinderNDIReceiverPtr	mCinderNDIReceiver;
+		ci::audio::VoiceRef		mNDIVoice;
 	};
 	
 	
