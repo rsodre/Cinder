@@ -651,11 +651,15 @@ namespace cinder { namespace qb {
 	//
 	// NDI
 	//
+	CinderNDIFinderPtr _CinderNDIFinder;
 	qbSourceNDI::qbSourceNDI() : qbSourceBase()
 	{
 		// Create the NDI finder
-		CinderNDIFinder::Description finderDscr;
-		mCinderNDIFinder = std::make_unique<CinderNDIFinder>( finderDscr );
+		if (!_CinderNDIFinder)
+		{
+			CinderNDIFinder::Description finderDscr;
+			_CinderNDIFinder = std::make_unique<CinderNDIFinder>( finderDscr );
+		}
 		
 		mNDIVoice = ci::audio::Voice::create( [ this ] ( ci::audio::Buffer* buffer, size_t sampleRate ) {
 			if( mCinderNDIReceiver ) {
@@ -694,18 +698,21 @@ namespace cinder { namespace qb {
 	{
 		// Create the NDI receiver for this source
 		NDISource source;
-		if( mCinderNDIFinder->getSource( _app, source ) )
+		if( !_CinderNDIFinder->getSource( _app, source ) )
 		{
-			if( ! mCinderNDIReceiver )
-			{
-				CinderNDIReceiver::Description recvDscr;
-				recvDscr.source = &source;
-				mCinderNDIReceiver = std::make_unique<CinderNDIReceiver>( recvDscr );
-			}
-			else
-			{
-				mCinderNDIReceiver->connect( source );
-			}
+			printf("SOURCE NDI source ERROR [%s]!\n",_app.c_str());
+			return false;
+		}
+		
+		if( ! mCinderNDIReceiver )
+		{
+			CinderNDIReceiver::Description recvDscr;
+			recvDscr.source = &source;
+			mCinderNDIReceiver = std::make_unique<CinderNDIReceiver>( recvDscr );
+		}
+		else
+		{
+			mCinderNDIReceiver->connect( source );
 		}
 		
 		this->updateFrame(true);

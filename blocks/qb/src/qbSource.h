@@ -253,7 +253,6 @@ namespace cinder { namespace qb {
 //		void unbind();
 		
 	private:
-		CinderNDIFinderPtr		mCinderNDIFinder;
 		CinderNDIReceiverPtr	mCinderNDIReceiver;
 		ci::audio::VoiceRef		mNDIVoice;
 	};
