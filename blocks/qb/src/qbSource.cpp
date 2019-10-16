@@ -679,6 +679,12 @@ namespace cinder { namespace qb {
 		return ( mCinderNDIReceiver ? mCinderNDIReceiver->getFrameRate() : 0 );
 	}
 
+	void qbSourceNDI::audioSetVolume(float volume)
+	{
+		if(mNDIVoice->getVolume() != volume)
+			mNDIVoice->setVolume(volume);
+	}
+
 //	void qbSourceNDI::bind(int unit)
 //	{
 //		if(mCinderNDIReceiver)
@@ -756,6 +762,10 @@ namespace cinder { namespace qb {
 		std::stringstream os;
 		os << "NDI: " << mSize.x << " x " << mSize.y;
 		mDesc = os.str();
+		
+		if(this->canPlayAudio())
+			this->audioSetVolume( _cfg.getBool(QBCFG_AUDIO_MUTE) ? 0 : _cfg.getFloat(QBCFG_AUDIO_VOLUME) );
+		
 		return true;
 	}
 	

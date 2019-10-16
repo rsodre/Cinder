@@ -90,7 +90,9 @@ void qbConfig::setup() {
 	this->addVector2(QBCFG_PERLIN_SCALE, "QBCFG_PERLIN_SCALE", Vec2f::one(), 1.0f, 10.0f );
 	this->addFloat(QBCFG_PALETTE_REDUCE_TIME, "QBCFG_PALETTE_REDUCE_TIME", 0.0f, 0.0f, 60.0f );
 	this->setDummy( QBCFG_PALETTE_REDUCE_TIME );
-	
+	this->addBool(QBCFG_AUDIO_MUTE, "QBCFG_AUDIO_MUTE", false );
+	this->addFloat(QBCFG_AUDIO_VOLUME, "QBCFG_AUDIO_VOLUME", 0.5f, 0.0f, 1.0f );
+
 	// Readonly
 	this->addString(DUMMY_APP_VERSION, "DUMMY_APP_VERSION", SysInfo::getAppVersionLong());
 	this->addString(DUMMY_OS_VERSION, "DUMMY_OS_VERSION", SysInfo::getOsVersion());

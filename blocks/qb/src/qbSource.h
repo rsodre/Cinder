@@ -76,6 +76,9 @@ namespace cinder { namespace qb {
 		void				stop()						{ this->play(false); }
 		bool				isPlaying()					{ return bPlaying; }
 		virtual void		playBackwards(bool _b=true)	{ bBackwards = _b; }
+		
+		virtual bool		canPlayAudio()				{ return false; }
+		virtual void		audioSetVolume(float v)		{}
 
 		virtual const std::string getType()				{ return QB_SOURCE_UNDEFINED; }
 		virtual const int	getFrameCount()				{ return 1; }
@@ -242,12 +245,15 @@ namespace cinder { namespace qb {
 		qbSourceNDI();
 		//~qbSourceNDI()
 		
-		bool load(const std::string & _app, char _flags=0);
+		bool load(const std::string & _app, char _flags=0) override;
 		bool load(const std::string & _app, const std::string & _tex, char _flags=0);
-		bool updateFrame( bool _force=false );
+		bool updateFrame( bool _force=false ) override;
 		
-		const std::string getType()			{ return QB_SOURCE_NDI; }
-		const float	getCurrentFrameRate();
+		const std::string getType() override { return QB_SOURCE_NDI; }
+		const float	getCurrentFrameRate() override;
+
+		bool canPlayAudio() override { return true; }
+		void audioSetVolume(float v) override;
 
 //		void bind(int unit=0);
 //		void unbind();
