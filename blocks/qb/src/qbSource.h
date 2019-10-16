@@ -60,7 +60,8 @@ namespace cinder { namespace qb {
 		void	makeUV( float _u, float _v );
 
 		virtual bool	updateFrame( bool _force=false )	{ return false; }
-		
+		void			updateAudio();
+
 		virtual bool	load(const std::string & _f, char _flags=0)	{ return false; }
 		const bool		isFresh()						{ return (mSpawnedAtFrame >= 0 && mSpawnedAtFrame == app::getElapsedFrames()); }
 
@@ -243,7 +244,7 @@ namespace cinder { namespace qb {
 	class qbSourceNDI : public qbSourceBase {
 	public:
 		qbSourceNDI();
-		//~qbSourceNDI()
+		~qbSourceNDI();
 		
 		bool load(const std::string & _app, char _flags=0) override;
 		bool load(const std::string & _app, const std::string & _tex, char _flags=0);

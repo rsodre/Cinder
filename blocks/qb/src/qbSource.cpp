@@ -129,22 +129,30 @@ namespace cinder { namespace qb {
 	}
 	bool qbSourceSelector::loadSyphon( const std::string & _app, const std::string & _tex )
 	{
-		qbSourceSyphon *newSrc = new qbSourceSyphon();
-		newSrc->load( _app, _tex, mFlags );
-		this->setSource(newSrc);
-		return true;
+		if (mSrc == nullptr || mSrc->getType() != QB_SOURCE_SYPHON)
+		{
+			qbSourceSyphon *newSrc = new qbSourceSyphon();
+			this->setSource(newSrc);
+		}
+		if (mSrc == nullptr)
+			return false;
+		return ((qbSourceSyphon*)mSrc.get())->load( _app, _tex, mFlags );
 	}
 	bool qbSourceSelector::loadNDI( const std::string & _app, const std::string & _tex )
 	{
-		qbSourceNDI *newSrc = nullptr;
-		try {
-			newSrc = new qbSourceNDI();
-		} catch ( const std::exception &e ) {
-			return false;
+		if (mSrc == nullptr || mSrc->getType() != QB_SOURCE_NDI)
+		{
+			qbSourceNDI *newSrc = nullptr;
+			try {
+				newSrc = new qbSourceNDI();
+			} catch ( const std::exception &e ) {
+				return false;
+			}
+			this->setSource(newSrc);
 		}
-		newSrc->load( _app, _tex, mFlags );
-		this->setSource(newSrc);
-		return true;
+		if (mSrc == nullptr)
+			return false;
+		return ((qbSourceNDI*)mSrc.get())->load( _app, _tex, mFlags );
 	}
 	void qbSourceSelector::setSource( qbSourceBase * newSrc )
 	{
@@ -252,6 +260,7 @@ namespace cinder { namespace qb {
 		}
 		
 		// update Frame
+		mSrc->updateAudio();
 		bNewFrame = mSrc->updateFrame();
 	}
 
@@ -369,6 +378,12 @@ namespace cinder { namespace qb {
 		return c;
 	}
 	
+	void qbSourceBase::updateAudio()
+	{
+		if(this->canPlayAudio())
+			this->audioSetVolume( _cfg.getBool(QBCFG_AUDIO_MUTE) ? 0 : _cfg.getFloat(QBCFG_AUDIO_VOLUME) );
+	}
+
 	
 	///////////////////////////////////////////
 	//
@@ -674,6 +689,12 @@ namespace cinder { namespace qb {
 		mDesc = "NDI";
 	}
 
+	qbSourceNDI::~qbSourceNDI()
+	{
+		if(mNDIVoice != nullptr)
+			mNDIVoice->stop();
+	}
+	
 	const float	qbSourceNDI::getCurrentFrameRate()
 	{
 		return ( mCinderNDIReceiver ? mCinderNDIReceiver->getFrameRate() : 0 );
@@ -681,7 +702,7 @@ namespace cinder { namespace qb {
 
 	void qbSourceNDI::audioSetVolume(float volume)
 	{
-		if(mNDIVoice->getVolume() != volume)
+		if(mNDIVoice != nullptr && mNDIVoice->getVolume() != volume)
 			mNDIVoice->setVolume(volume);
 	}
 
@@ -721,6 +742,7 @@ namespace cinder { namespace qb {
 			mCinderNDIReceiver->connect( source );
 		}
 		
+		this->updateAudio();
 		this->updateFrame(true);
 		
 		// source properties
@@ -762,9 +784,6 @@ namespace cinder { namespace qb {
 		std::stringstream os;
 		os << "NDI: " << mSize.x << " x " << mSize.y;
 		mDesc = os.str();
-		
-		if(this->canPlayAudio())
-			this->audioSetVolume( _cfg.getBool(QBCFG_AUDIO_MUTE) ? 0 : _cfg.getFloat(QBCFG_AUDIO_VOLUME) );
 		
 		return true;
 	}
