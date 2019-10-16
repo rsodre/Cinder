@@ -136,7 +136,12 @@ namespace cinder { namespace qb {
 	}
 	bool qbSourceSelector::loadNDI( const std::string & _app, const std::string & _tex )
 	{
-		qbSourceNDI *newSrc = new qbSourceNDI();
+		qbSourceNDI *newSrc = nullptr;
+		try {
+			newSrc = new qbSourceNDI();
+		} catch ( const std::exception &e ) {
+			return false;
+		}
 		newSrc->load( _app, _tex, mFlags );
 		this->setSource(newSrc);
 		return true;
@@ -665,16 +670,16 @@ namespace cinder { namespace qb {
 		mDesc = "NDI";
 	}
 
-	void qbSourceNDI::bind(int unit)
-	{
-		if(mCinderNDIReceiver)
-			mCinderNDIReceiver->bind(unit);
-	}
-	void qbSourceNDI::unbind()
-	{
-		if(mCinderNDIReceiver)
-			mCinderNDIReceiver->unbind();
-	}
+//	void qbSourceNDI::bind(int unit)
+//	{
+//		if(mCinderNDIReceiver)
+//			mCinderNDIReceiver->bind(unit);
+//	}
+//	void qbSourceNDI::unbind()
+//	{
+//		if(mCinderNDIReceiver)
+//			mCinderNDIReceiver->unbind();
+//	}
 
 	bool qbSourceNDI::load( const std::string & _app, char _flags )
 	{

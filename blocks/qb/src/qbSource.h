@@ -250,8 +250,8 @@ namespace cinder { namespace qb {
 //		const float	getCurrentFrameRate()	{ return mSyphonClient.getCurrentFrameRate(); }
 		const float	getCurrentFrameRate()	{ return -1; }
 
-		void bind(int unit=0);
-		void unbind();
+//		void bind(int unit=0);
+//		void unbind();
 		
 	private:
 		CinderNDIFinderPtr		mCinderNDIFinder;
