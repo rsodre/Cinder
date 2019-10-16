@@ -172,9 +172,9 @@ namespace cinder { namespace sgui {
 			// NDI Audio
 			cfg->guiAddSeparator();
 			mCfg->guiAddText("> AUDIO");
-			mCfg->guiAddParamBool( QBCFG_AUDIO_MUTE, "MUTED" )->setAsButton()->setNameOff("Mute");
 			mCfg->guiAddParamFLoat( QBCFG_AUDIO_VOLUME,	"Volume", 2 )->setFormatAsPercentage();
-			
+			mCfg->guiAddParamBool( QBCFG_AUDIO_MUTE, "MUTED" )->setAsButton()->setNameOff("Mute");
+
 			// Custom block
 			if (infoBlock != nullptr)
 			{
