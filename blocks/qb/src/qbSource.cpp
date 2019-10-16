@@ -670,6 +670,11 @@ namespace cinder { namespace qb {
 		mDesc = "NDI";
 	}
 
+	const float	qbSourceNDI::getCurrentFrameRate()
+	{
+		return ( mCinderNDIReceiver ? mCinderNDIReceiver->getFrameRate() : 0 );
+	}
+
 //	void qbSourceNDI::bind(int unit)
 //	{
 //		if(mCinderNDIReceiver)

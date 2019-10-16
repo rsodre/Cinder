@@ -247,8 +247,7 @@ namespace cinder { namespace qb {
 		bool updateFrame( bool _force=false );
 		
 		const std::string getType()			{ return QB_SOURCE_NDI; }
-//		const float	getCurrentFrameRate()	{ return mSyphonClient.getCurrentFrameRate(); }
-		const float	getCurrentFrameRate()	{ return -1; }
+		const float	getCurrentFrameRate();
 
 //		void bind(int unit=0);
 //		void unbind();
