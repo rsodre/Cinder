@@ -548,6 +548,7 @@ namespace cinder { namespace sgui {
 
 		// Setup GUI
 		mPanel = mCfg->guiAddPanel("ciGuiBlockNDIDirectory");
+		cfg->guiAddText("(EXPERIMENTAL)");
 		mLabel = cfg->guiAddText("---");	// update() will set
 		std::map<int,std::string> valueLabels;
 		mListControl = mCfg->guiAddParamList("", &mListId, valueLabels);
