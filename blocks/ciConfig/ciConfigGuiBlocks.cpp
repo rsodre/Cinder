@@ -7,10 +7,10 @@
 
 #include "ciConfigGuiBlocks.h"
 #include "cinder/Utilities.h"
-#include "CinderNDIFinder.h"
 #ifdef BDVJ
 #include "lacy.h"
 #endif
+#include <memory>
 
 
 /////////////////////////////////////////////////////////////////

@@ -6,17 +6,19 @@
 //
 #pragma once
 
+// Allow Syphon params
+#define CFG_BLOCK_SYPHON
+#define CFG_BLOCK_NDI
+
 #include "ciConfigGui.h"
 #include "cinder/app/AppBasic.h"
+#ifdef CFG_BLOCK_NDI
 #include "CinderNDIFinder.h"
+#endif
 #include <functional>
 
 #define CICONFIG
 //#define QB
-
-// Allow Syphon params
-#define CFG_BLOCK_SYPHON
-#define CFG_BLOCK_NDI
 
 
 /////////////////////////////////

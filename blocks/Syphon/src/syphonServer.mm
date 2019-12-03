@@ -39,6 +39,8 @@
 
 #ifdef QB
 #include "qb.h"
+#else
+#define QB_RENDER_DENSITY 1
 #endif
 
 
