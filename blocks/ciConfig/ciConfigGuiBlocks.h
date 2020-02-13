@@ -8,7 +8,9 @@
 
 // Allow Syphon params
 #define CFG_BLOCK_SYPHON
+#ifndef QB_NO_NDI
 #define CFG_BLOCK_NDI
+#endif
 
 #include "ciConfigGui.h"
 #include "cinder/app/AppBasic.h"
@@ -125,7 +127,9 @@ namespace cinder { namespace sgui {
 		void cbLoad( ci::app::MouseEvent & event );
 		void cbPlay( ci::app::MouseEvent & event );
 		void cbRewind( ci::app::MouseEvent & event );
+#ifdef BDVJ
 		void cbDomePatterns( ci::app::MouseEvent & event );
+#endif
 		void onFileDrop( ci::app::FileDropEvent & event );
 		bool loadFile( const std::string & f );
 	};

@@ -25,10 +25,12 @@
 #include "MovieGlHap.h"
 #endif
 
+#ifndef QB_NO_NDI
 class CinderNDIFinder;
 using CinderNDIFinderPtr = std::unique_ptr<CinderNDIFinder>;
 class CinderNDIReceiver;
 using CinderNDIReceiverPtr = std::unique_ptr<CinderNDIReceiver>;
+#endif
 
 namespace cinder {
 class ciConfig;
@@ -241,6 +243,7 @@ namespace cinder { namespace qb {
 	
 	//
 	// NDI Source
+#ifndef QB_NO_NDI
 	class qbSourceNDI : public qbSourceBase {
 	public:
 		qbSourceNDI();
@@ -263,7 +266,7 @@ namespace cinder { namespace qb {
 		CinderNDIReceiverPtr	mCinderNDIReceiver;
 		ci::audio::VoiceRef		mNDIVoice;
 	};
-	
+#endif
 	
 	//////////////////////////////////////
 	//
@@ -340,8 +343,10 @@ namespace cinder { namespace qb {
 		
 		void	onFileDrop( app::FileDropEvent & event );
 		bool	loadSyphon( const std::string & _app, const std::string & _tex="" );
+#ifndef QB_NO_NDI
 		bool	loadNDI( const std::string & _app, const std::string & _tex="" );
-
+#endif
+		
 		std::shared_ptr<qbSourceBase>	mSrc;
 		std::map<int,std::string>		mList;
 		char			mFlags;

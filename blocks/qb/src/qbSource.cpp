@@ -12,8 +12,10 @@
 #include "ciConfig.h"
 #include "qb.h"
 
+#ifndef QB_NO_NDI
 #include "CinderNDIReceiver.h"
- #include "CinderNDIFinder.h"
+#include "CinderNDIFinder.h"
+#endif
 
 using namespace ci;
 using namespace ci::gl;
@@ -81,10 +83,12 @@ namespace cinder { namespace qb {
 		{
 			this->loadSyphon( _f.substr(8), "" );
 		}
+#ifndef QB_NO_NDI
 		else if ( _f.compare(0,5,"ndi::") == 0 )
 		{
 			this->loadNDI( _f.substr(5), "" );
 		}
+#endif
 #ifdef QB_PALETTE
 		else if ( _f.compare("qbSourcePalette") == 0 )
 		{
@@ -138,6 +142,7 @@ namespace cinder { namespace qb {
 			return false;
 		return ((qbSourceSyphon*)mSrc.get())->load( _app, _tex, mFlags );
 	}
+#ifndef QB_NO_NDI
 	bool qbSourceSelector::loadNDI( const std::string & _app, const std::string & _tex )
 	{
 		if (mSrc == nullptr || mSrc->getType() != QB_SOURCE_NDI)
@@ -154,6 +159,7 @@ namespace cinder { namespace qb {
 			return false;
 		return ((qbSourceNDI*)mSrc.get())->load( _app, _tex, mFlags );
 	}
+#endif
 	void qbSourceSelector::setSource( qbSourceBase * newSrc )
 	{
 		mSrc = std::shared_ptr<qbSourceBase>( newSrc );
@@ -666,6 +672,7 @@ namespace cinder { namespace qb {
 	//
 	// NDI
 	//
+#ifndef QB_NO_NDI
 	CinderNDIFinderPtr _CinderNDIFinder;
 	qbSourceNDI::qbSourceNDI() : qbSourceBase()
 	{
@@ -787,7 +794,7 @@ namespace cinder { namespace qb {
 		
 		return true;
 	}
-	
+#endif
 	
 } } // cinder::qb
 

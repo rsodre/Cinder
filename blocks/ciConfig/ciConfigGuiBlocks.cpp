@@ -224,12 +224,14 @@ namespace cinder { namespace sgui {
 			mCfg->guiAddParam("Client Framerate",	&mCurrFPSSyphon, 1, true );
 		}
 		// COLUMN
+#ifndef QB_NO_NDI
 		mCfg->guiAddGroup( std::string("> NDI") );
 		{
 			mDirNDI = new ciGuiBlockNDIDirectory( cfg, _cfgName );
 			_cfg.guiAddBlock( mDirNDI );
 			mCfg->guiAddParam("Client Framerate",	&mCurrFPSNDI, 1, true );
 		}
+#endif
 	}
 	void ciGuiBlockQBSourceTab::update()
 	{
@@ -251,19 +253,23 @@ namespace cinder { namespace sgui {
 				mCfg->set( cfgName, std::string("syphon::") + mDirSyphon->getCurrentName() );
 		}
 		// New NDI source selected
+#ifndef QB_NO_NDI
 		else if ( mDirNDI->isFresh() )
 		{
 			if ( ! mDirNDI->getCurrentName().empty() )
 				mCfg->set( cfgName, std::string("ndi::") + mDirNDI->getCurrentName() );
 		}
+#endif
 		// New media loaded
 		else if ( mSource->isFresh() )
 		{
 			// Unselect Syphon
 			if ( mSource->getType() != QB_SOURCE_SYPHON )
 				mDirSyphon->unselect();
+#ifndef QB_NO_NDI
 			if ( mSource->getType() != QB_SOURCE_NDI )
 				mDirNDI->unselect();
+#endif
 			// Adjust QB tiome to movie
 			if ( mSource->getType() == QB_SOURCE_MOVIE )
 				mCfg->set( QBCFG_RENDER_SECONDS, mSource->getDuration() );
@@ -346,11 +352,13 @@ namespace cinder { namespace sgui {
 		_qb.rewind();
 		event.setHandled();
 	}
+#ifdef BDVJ
 	void ciGuiBlockQBSourceTab::cbDomePatterns( ci::app::MouseEvent & event )
 	{
 		lacy::Lacy::OpenUrl( "http://paulbourke.net/dome/testpattern/" );
 		event.setHandled();
 	}
+#endif
 	// get dropped file
 	void ciGuiBlockQBSourceTab::onFileDrop( ci::app::FileDropEvent & event )
 	{
