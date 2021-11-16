@@ -412,6 +412,32 @@ namespace cinder { namespace sgui {
 		this->update();
 	}
 	
+	std::string ciGuiBlockSyphonDirectory::makeServerDisplayName( std::string appName, std::string textureName )
+	{
+		std::stringstream servername;
+		servername << appName;
+		if ( textureName.length() > 0 )
+		{
+			servername << " | " << textureName;
+		}
+		return servername.str();
+	}
+
+	std::pair<std::string,std::string> ciGuiBlockSyphonDirectory::splitServerDisplayName( std::string displayName )
+	{
+		std::string appName;
+		std::string textureName;
+		const std::size_t pos = displayName.find( " | " );
+		if( pos == std::string::npos )
+		{
+			appName = displayName;
+		} else {
+			appName = displayName.substr( 0, pos );
+			textureName = displayName.substr( pos + 3 );
+		}
+		return std::make_pair( appName, textureName );
+	}
+
 	void ciGuiBlockSyphonDirectory::update()
 	{
 		bFreshness = false;
@@ -432,7 +458,7 @@ namespace cinder { namespace sgui {
 			std::map<int,std::string> valueLabels;
 			for (int i = 0 ; i < _SyphonDirectory.getServerCount() ; i++)
 			{
-				std::string servername = _SyphonDirectory.getServer(i).getAppName();
+				std::string servername = makeServerDisplayName( _SyphonDirectory.getServer(i).getAppName(), _SyphonDirectory.getServer(i).getName() );
 				// no feedback!!
 				if ( servername.compare( mExclude ) == 0 )
 					continue;

@@ -11,6 +11,7 @@
 #include "qbPalette.h"
 #include "ciConfig.h"
 #include "qb.h"
+#include "ciConfigGuiBlocks.h"
 
 #ifndef QB_NO_NDI
 #include "CinderNDIReceiver.h"
@@ -81,7 +82,8 @@ namespace cinder { namespace qb {
 		// Syphn prefix
 		if ( _f.compare(0,8,"syphon::") == 0 )
 		{
-			this->loadSyphon( _f.substr(8), "" );
+			const auto serverName = ciGuiBlockSyphonDirectory::splitServerDisplayName( _f.substr(8) );
+			this->loadSyphon( serverName.first, serverName.second );
 		}
 #ifndef QB_NO_NDI
 		else if ( _f.compare(0,5,"ndi::") == 0 )

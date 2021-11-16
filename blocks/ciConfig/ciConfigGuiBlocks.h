@@ -161,6 +161,9 @@ namespace cinder { namespace sgui {
 		std::string getCurrentName()	{ return mCurrentName; }
 		bool isSelected()				{ return (mListId >= 0); }
 		
+		static std::string makeServerDisplayName( std::string appName, std::string textureName );
+		static std::pair<std::string,std::string> splitServerDisplayName( std::string displayName );
+
 		// virtuals
 		void update();
 		
