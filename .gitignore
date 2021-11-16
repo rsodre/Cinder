@@ -9,7 +9,7 @@ xcuserdata/
 .DS_Store
 
 build/
-lib/libcinder*.a
+#lib/libcinder*.a
 lib/msw/x86/cinder*.lib
 lib/msw/x64/cinder*.lib
 lib/msw/x86/cinder*.idb
@@ -36,4 +36,3 @@ EXAMPLES/
 APP/
 BLOCK/
 blocks/
-.DS_Store
