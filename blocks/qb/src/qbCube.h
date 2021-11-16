@@ -6,7 +6,7 @@
 //
 #pragma once
 
-#include "Cinder/gl/gl.h"
+#include "cinder/gl/gl.h"
 #include "cinder/gl/DisplayList.h"
 #include "cinder/gl/GlslProg.h"
 
