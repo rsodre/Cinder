@@ -29,7 +29,7 @@
 #include "cinder/MatrixAffine2.h"
 #include "cinder/Matrix33.h"
 #include "cinder/Matrix44.h"
-#include "cinder/MatrixAlgo.h"
+//#include "cinder/MatrixAlgo.h"
 
 namespace cinder { 
 

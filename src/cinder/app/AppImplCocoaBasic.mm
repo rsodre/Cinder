@@ -822,7 +822,11 @@
 	cinder::app::RendererRef renderer = winFormat.getRenderer();
 	winImpl->mCinderView = [[CinderView alloc] initWithFrame:NSMakeRect( 0, 0, winImpl->mSize.x, winImpl->mSize.y ) app:winImpl->mAppImpl->mApp renderer:renderer sharedRenderer:sharedRenderer];
 
-	[winImpl->mWin setDelegate:self];	
+#ifdef APPLE_SILICON
+	[winImpl->mWin setDelegate:winImpl];
+#else
+	[winImpl->mWin setDelegate:self];
+#endif
 	[winImpl->mWin setContentView:winImpl->mCinderView];
 
 	[winImpl->mWin makeKeyAndOrderFront:nil];
