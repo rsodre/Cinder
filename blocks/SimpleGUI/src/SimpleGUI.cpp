@@ -65,11 +65,15 @@
 #define SGUI_WIDTH		QB_RENDER_WIDTH
 #define SGUI_HEIGHT		QB_RENDER_HEIGHT
 #else
+#if defined RETINA_DISPLAY && RETINA_DISPLAY==1
+#define SGUI_DENSITY	2.0f
+#else
 #define SGUI_DENSITY	1.0f
-#define SGUI_SIZE		app::getWindowSize()
-#define SGUI_BOUNDS		app::getWindowBounds()
-#define SGUI_WIDTH		app::getWindowWidth()
-#define SGUI_HEIGHT		app::getWindowHeight()
+#endif
+#define SGUI_SIZE		(app::getWindowSize()*SGUI_DENSITY)
+#define SGUI_BOUNDS		(app::getWindowBounds()*SGUI_DENSITY)
+#define SGUI_WIDTH		(app::getWindowWidth()*SGUI_DENSITY)
+#define SGUI_HEIGHT		(app::getWindowHeight()*SGUI_DENSITY)
 #endif
 
 using namespace ci::app;
