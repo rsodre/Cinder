@@ -68,9 +68,13 @@ class Timeline;
 } // namespace cinder
 
 #if !defined( CINDER_WINRT )
+#if BOOST_VERSION < 106600
 namespace boost { namespace asio {
 class io_service;
 } } // namespace boost::asio
+#else
+#include <boost/asio/io_service.hpp>
+#endif
 #endif
 
 namespace cinder { namespace app { 
