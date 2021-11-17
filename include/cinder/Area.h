@@ -120,6 +120,8 @@ class Area {
 	const Area		operator+( const Area& rhs ) const { return Area( x1 + rhs.x1, y1 + rhs.y1, x2 + rhs.x2, y2 + rhs.y2 ); }
 	const Area		operator-( const Area& rhs ) const { return Area( x1 - rhs.x1, y1 - rhs.y1, x2 - rhs.x2, y2 - rhs.y2 ); }
 
+	const Area		operator*( const float m ) const { return Area( x1 * m, y1 * m, x2 * m, y2 * m ); }
+
 	Area&		operator+=( const Vec2i &o ) { offset( o ); return *this; }
 	Area&		operator-=( const Vec2i &o ) { offset( -o ); return *this; }
 
