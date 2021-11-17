@@ -39,7 +39,7 @@
 
 //
 // Config OSC
-#if defined(CFG_USE_OSC) && defined(NO_CFG_USE_OSC)
+#if defined(CFG_USE_OSC) && defined(CFG_NO_OSC)
 #undef CFG_USE_OSC
 #endif
 #ifdef CFG_USE_OSC
@@ -57,7 +57,7 @@ typedef osc::Message ofxOscMessage;
 //
 // MIDI
 //
-#if defined(CFG_USE_MIDI) && defined(NO_CFG_USE_MIDI)
+#if defined(CFG_USE_MIDI) && defined(CFG_NO_MIDI)
 #undef CFG_USE_MIDI
 #endif
 #ifdef CFG_USE_MIDI

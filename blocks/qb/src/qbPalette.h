@@ -5,7 +5,7 @@
 //  Copyright 2011 Studio Avante. All rights reserved.
 //
 #pragma once
-#ifndef NO_QB_PALETTE
+#ifndef QB_NO_PALETTE
 #define QB_PALETTE
 
 #include "cinder/Cinder.h"
