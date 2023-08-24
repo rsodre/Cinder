@@ -77,13 +77,14 @@ namespace cinder { namespace qb {
 		
 		void			drawLineSegmented( const Vec3f & p0, const Vec3f & p1, int segments );
 		void			drawLineSegmented2D( const Vec3f & p0, const Vec3f & p1, int segments );
+		static void		drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest, float floorZ );
 
 		static Vec3f	getIntersectionFrom( const Vec3f & p0, const Vec3f & p1, bool closest=false );
 		static Vec3f	rayIntersectSphere( Vec3f p1, Vec3f p0, Vec3f center, float r );
-		static void		drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest=false );
-		static void		drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, const Vec3f & op0, const Vec3f & op1, int segments, bool closest=false );
+		static Vec3f	lineIntersectPlane( Vec3f p0, Vec3f p1, Vec3f planePoint, Vec3f planeNormal );
+		static Vec3f	lineClosestPointToSphere( Vec3f p0, Vec3f p1, Vec3f center, float radius );
+		static Vec3f	lineClosestPointToPoint( Vec3f p0, Vec3f p1, Vec3f point );
 
-		
 		gl::Texture &	getMaskTexture()					{ return mMaskTexture; }
 		gl::Texture &	getNormalTexture()					{ return mNormalTexture; }
 

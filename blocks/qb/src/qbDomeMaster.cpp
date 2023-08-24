@@ -150,6 +150,7 @@ namespace cinder { namespace qb {
 	// http://en.wikipedia.org/wiki/Line%E2%80%93sphere_intersection
 	Vec3f qbDomeMaster::getIntersectionFrom( const Vec3f & lp1, const Vec3f & lp2, bool closest )
 	{
+		if(closest) return rayIntersectSphere( lp2, lp1, Vec3f::zero(), 1.0 );
 		return rayIntersectSphere( lp1, lp2, Vec3f::zero(), 1.0 );
 		/*
 		Vec3f res = Vec3f::zero();
@@ -204,52 +205,67 @@ namespace cinder { namespace qb {
 		Vec3f q = p0 + t * d;
 		return q;
 	}
-	
-	
-	
-	void qbDomeMaster::drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest )
+
+	//
+	// from: https://www.scratchapixel.com/lessons/3d-basic-rendering/minimal-ray-tracer-rendering-simple-shapes/ray-plane-and-ray-disk-intersection.html
+	// p0 = point in the plane, n = plane normal, l0 = ray start, l = ray direction
+	//	float denom = dotProduct(n, l); // assuming vectors are all normalized
+	//	if (denom > 1e-6) {
+	//		Vec3f p0l0 = p0 - l0;
+	//		t = dotProduct(p0l0, n) / denom;
+	//		return (t >= 0);
+	//	}
+	Vec3f qbDomeMaster::lineIntersectPlane( Vec3f p1, Vec3f p0, Vec3f planePoint, Vec3f planeNormal )
 	{
-		glBegin( GL_LINE_STRIP );
-		for (int i = 0 ; i <= segments ; i++)
-		{
-			float prog = (i / (float)segments);
-			Vec3f mid = getIntersectionFrom( from, p0.lerp( prog, p1 ), closest );
-			if ( mid != Vec3f::zero() )
-				glVertex3f( mid );
+		Vec3f d = (p1 - p0).normalized(); // direction
+		float denom = planeNormal.dot(d);
+		if (denom > 1e-6) {
+			Vec3f p0l0 = planePoint - p0;
+			float t = p0l0.dot(planeNormal) / denom;
+			if (t >= 0)
+				return p0 + (d * t);
 		}
-		glEnd();
+		return Vec3f::zero();
 	}
-	void qbDomeMaster::drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, const Vec3f & op0, const Vec3f & op1, int segments, bool closest )
+
+	Vec3f qbDomeMaster::lineClosestPointToSphere( Vec3f p0, Vec3f p1, Vec3f center, float radius )
+	{
+		Vec3f point = lineClosestPointToPoint( p0, p1, center );
+		Vec3f d = (point - center).normalized();
+		return center + (d * radius);
+	}
+
+	Vec3f qbDomeMaster::lineClosestPointToPoint( Vec3f p1, Vec3f p0, Vec3f point )
+	{
+		Vec3f d = (p1 - p0).normalized(); // direction
+		Vec3f lhs = point - p0;
+		float dotP = lhs.dot(d);
+		return p0 + d * dotP;
+	}
+
+
+	void qbDomeMaster::drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest, float floorZ )
 	{
 		glBegin( GL_LINE_STRIP );
 		for (int i = 0 ; i <= segments ; i++)
 		{
 			float prog = (i / (float)segments);
-			Vec3f pp = p0.lerp( prog, p1 );
-			Vec3f mid = getIntersectionFrom( from, pp, closest );
-			/*if ( mid == Vec3f::zero() )
+			Vec3f to = p0.lerp( prog, p1 );
+			Vec3f mid = getIntersectionFrom( from, to, closest );
+			if ( mid != Vec3f::zero() && mid.z >= floorZ )
+				glVertex3f( mid );
+			else
 			{
-				Vec3f opp = op0.lerp( prog, op1 );
-				for (int ii = 0 ; ii <= points ; ii++)
-				{
-					prog = (1.0f / points) * ii;
-					Vec3f ppp = pp.lerp( prog, opp );
-					Vec3f mid = this->getIntersectionFrom( from, ppp, true );
-					if ( mid != Vec3f::zero() )
-					{
-						glVertex3f( mid );
-						break;
-					}
-				}
-			}*/
-			if ( mid != Vec3f::zero() )
-				glVertex3f( mid );
+				mid = lineClosestPointToSphere(from, to, Vec3f::zero(), 1.0);
+				if (mid.z < floorZ)
+					mid = lineIntersectPlane(from, to, Vec3f(0,0,floorZ), Vec3f::zAxis());
+				// underground...
+				if ( mid != Vec3f::zero() )
+					glVertex3f( mid );
+			}
 		}
 		glEnd();
 	}
-	
-	
-	
 	
 	//
 	// Draw Normals + mouse normal
