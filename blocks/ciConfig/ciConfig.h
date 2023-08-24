@@ -88,7 +88,7 @@ namespace cinder {
 #define CONFIG_PRESET_COUNT		10
 #define PRESET_KEY(i)			(i<CONFIG_PRESET_COUNT-1?'1'+i:(i==CONFIG_PRESET_COUNT-1?'0':0))
 
-#define MAX_DEFAULTS			12
+#define MAX_DEFAULTS			16
 
 //
 // Types

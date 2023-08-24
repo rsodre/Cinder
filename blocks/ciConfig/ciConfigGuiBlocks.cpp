@@ -26,6 +26,7 @@ namespace cinder { namespace sgui {
 		
 		cfg->guiAddTab("FILE");
 		cfg->guiAddGroup("");
+		cfg->guiAddText("PROJECT");
 		cfg->guiAddParam("", &mFilename);
 		cfg->guiAddSeparator();
 		cfg->guiAddButton("Reset",							this, &ciGuiBlockLoadSave::cbReset)->setPostGap(false);
