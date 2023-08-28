@@ -370,6 +370,7 @@ namespace cinder { namespace sgui {
 		Control* setAxisOnDefault(bool b=true)		{ axisOnDefault=b; return this; }					// chained setters
 		Control* setAxisOnZero(bool b=true)			{ axisOnZero=b; return this; }						// chained setters
 		Control* setAxisOnMax(bool b=true)			{ axisOnMax=b; return this; }						// chained setters
+		Control* setVisible(bool b=true)			{ visible = b; return this; }						// chained setters
 		virtual void updateFbo()					{}
 		virtual void update()						{}
 		virtual void reset()						{}
