@@ -31,28 +31,28 @@ namespace cinder { namespace qb {
 			switch(err)
 			{
 				case GL_INVALID_ENUM:
-					sprintf(msg, "GL_INVALID_ENUM");
+					snprintf(msg, 256, "GL_INVALID_ENUM");
 					break;
 				case GL_INVALID_VALUE:
-					sprintf(msg, "GL_INVALID_VALUE");
+					snprintf(msg, 256, "GL_INVALID_VALUE");
 					break;
 				case GL_INVALID_OPERATION:
-					sprintf(msg, "GL_INVALID_OPERATION");
+					snprintf(msg, 256, "GL_INVALID_OPERATION");
 					break;
 				case GL_STACK_OVERFLOW:
-					sprintf(msg, "GL_STACK_OVERFLOW");
+					snprintf(msg, 256, "GL_STACK_OVERFLOW");
 					break;
 				case GL_STACK_UNDERFLOW:
-					sprintf(msg, "GL_STACK_UNDERFLOW");
+					snprintf(msg, 256, "GL_STACK_UNDERFLOW");
 					break;
 				case GL_OUT_OF_MEMORY:
-					sprintf(msg, "GL_OUT_OF_MEMORY");
+					snprintf(msg, 256, "GL_OUT_OF_MEMORY");
 					break;
 				case 1286:		// 0x0506
-					sprintf(msg, "INVALID_FRAMEBUFFER_OPERATION_OES");
+					snprintf(msg, 256, "INVALID_FRAMEBUFFER_OPERATION_OES");
 					break;
 				default:
-					sprintf(msg, "UNKNOWN ERROR");
+					snprintf(msg, 256, "UNKNOWN ERROR");
 			}
 			printf(">>> GL ERROR !!!!! %s(%d) : [%s] GL_ERROR=%d/0x%x (%s)\n", file, line, func, err, err, msg);
 		}
@@ -68,7 +68,7 @@ namespace cinder { namespace qb {
 	{
 		float currFPS = math<float>::clamp( app::App::get()->getAverageFps(), 0, 1000 );
 		char str[20];
-		sprintf(str, "%.1f", currFPS);
+		snprintf(str, 20, "%.1f", currFPS);
 		int x = app::getWindowWidth() - (int)strlen(str) * 8;
 		int y = app::getWindowHeight() - 10;
 		qb::writeStuff(str, x, y);

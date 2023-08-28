@@ -713,15 +713,15 @@ namespace cinder {
 			if (bOscReceive)
 			{
 				oscReceiver.setup( port );
-				sprintf(errmsg, "OSC RECEIVING PORT %d...",port);
+				snprintf(errmsg, 256, "OSC RECEIVING PORT %d...",port);
 			}
 			else if (bOscSend)
 			{
 				oscSender.setup( CICFG_OSC_HOST, port );
-				sprintf(errmsg, "OSC SENDING...");
+				snprintf(errmsg, 256, "OSC SENDING...");
 			}
 		} catch (exception &error) {
-			sprintf(errmsg, "OSC SETUP FAILED!!!!");
+			snprintf(errmsg, 256, "OSC SETUP FAILED!!!!");
 			printf("OSC SETUP FAILED!!!\n");
 		}
 	}
@@ -784,7 +784,7 @@ namespace cinder {
 		if (bOscReceive == false)
 			return;
 #ifdef OSC_VERBOSE
-		sprintf(errmsg, "OSC CALLBACK");
+		snprintf(errmsg, 256, "OSC CALLBACK");
 #endif
 		//printf("OSC CALLBACK\n");
 		// check for waiting messages
@@ -796,7 +796,7 @@ namespace cinder {
 				continue;
 			
 #ifdef OSC_VERBOSE
-			sprintf(errmsg, "OSC MSG [%s]", m.getAddress().c_str());
+			snprintf(errmsg, 256, "OSC MSG [%s]", m.getAddress().c_str());
 			//printf("OSC MSG [%s] %.2f\n", m.getAddress().c_str(), m.getArgAsFloat( 0 ));
 #endif
 			// Receive from MisiAsOsc.app
@@ -845,7 +845,7 @@ namespace cinder {
 #ifdef OSC_VERBOSE
 						printf("OSC IN >> id[%d/%d] = [%.3f] (%s)\n",id,i,p->vec[i].get(),p->name.c_str());
 #endif
-						sprintf(errmsg, "OSC TO %s=%.3f", p->name.c_str(), p->vec[i].get());
+						snprintf(errmsg, 256, "OSC TO %s=%.3f", p->name.c_str(), p->vec[i].get());
 						return;
 					}
 				}
@@ -1562,7 +1562,7 @@ namespace cinder {
 				param->strval += ",";
 			// prog value
 			if (pp)
-				sprintf(val,"%f",this->getProg(id,i));
+				snprintf(val,16,"%f",this->getProg(id,i));
 			// normal value
 			else
 			{
@@ -1571,7 +1571,7 @@ namespace cinder {
 				{
 					case CFG_TYPE_INTEGER:
 						if (raw)
-							sprintf(val,"%d",(int)this->get(id));
+							snprintf(val,16,"%d",(int)this->get(id));
 						else
 						{
 							//int v = (int)this->get(id,i) - (int)this->getMin(id,i);
@@ -1579,29 +1579,29 @@ namespace cinder {
 							if (l.length())
 								return l.c_str();
 							else
-								sprintf(val,"%d",(int)this->get(id));
+								snprintf(val,16,"%d",(int)this->get(id));
 						}
 						break;
 					case CFG_TYPE_COLOR:
-						sprintf(val,"%d",(int)this->get(id,i));
+						snprintf(val,16,"%d",(int)this->get(id,i));
 						break;
 					case CFG_TYPE_BYTE:
 						if (raw)
-							sprintf(val,"%d",(int)this->get(id,i));
+							snprintf(val,16,"%d",(int)this->get(id,i));
 						else
-							sprintf(val,"%c",(int)this->get(id,i));
+							snprintf(val,16,"%c",(int)this->get(id,i));
 						break;
 					case CFG_TYPE_LONG:
-						sprintf(val,"%ld",(long)this->get(id,i));
+						snprintf(val,16,"%ld",(long)this->get(id,i));
 						break;
 					case CFG_TYPE_BOOLEAN:
 						if (raw)
-							sprintf(val,"%d",(this->get(id,i) == 0.0 ? 0 : 1));
+							snprintf(val,16,"%d",(this->get(id,i) == 0.0 ? 0 : 1));
 						else
-							sprintf(val,"%s",(this->get(id,i) == 0.0 ? "OFF" : "ON"));
+							snprintf(val,16,"%s",(this->get(id,i) == 0.0 ? "OFF" : "ON"));
 						break;
 					default:
-						sprintf(val,"%f",this->get(id,i));
+						snprintf(val,16,"%f",this->get(id,i));
 						break;
 				}
 			}
@@ -1846,7 +1846,7 @@ namespace cinder {
 //		doc.write( writeFile( f ) );
 		printf("-------------- READ [%s]\n",f.c_str());
 		printf("-------------- READ %d params OK!\n",(int)params.size());
-		sprintf(errmsg, "READ [%s]", f.c_str());
+		snprintf(errmsg, 256, "READ [%s]", f.c_str());
 
 		if ( postLoadCallback_fn )
 			postLoadCallback_fn(this);
@@ -1944,7 +1944,7 @@ namespace cinder {
 		doc.write( writeFile( f ) );
 		printf("-------------- SAVE [%s]\n",f.c_str());
 		printf("-------------- SAVED %d params OK!\n",(int)params.size());
-		sprintf(errmsg, "SAVED [%s]", f.c_str());
+		snprintf(errmsg, 256, "SAVED [%s]", f.c_str());
 		
 		// remember file
 		this->setDisplayFilename( f, preset );
@@ -2006,7 +2006,7 @@ namespace cinder {
 		if (fp == NULL)
 		{
 			printf("ERROR reading config file [%s] errno [%d/%s]\n",f.c_str(),errno,strerror(errno));
-			sprintf(errmsg, "READ ERROR! [%s]", f.c_str());
+			snprintf(errmsg, 256, "READ ERROR! [%s]", f.c_str());
 			return 0;
 		}
 		printf("-------------- READ config [%s]...\n",f.c_str());
@@ -2082,7 +2082,7 @@ namespace cinder {
 		// Close file
 		fclose (fp);
 		printf("-------------- READ OK! %d params\n",(int)params.size());
-		sprintf(errmsg, "READ [%s]", f.c_str());
+		snprintf(errmsg, 256, "READ [%s]", f.c_str());
 		
 		// remember file
 		this->setDisplayFilename( f, preset );

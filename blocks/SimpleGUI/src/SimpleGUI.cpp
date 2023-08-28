@@ -1542,14 +1542,14 @@ namespace cinder { namespace sgui {
 			ss << (int)roundf(*var);
 			if (displayChar)
 			{
-				char ch[3];
-				sprintf(ch,"%c",(isprint(*var)?(*var):'?'));
+				char ch[4];
+				snprintf(ch,4,"%c",(isprint(*var)?(*var):'?'));
 				ss << " / " << ch;
 			}
 			if (displayHex)
 			{
-				char hx[5];
-				sprintf(hx,"0x%x",(*var));
+				char hx[6];
+				snprintf(hx,6,"0x%x",(*var));
 				ss << " / " << hx;
 			}
 			gl::drawStringRight(ss.str(), pos+Vec2f(SimpleGUI::sliderSize.x,0), SimpleGUI::textColor, SimpleGUI::textFont);
@@ -1670,8 +1670,8 @@ namespace cinder { namespace sgui {
 			// hex
 			if (displayHex)
 			{
-				char hx[5];
-				sprintf(hx,"0x%x",(*var));
+				char hx[6];
+				snprintf(hx,6,"0x%x",(*var));
 				ss << "/" << hx;
 			}
 			gl::drawStringRight(ss.str(), pos+Vec2f(SimpleGUI::sliderSize.x,0), SimpleGUI::textColor, SimpleGUI::textFont);
@@ -1919,8 +1919,8 @@ namespace cinder { namespace sgui {
 			if ( (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') )
 			{
 				unsigned char b = this->getByteValue(channelOver);
-				char hx[3];
-				sprintf(hx,"%2X",b);
+				char hx[4];
+				snprintf(hx,4,"%2X",b);
 				hx[0] = hx[1];
 				hx[1] = c;
 				b = ( hx[0] - ( hx[0] >= 'A' ? 'A'-10 : '0' ) ) * 16;
@@ -2010,11 +2010,11 @@ namespace cinder { namespace sgui {
 			gl::enableAlphaBlending();
 			for (int i = 0 ; i < channelCount ; i++)
 			{
-				char hx[3];
+				char hx[4];
 				if (alphaControl)
-					sprintf(hx,"%02X",(unsigned int)((*varA)[i]*255));
+					snprintf(hx,4,"%02X",(unsigned int)((*varA)[i]*255));
 				else
-					sprintf(hx,"%02X",(unsigned int)((*var)[i]*255));
+					snprintf(hx,4,"%02X",(unsigned int)((*var)[i]*255));
 				gl::drawStringRight(hx, activeAreas[i].getUpperRight()+Vec2f(0,0), SimpleGUI::textColor, SimpleGUI::textFont);
 			}
 			gl::disableAlphaBlending();

@@ -91,7 +91,7 @@ namespace cinder { namespace qb {
 	std::string qbRenderer::makeFileNameSerial()
 	{
 		char num[6];
-		sprintf(num,"%05d",mFramesAdded);
+		snprintf(num, 6, "%05d", mFramesAdded);
 		std::ostringstream os;
 		os << mFileName << "/" << num << ".png";
 		return os.str();
