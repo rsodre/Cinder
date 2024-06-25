@@ -287,7 +287,8 @@ private:
 	int					mWindowHeight;
 	float				mAspectWindow;
 	float				mPreviewScale;			// fullscreen fbo scale
-	Rectf				mFittingBounds;			// Bounds to fit render in window
+    Rectf               mBottomBounds;            // Bounds to fit render in window
+    Rectf               mFittingBounds;            // Bounds to fit render in window
 	Area				mFittingArea;			// Bounds to fit render in window
 	Vec2f				mFittingAreaPan;
 	Vec2f				mMousePos;				// metric unit

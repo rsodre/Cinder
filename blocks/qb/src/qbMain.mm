@@ -431,12 +431,14 @@ namespace cinder { namespace qb {
 			mPreviewScale = (mWindowHeight / (float)mRenderHeight);
 			float gap = (mWindowWidth - (mRenderWidth*mPreviewScale)) / 2.0f;
 			mFittingBounds = Rectf( gap, 0, mWindowWidth-gap, mWindowHeight);
+            mBottomBounds = mFittingBounds;
 		}
 		else
 		{
 			mPreviewScale = (mWindowWidth / (float)mRenderWidth);
 			float gap = (mWindowHeight - (mRenderHeight*mPreviewScale)) / 2.0f;
-			mFittingBounds = Rectf( 0, gap, mWindowWidth, mWindowHeight-gap );
+            mFittingBounds = Rectf( 0, gap, mWindowWidth, mWindowHeight-gap );
+            mBottomBounds = Rectf( 0, gap*2, mWindowWidth, mWindowHeight );
 		}
 		// center render?
 		if ( ! mConfig->getBool(QBCFG_PREVIEW_UPSCALE) && mPreviewScale > 1.0 )
@@ -446,7 +448,7 @@ namespace cinder { namespace qb {
 			mPreviewScale = 1.0;
 		}
 		mFittingArea = mRenderBounds;
-		
+
 		// Zoomed preview?
 		if ( ! mConfig->getBool(QBCFG_PREVIEW_DOWNSCALE) && mPreviewScale < 1.0 )
 		{
@@ -667,8 +669,13 @@ namespace cinder { namespace qb {
 	void qbMain::placeCameraWindow()
 	{
 		// RETINA
-		gl::setMatricesWindow( getRenderSize() );
-		gl::setViewport( getRenderBounds() );
+#ifdef BDVJ
+        gl::setMatricesWindow( getRenderSize() );
+        gl::setViewport( getRenderBounds() );
+#else
+        gl::setMatricesWindow( app::getWindowSize() * this->getScreenDensity());
+        gl::setViewport( app::getWindowBounds() * this->getScreenDensity() );
+#endif
 	}
 
 	//////////////////////////////////////////////////////////////////
@@ -1068,7 +1075,11 @@ namespace cinder { namespace qb {
 			gl::clear( mBackgroundColor );
 			gl::color( Color::white() );
 			this->placeCameraWindow();
-			this->drawFbo( mFittingBounds, this->getFittingArea() );
+#ifdef BDVJ
+            this->drawFbo( mFittingBounds, this->getFittingArea() );
+#else
+            this->drawFbo( mBottomBounds, this->getFittingArea() );
+#endif
 		}
 		
 		// GUI Elements

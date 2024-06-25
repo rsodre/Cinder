@@ -60,10 +60,17 @@
 
 #ifdef QB
 #define SGUI_DENSITY	QB_RENDER_DENSITY
-#define SGUI_SIZE		QB_RENDER_SIZE
-#define SGUI_BOUNDS		QB_RENDER_BOUNDS
-#define SGUI_WIDTH		QB_RENDER_WIDTH
-#define SGUI_HEIGHT		QB_RENDER_HEIGHT
+#ifdef BDVJ
+    #define SGUI_SIZE       QB_RENDER_SIZE
+    #define SGUI_BOUNDS     QB_RENDER_BOUNDS
+    #define SGUI_WIDTH      QB_RENDER_WIDTH
+    #define SGUI_HEIGHT     QB_RENDER_HEIGHT
+#else
+    #define SGUI_SIZE       (app::getWindowSize()*SGUI_DENSITY)
+    #define SGUI_BOUNDS     (app::getWindowBounds()*SGUI_DENSITY)
+    #define SGUI_WIDTH      (app::getWindowWidth()*SGUI_DENSITY)
+    #define SGUI_HEIGHT     (app::getWindowHeight()*SGUI_DENSITY)
+#endif
 #else
 #if defined RETINA_DISPLAY && RETINA_DISPLAY==1
 #define SGUI_DENSITY	2.0f
@@ -414,6 +421,8 @@ namespace cinder { namespace sgui {
 			bForceRedraw |= (theTab != lastTab);
 			if ( bForceRedraw )
 				gl::clear( ColorA::zero() );
+            auto _size = mFbo.getSize();
+            auto _bounds = mFbo.getBounds();
 			gl::setMatricesWindow( mFbo.getSize() );
 			gl::setViewport( mFbo.getBounds() );
 			gl::scale(SGUI_DENSITY, SGUI_DENSITY);
@@ -428,6 +437,8 @@ namespace cinder { namespace sgui {
 			// draw over
 			Rectf bounds = Rectf( Vec2f(0,0), this->getSize() * SGUI_DENSITY );
 			Area srcFlipped = Area( bounds.x1, SGUI_HEIGHT-bounds.y1, bounds.x2, SGUI_HEIGHT-bounds.y2 );
+            auto _SGUI_SIZE = SGUI_SIZE;
+            auto _SGUI_BOUNDS = SGUI_BOUNDS;
 			gl::setMatricesWindow( SGUI_SIZE );
 			gl::setViewport( SGUI_BOUNDS );
 			gl::enableAlphaBlending();
