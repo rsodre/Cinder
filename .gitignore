@@ -31,6 +31,7 @@ docs/html
 docs/doxygen/cinder.tag
 
 # ROGER
+.DS_Store
 ROGER/
 EXAMPLES/
 APP/
