@@ -45,7 +45,8 @@ namespace cinder { namespace sgui {
 		
 		void cbReset( ci::app::MouseEvent & event );
 		void cbLoadDefault( ci::app::MouseEvent & event );
-		void cbSaveDefault( ci::app::MouseEvent & event );
+        void cbSaveDefault( ci::app::MouseEvent & event );
+        void cbOpenProjectFolder( ci::app::MouseEvent & event );
 		void cbImportConfig( ci::app::MouseEvent & event );
 		void cbExportConfig( ci::app::MouseEvent & event );
 	};

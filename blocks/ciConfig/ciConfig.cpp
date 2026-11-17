@@ -1696,6 +1696,17 @@ namespace cinder {
 		return false;
 	}
 	//
+	// Open the default save folder on Finder
+	void ciConfig::openProjectFolder()
+	{
+		if ( mFolderDefault.empty() )
+			return;
+		// Create it if nothing was saved yet
+		if ( ! fs::exists( mFolderDefault ) )
+			createDirectories( mFolderDefault );
+		launchDefaultApplication( mFolderDefault );
+	}
+	//
 	// Load default file
 	int ciConfig::load(char preset)
 	{

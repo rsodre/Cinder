@@ -31,8 +31,10 @@ namespace cinder { namespace sgui {
 		cfg->guiAddSeparator();
 		cfg->guiAddButton("Reset",							this, &ciGuiBlockLoadSave::cbReset)->setPostGap(false);
 		cfg->guiAddButton("Load Default",		cmd+"L",	this, &ciGuiBlockLoadSave::cbLoadDefault)->setPostGap(false);
-		cfg->guiAddButton("Save as Default",	cmd+"S",	this, &ciGuiBlockLoadSave::cbSaveDefault);
-		cfg->guiAddSeparator();
+        cfg->guiAddButton("Save as Default",    cmd+"S",    this, &ciGuiBlockLoadSave::cbSaveDefault);
+        cfg->guiAddSeparator();
+        cfg->guiAddButton("Open Project Folder",            this, &ciGuiBlockLoadSave::cbOpenProjectFolder);
+        cfg->guiAddSeparator();
 		cfg->guiAddButton("Import Config...",	cmd+"I",	this, &ciGuiBlockLoadSave::cbImportConfig)->setPostGap(false);
 		cfg->guiAddButton("Export Config...",	cmd+"E",	this, &ciGuiBlockLoadSave::cbExportConfig);
 	}
@@ -60,6 +62,10 @@ namespace cinder { namespace sgui {
 		event.setHandled();
 #endif	// NO_SAVE
 	}
+    void ciGuiBlockLoadSave::cbOpenProjectFolder( ci::app::MouseEvent & event ) {
+        mCfg->openProjectFolder();
+        event.setHandled();
+    }
 	void ciGuiBlockLoadSave::cbImportConfig( ci::app::MouseEvent & event ) {
 #ifndef NO_SAVE
 		mCfg->import();

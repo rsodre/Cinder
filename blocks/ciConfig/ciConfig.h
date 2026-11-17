@@ -755,6 +755,7 @@ public:
 	void setFileExtension(const std::string e);
 	bool import();
 	bool exportas();
+	void openProjectFolder();
 	void setFile(const std::string & filename);
 	virtual int useFile(const std::string & filename, const std::string & path="");
 	virtual int load()			{ return this->load(NULL); }
