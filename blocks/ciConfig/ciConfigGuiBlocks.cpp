@@ -11,6 +11,7 @@
 #include "lacy.h"
 #endif
 #include <memory>
+#include <algorithm>
 
 
 /////////////////////////////////////////////////////////////////
@@ -141,7 +142,7 @@ namespace cinder { namespace sgui {
 	//
 	// QB Source TAB
 	//
-	ciGuiBlockQBSourceTab::ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha, std::function<void()> infoBlock ) : ciConfigGuiBlock(cfg)
+	ciGuiBlockQBSourceTab::ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha, std::function<void()> infoBlock, std::function<void()> generatorBlock ) : ciConfigGuiBlock(cfg)
 	{
 		mSource = src;
 		cfgName = _cfgName;
@@ -191,16 +192,57 @@ namespace cinder { namespace sgui {
 		}
 		// COLUMN
 		mCfg->guiAddGroup( std::string("> TEMPLATES") );
+#ifdef BDVJ
+		{
+			// Same source list, displayed by mode
+			// Each mode has its own panel, selecting directly on _cfgSelector
+			mCfg->setValueLabels(_cfgSelector,	src->getList());
+			mSelectorControl = NULL;
+			cfgSelector = _cfgSelector;
+			mLastSelected = -1;
+			mLastTemplateMode = -1;
+			mTemplateMode = TEMPLATE_MODE_GENERATOR;
+			for ( int mode = 0 ; mode < TEMPLATE_MODE_COUNT ; mode++ )
+				mLastSelectedInMode[mode] = -1;
+			std::map<int,std::string> modes;
+			modes[TEMPLATE_MODE_GENERATOR] = "Generator";
+			modes[TEMPLATE_MODE_TEMPLATES] = "Classic Templates";
+			modes[TEMPLATE_MODE_GRIDS] = "Classic Grids";
+			modes[TEMPLATE_MODE_PATTERNS] = "Test Pattern";
+			modes[TEMPLATE_MODE_PANORAMA] = "360 Panorama";
+			mCfg->guiAddParamList( "", &mTemplateMode, modes );
+			for ( int mode = 0 ; mode < TEMPLATE_MODE_COUNT ; mode++ )
+			{
+				size_t first = mCfg->mGui->getControls().size();
+				mCfg->guiAddPanel( std::string("mPanelTemplates") + toString(mode) );
+				mCfg->guiAddSeparator();
+				// Mode header, ex: "> GENERATOR"
+				std::string header = modes[mode];
+				std::transform( header.begin(), header.end(), header.begin(), ::toupper );
+				mCfg->guiAddText( std::string("> ") + header );
+				this->addTemplateList( mode );
+				if ( mode == TEMPLATE_MODE_GENERATOR && generatorBlock != nullptr )
+				{
+					mCfg->guiAddSeparator();
+					generatorBlock();
+				}
+				else if ( mode == TEMPLATE_MODE_PATTERNS )
+				{
+					mCfg->guiAddSeparator();
+					mCfg->guiAddText("Test Patterns\nby Paul Bourke", true);
+					mCfg->guiAddButton("How to use", this, &ciGuiBlockQBSourceTab::cbDomePatterns);
+				}
+				mTemplateControls[mode] = std::make_pair( first, mCfg->mGui->getControls().size() );
+			}
+			mCfg->guiAddPanel("");
+		}
+#else
 		{
 			mCfg->setValueLabels(_cfgSelector,	src->getList());
 			mSelectorControl = (IntVarControl*) mCfg->guiAddParam( _cfgSelector, "" );
 			mSelectorControl->setDisplayValue(false);
-#ifdef BDVJ
-			mCfg->guiAddSeparator();
-			mCfg->guiAddText("Test Patterns\nby Paul Bourke", true);
-			mCfg->guiAddButton("How to use", this, &ciGuiBlockQBSourceTab::cbDomePatterns);
-#endif
 		}
+#endif
 		// COLUMN
 		mCfg->guiAddGroup( std::string("> FILE") );
 		{
@@ -335,6 +377,37 @@ namespace cinder { namespace sgui {
 		bool ismov = qb::qbSourceSelector::isMovieFile(mSelectedPath);
 		mPanelMovie->enable( ismov );
 		mPanelPlayhead->enable( ismov );
+
+#ifdef BDVJ
+		// Follow selected template
+		int selected = mCfg->getInt( cfgSelector );
+		auto selectedIt = mSource->getList().find( selected );
+		int selectedMode = ( selectedIt != mSource->getList().end() ? getTemplateMode( selectedIt->second ) : -1 );
+		if ( selected != mLastSelected )
+		{
+			mLastSelected = selected;
+			if ( selectedMode >= 0 )
+			{
+				mLastSelectedInMode[selectedMode] = selected;
+				mTemplateMode = selectedMode;
+			}
+		}
+		if ( mTemplateMode != mLastTemplateMode )
+		{
+			// Mode selected by user: load its last selected (or first) item
+			// (not on startup, to keep any loaded file)
+			if ( mLastTemplateMode >= 0 && selectedMode != mTemplateMode )
+			{
+				int item = mLastSelectedInMode[mTemplateMode];
+				if ( item < 0 )
+					for ( auto it : mSource->getList() )
+						if ( getTemplateMode( it.second ) == mTemplateMode ) { item = it.first; break; }
+				if ( item >= 0 )
+					mCfg->set( cfgSelector, item );
+			}
+			this->switchTemplateMode();
+		}
+#endif
 		
 		// File
 		// TODO:: get droppped name, loaded name
@@ -364,6 +437,72 @@ namespace cinder { namespace sgui {
 	{
 		lacy::Lacy::OpenUrl( "http://paulbourke.net/dome/testpattern/" );
 		event.setHandled();
+	}
+	//
+	// Templates
+	// Template mode by source name, -1 if not displayed
+	int ciGuiBlockQBSourceTab::getTemplateMode( const std::string & name )
+	{
+		if ( qb::qbSourceSelector::isGenerator( name ) )
+			return TEMPLATE_MODE_GENERATOR;
+		if ( name.find("_grid") != std::string::npos )
+			return TEMPLATE_MODE_GRIDS;
+		if ( name.compare(0,5,"DOME_") == 0 )
+			return TEMPLATE_MODE_TEMPLATES;
+		if ( name.compare(0,8,"pattern_") == 0 )
+			return TEMPLATE_MODE_PATTERNS;
+		if ( name.compare(0,8,"PANORAMA") == 0 )
+			return TEMPLATE_MODE_PANORAMA;
+		return -1;
+	}
+	// Friendly name: "DOME_220_grid_4K.png" > "Dome 220° 4K"
+	std::string ciGuiBlockQBSourceTab::getTemplateLabel( const std::string & name )
+	{
+		if ( qb::qbSourceSelector::isGenerator( name ) )
+			return "Fulldome Grid";
+		std::string base = getPathFileName( name );
+		base = base.substr( 0, base.find_last_of('.') );
+		std::vector<std::string> parts = split( base, '_' );
+		std::string res = parts.back();
+		if ( parts[0] == "DOME" )
+		{
+			std::string fov = ( parts.size() > 2 && isdigit(parts[1][0]) ? parts[1] : "180" );	// DOME_220_2K / DOME_2K
+			return std::string("Dome ") + fov + "\302\260 " + res;
+		}
+		if ( parts[0] == "pattern" )
+			return std::string("Pattern ") + res;
+		if ( parts[0] == "PANORAMA" )
+			return "Panorama";
+		return base;
+	}
+	// List of templates of a mode, selecting on cfgSelector
+	void ciGuiBlockQBSourceTab::addTemplateList( int mode )
+	{
+		std::map<int,std::string> labels;
+		for ( auto it : mSource->getList() )
+			if ( getTemplateMode( it.second ) == mode )
+				labels[it.first] = getTemplateLabel( it.second );
+		if ( ! labels.empty() )
+			mCfg->guiAddParamList( "", mCfg->getPointerInt( cfgSelector ), labels );
+	}
+	// Show current mode panels only
+	void ciGuiBlockQBSourceTab::switchTemplateMode()
+	{
+		mLastTemplateMode = mTemplateMode;
+		std::vector<Control*> & controls = mCfg->mGui->getControls();
+		for ( int mode = 0 ; mode < TEMPLATE_MODE_COUNT ; mode++ )
+		{
+			bool active = ( mode == mTemplateMode );
+			for ( size_t i = mTemplateControls[mode].first ; i < mTemplateControls[mode].second && i < controls.size() ; i++ )
+			{
+				if ( controls[i]->type == Control::PANEL )
+					controls[i]->enable( active );
+			}
+			// restore switch panels inside the mode
+			if ( active )
+				for ( size_t i = mTemplateControls[mode].first ; i < mTemplateControls[mode].second && i < controls.size() ; i++ )
+					controls[i]->switchPanels();
+		}
 	}
 #endif
 	// get dropped file

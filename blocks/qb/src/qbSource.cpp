@@ -28,6 +28,21 @@ namespace cinder { namespace qb {
 	
 	std::vector<std::string> _qbSourceExt;
 
+	// Registered procedural sources, by source name
+	static std::map<std::string,qbSourceSelector::GeneratorFactory> & _qbGenerators()
+	{
+		static std::map<std::string,qbSourceSelector::GeneratorFactory> generators;
+		return generators;
+	}
+	void qbSourceSelector::registerGenerator( const std::string & name, GeneratorFactory factory )
+	{
+		_qbGenerators()[name] = factory;
+	}
+	bool qbSourceSelector::isGenerator( const std::string & name )
+	{
+		return ( _qbGenerators().find(name) != _qbGenerators().end() );
+	}
+
 	//////////////////////////////////////////////////////////////////
 	//
 	// WRAPPER Source
@@ -91,6 +106,14 @@ namespace cinder { namespace qb {
 			this->loadNDI( _f.substr(5), "" );
 		}
 #endif
+		// Procedural source
+		else if ( isGenerator(_f) )
+		{
+			qbSourceBase *newSrc = _qbGenerators()[_f]();
+			if ( newSrc == nullptr )
+				return false;
+			this->setSource(newSrc);
+		}
 #ifdef QB_PALETTE
 		else if ( _f.compare("qbSourcePalette") == 0 )
 		{

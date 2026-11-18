@@ -86,7 +86,7 @@ namespace cinder { namespace sgui {
 	class ciGuiBlockNDIDirectory;
 	class ciGuiBlockQBSourceTab : public ciConfigGuiBlock {
 	public:
-		ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha=-1, std::function<void()> infoBlock=nullptr );
+		ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha=-1, std::function<void()> infoBlock=nullptr, std::function<void()> generatorBlock=nullptr );
 		~ciGuiBlockQBSourceTab() {}
 		
 		// virtuals
@@ -130,6 +130,18 @@ namespace cinder { namespace sgui {
 		void cbRewind( ci::app::MouseEvent & event );
 #ifdef BDVJ
 		void cbDomePatterns( ci::app::MouseEvent & event );
+		// Templates: Generators / Templates / Grids / Test Patterns / Panorama
+		enum { TEMPLATE_MODE_GENERATOR, TEMPLATE_MODE_TEMPLATES, TEMPLATE_MODE_GRIDS, TEMPLATE_MODE_PATTERNS, TEMPLATE_MODE_PANORAMA, TEMPLATE_MODE_COUNT };
+		static int getTemplateMode( const std::string & name );
+		static std::string getTemplateLabel( const std::string & name );
+		void addTemplateList( int mode );
+		void switchTemplateMode();
+		int					cfgSelector;
+		int					mTemplateMode;
+		int					mLastTemplateMode;
+		int					mLastSelected;
+		int					mLastSelectedInMode[TEMPLATE_MODE_COUNT];	// last item selected on each mode
+		std::pair<size_t,size_t>	mTemplateControls[TEMPLATE_MODE_COUNT];	// range of controls on each mode
 #endif
 		void onFileDrop( ci::app::FileDropEvent & event );
 		bool loadFile( const std::string & f );

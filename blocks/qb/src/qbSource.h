@@ -16,6 +16,8 @@
 #include "cinder/audio/Context.h"
 #include "cinderSyphon.h"
 #include "qbCube.h"
+#include <functional>
+#include <map>
 
 #if defined(QT64)
 #include "Avf.h"	// https://github.com/calebjohnston/Cinder-AvfImpl
@@ -49,6 +51,7 @@ namespace cinder { namespace qb {
 #define QB_SOURCE_MOVIE			"Movie"
 #define QB_SOURCE_SYPHON		"Syphon"
 #define QB_SOURCE_NDI			"NDI"
+#define QB_SOURCE_GENERATOR		"Generator"
 
 	extern std::vector<std::string> _qbSourceExt;
 
@@ -338,6 +341,10 @@ namespace cinder { namespace qb {
 		// static
 		static bool isMovieFile( const std::string & f );
 		static bool isImageFile( const std::string & f );
+		// Procedural sources (generators), created by load() when the source name matches
+		typedef std::function<qbSourceBase*()> GeneratorFactory;
+		static void registerGenerator( const std::string & name, GeneratorFactory factory );
+		static bool isGenerator( const std::string & name );
 
 	protected:
 		
