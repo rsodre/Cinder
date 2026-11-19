@@ -48,6 +48,12 @@
 #ifdef QB
 #include "qb.h"
 #endif
+#if defined( CINDER_MAC )
+#include "cinder/cocoa/CinderCocoa.h"
+#include "cinder/ip/Premultiply.h"
+#include "cinder/ip/Fill.h"
+#include <CoreText/CoreText.h>
+#endif
 
 #ifndef RELEASE
 //#define DEBUG_FBO
@@ -86,6 +92,79 @@
 using namespace ci::app;
 
 namespace cinder { namespace sgui {
+
+	//-----------------------------------------------------------------------------
+	// Pixel perfect text
+	// Fonts created with GL_NEAREST (our pixel font) are rasterized without anti-aliasing,
+	// with the baseline and the draw position snapped to whole pixels.
+	// Same layout as gl::drawString(), which is used for any other font.
+	//
+	static void drawPixelString( const std::string &str, const Vec2f &pos, const ColorA &color, Font font, int justification )
+	{
+#if defined( CINDER_MAC )
+		if ( str.empty() )
+			return;
+		if ( ! font || font.getFilter() != GL_NEAREST )
+#endif
+		{
+			if ( justification < 0 )		gl::drawString( str, pos, color, font );
+			else if ( justification == 0 )	gl::drawStringCentered( str, pos, color, font );
+			else							gl::drawStringRight( str, pos, color, font );
+			return;
+		}
+#if defined( CINDER_MAC )
+		// measure
+		CFAttributedStringRef attrStr = cocoa::createCfAttributedString( str, font, color );
+		CTLineRef ctLine = ::CTLineCreateWithAttributedString( attrStr );
+		::CFRelease( attrStr );
+		CGFloat ascent, descent, leading;
+		float width = ::CTLineGetTypographicBounds( ctLine, &ascent, &descent, &leading );
+		float height = ascent + descent + leading;
+		int pixelWidth = (int)math<float>::ceil( width );
+		int pixelHeight = (int)math<float>::ceil( height );
+		if ( pixelWidth <= 0 || pixelHeight <= 0 )
+		{
+			::CFRelease( ctLine );
+			return;
+		}
+
+		// render aliased
+		Surface8u surface( pixelWidth, pixelHeight, true, SurfaceChannelOrder::RGBA );
+		CGContextRef cgContext = cocoa::createCgBitmapContext( surface );
+		ip::fill( &surface, ColorA8u( 0, 0, 0, 0 ) );
+		::CGContextSetShouldAntialias( cgContext, false );
+		::CGContextSetAllowsAntialiasing( cgContext, false );
+		::CGContextSetShouldSmoothFonts( cgContext, false );
+		::CGContextSetAllowsFontSmoothing( cgContext, false );
+		::CGContextSetShouldSubpixelPositionFonts( cgContext, false );
+		::CGContextSetShouldSubpixelQuantizeFonts( cgContext, false );
+		::CGContextSetTextPosition( cgContext, 0, math<float>::floor( height + 1.0f - ascent + 0.5f ) );
+		::CTLineDraw( ctLine, cgContext );
+		::CGContextFlush( cgContext );
+		::CGContextRelease( cgContext );
+		::CFRelease( ctLine );
+		ip::unpremultiply( &surface );
+
+		gl::Texture::Format fmt;
+		fmt.setMinFilter( GL_NEAREST );
+		fmt.setMagFilter( GL_NEAREST );
+		gl::Texture tex( surface, fmt );
+
+		// snap to whole pixels
+		Vec2f p = pos - Vec2f( 0, (float)descent );
+		if ( justification == 0 )
+			p.x -= math<float>::floor( pixelWidth * 0.5f + 0.5f );
+		else if ( justification > 0 )
+			p.x -= pixelWidth;
+		p = Vec2f( math<float>::floor( p.x + 0.5f ), math<float>::floor( p.y + 0.5f ) );
+
+		glColor4ub( 255, 255, 255, 255 );
+		gl::draw( tex, p );
+#endif
+	}
+	static void drawString( const std::string &str, const Vec2f &pos, const ColorA &color, Font font )			{ drawPixelString( str, pos, color, font, -1 ); }
+	static void drawStringCentered( const std::string &str, const Vec2f &pos, const ColorA &color, Font font )	{ drawPixelString( str, pos, color, font, 0 ); }
+	static void drawStringRight( const std::string &str, const Vec2f &pos, const ColorA &color, Font font )		{ drawPixelString( str, pos, color, font, 1 ); }
 	
 	//-----------------------------------------------------------------------------
 	
@@ -407,7 +486,13 @@ namespace cinder { namespace sgui {
 			bool updated = false;
 			if ( !mFbo || bShouldResize )
 			{
-				mFbo = gl::Fbo( SGUI_WIDTH, SGUI_HEIGHT, true, true, false );
+				// Nearest: the GUI is pixel art, never resample it
+				gl::Fbo::Format fmt;
+				fmt.setColorInternalFormat( GL_RGBA8 );
+				fmt.enableDepthBuffer( false );
+				fmt.setMinFilter( GL_NEAREST );
+				fmt.setMagFilter( GL_NEAREST );
+				mFbo = gl::Fbo( SGUI_WIDTH, SGUI_HEIGHT, fmt );
 				mFbo.getTexture().setFlipped();
 				bShouldResize = false;
 				bForceRedraw = true;
@@ -678,9 +763,9 @@ namespace cinder { namespace sgui {
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect(backArea + pos);
 		gl::enableAlphaBlending();
-		gl::drawString( left, pos, SimpleGUI::textColor, SimpleGUI::textFont);
+		sgui::drawString( left, pos, SimpleGUI::textColor, SimpleGUI::textFont);
 		if (right.length())
-			gl::drawStringRight(right, pos+Vec2f(SimpleGUI::sliderSize.x,0), SimpleGUI::textColor, SimpleGUI::textFont);
+			sgui::drawStringRight(right, pos+Vec2f(SimpleGUI::sliderSize.x,0), SimpleGUI::textColor, SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 		pos.y += backArea.getHeight();
 		return pos;
@@ -1196,9 +1281,9 @@ namespace cinder { namespace sgui {
 
 		if ( ! slim )
 		{
-			gl::drawString(name, pos, TEXT_COLOR, SimpleGUI::textFont);
+			sgui::drawString(name, pos, TEXT_COLOR, SimpleGUI::textFont);
 			if (displayValue)
-				gl::drawStringRight(this->toString(), pos+Vec2f(SimpleGUI::sliderSize.x,0), TEXT_COLOR, SimpleGUI::textFont);
+				sgui::drawStringRight(this->toString(), pos+Vec2f(SimpleGUI::sliderSize.x,0), TEXT_COLOR, SimpleGUI::textFont);
 			gl::disableAlphaBlending();
 		}
 
@@ -1231,7 +1316,7 @@ namespace cinder { namespace sgui {
 				gl::drawStrokedRect(activeArea);
 			}
 			if (slim && displayValue)
-				gl::drawStringRight(this->toString(), activeArea.getUpperRight(), SimpleGUI::textColor, SimpleGUI::textFont);
+				sgui::drawStringRight(this->toString(), activeArea.getUpperRight(), SimpleGUI::textColor, SimpleGUI::textFont);
 		}
 		
 		//NEW
@@ -1403,9 +1488,9 @@ namespace cinder { namespace sgui {
 
 		if ( ! slim )
 		{
-			gl::drawString(name, pos, TEXT_COLOR, SimpleGUI::textFont);
+			sgui::drawString(name, pos, TEXT_COLOR, SimpleGUI::textFont);
 			if (displayValue)
-				gl::drawStringRight(this->toString(), pos+Vec2f(SimpleGUI::sliderSize.x,0), TEXT_COLOR, SimpleGUI::textFont);
+				sgui::drawStringRight(this->toString(), pos+Vec2f(SimpleGUI::sliderSize.x,0), TEXT_COLOR, SimpleGUI::textFont);
 			
 		}
 		if (!readOnly)
@@ -1421,7 +1506,7 @@ namespace cinder { namespace sgui {
 					gl::drawSolidRect(items[i].activeArea);
 				}
 				if (slim)
-					gl::drawStringRight(this->toString(), activeArea.getUpperRight() + Vec2f(12,0), SimpleGUI::textColor, SimpleGUI::textFont);
+					sgui::drawStringRight(this->toString(), activeArea.getUpperRight() + Vec2f(12,0), SimpleGUI::textColor, SimpleGUI::textFont);
 			}
 			else
 			{
@@ -1445,7 +1530,7 @@ namespace cinder { namespace sgui {
 					gl::drawStrokedRect(activeArea);
 				}
 				if (slim && displayValue)
-					gl::drawStringRight(this->toString(), activeArea.getUpperRight(), SimpleGUI::textColor, SimpleGUI::textFont);
+					sgui::drawStringRight(this->toString(), activeArea.getUpperRight(), SimpleGUI::textColor, SimpleGUI::textFont);
 			}
 		}
 		gl::disableAlphaBlending();
@@ -1544,7 +1629,7 @@ namespace cinder { namespace sgui {
 		gl::drawSolidRect( backArea + pos );
 		
 		gl::enableAlphaBlending();
-		gl::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
+		sgui::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
 		
 		// ROGER
 		if (displayValue)
@@ -1563,7 +1648,7 @@ namespace cinder { namespace sgui {
 				snprintf(hx,6,"0x%x",(*var));
 				ss << " / " << hx;
 			}
-			gl::drawStringRight(ss.str(), pos+Vec2f(SimpleGUI::sliderSize.x,0), SimpleGUI::textColor, SimpleGUI::textFont);
+			sgui::drawStringRight(ss.str(), pos+Vec2f(SimpleGUI::sliderSize.x,0), SimpleGUI::textColor, SimpleGUI::textFont);
 		}
 		if (!readOnly)
 		{
@@ -1661,7 +1746,7 @@ namespace cinder { namespace sgui {
 		gl::drawSolidRect( backArea + pos );
 		
 		gl::enableAlphaBlending();
-		gl::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
+		sgui::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
 		
 		// ROGER
 		if (displayValue)
@@ -1685,7 +1770,7 @@ namespace cinder { namespace sgui {
 				snprintf(hx,6,"0x%x",(*var));
 				ss << "/" << hx;
 			}
-			gl::drawStringRight(ss.str(), pos+Vec2f(SimpleGUI::sliderSize.x,0), SimpleGUI::textColor, SimpleGUI::textFont);
+			sgui::drawStringRight(ss.str(), pos+Vec2f(SimpleGUI::sliderSize.x,0), SimpleGUI::textColor, SimpleGUI::textFont);
 		}
 		if (!readOnly)
 		{
@@ -1789,7 +1874,7 @@ namespace cinder { namespace sgui {
 		
 		float x = pos.x + ( asButton ? SimpleGUI::buttonGap.x : SimpleGUI::radioSize.x + SimpleGUI::padding.x*2 );
 		gl::enableAlphaBlending();
-		gl::drawString( ((*var)?name:nameOff), Vec2f(x, pos.y), (asButton&&(*var) ? SimpleGUI::textColor2 : SimpleGUI::textColor), SimpleGUI::textFont);
+		sgui::drawString( ((*var)?name:nameOff), Vec2f(x, pos.y), (asButton&&(*var) ? SimpleGUI::textColor2 : SimpleGUI::textColor), SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 		
 		pos.y += backArea.getHeight() + SimpleGUI::spacing.y;	
@@ -1977,7 +2062,7 @@ namespace cinder { namespace sgui {
 		gl::drawSolidRect(backArea+pos);
 		
 		gl::enableAlphaBlending();
-		gl::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
+		sgui::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 		
 		// Color Box
@@ -2026,7 +2111,7 @@ namespace cinder { namespace sgui {
 					snprintf(hx,4,"%02X",(unsigned int)((*varA)[i]*255));
 				else
 					snprintf(hx,4,"%02X",(unsigned int)((*var)[i]*255));
-				gl::drawStringRight(hx, activeAreas[i].getUpperRight()+Vec2f(0,0), SimpleGUI::textColor, SimpleGUI::textFont);
+				sgui::drawStringRight(hx, activeAreas[i].getUpperRight()+Vec2f(0,0), SimpleGUI::textColor, SimpleGUI::textFont);
 			}
 			gl::disableAlphaBlending();
 		}
@@ -2175,7 +2260,7 @@ namespace cinder { namespace sgui {
 		gl::drawSolidRect(backArea+pos);
 		
 		gl::enableAlphaBlending();
-		gl::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
+		sgui::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 
 		// back
@@ -2218,7 +2303,7 @@ namespace cinder { namespace sgui {
 				ss.setf(std::ios::fixed);
 				ss.precision(this->precision);
 				ss << this->displayedValue( (*var)[i], step );
-				gl::drawStringRight(ss.str(), activeAreas[i].getUpperRight()+Vec2f(0,0), SimpleGUI::textColor, SimpleGUI::textFont);
+				sgui::drawStringRight(ss.str(), activeAreas[i].getUpperRight()+Vec2f(0,0), SimpleGUI::textColor, SimpleGUI::textFont);
 			}
 			gl::disableAlphaBlending();
 		}
@@ -2356,7 +2441,7 @@ namespace cinder { namespace sgui {
 		
 		gl::enableAlphaBlending();
 		if (name.length())
-			gl::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
+			sgui::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 		
 		
@@ -2538,7 +2623,7 @@ namespace cinder { namespace sgui {
 		gl::color(SimpleGUI::bgColor);
 		gl::drawSolidRect(backArea+pos);
 		if (name.length())
-			gl::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
+			sgui::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
 		
 		// draw arcball
 		gl::color(ColorA::white());
@@ -2553,7 +2638,7 @@ namespace cinder { namespace sgui {
 		gl::color( resetting ? SLIDER_COLOR : SimpleGUI::darkColor );
 		gl::drawSolidRect(activeAreas[1]);
 		gl::color(SimpleGUI::bgColor);
-		gl::drawString("x", activeAreas[1].getUpperLeft()+Vec2f(2,-1), SimpleGUI::textColor, SimpleGUI::textFont);
+		sgui::drawString("x", activeAreas[1].getUpperLeft()+Vec2f(2,-1), SimpleGUI::textColor, SimpleGUI::textFont);
 
 		gl::disableAlphaBlending();
 
@@ -2683,7 +2768,7 @@ namespace cinder { namespace sgui {
 		
 		gl::enableAlphaBlending();
 		if (name.length())
-			gl::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
+			sgui::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
 		
 		gl::color(ColorA::white());
 		if (*var)
@@ -2806,7 +2891,7 @@ namespace cinder { namespace sgui {
 		if ( name.length() )
 		{
 			gl::enableAlphaBlending();
-			gl::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
+			sgui::drawString(name, pos, SimpleGUI::textColor, SimpleGUI::textFont);
 			gl::disableAlphaBlending();
 		}
 	}
@@ -2824,7 +2909,7 @@ namespace cinder { namespace sgui {
 		// draw items labels
 		gl::enableAlphaBlending();
 		for (int i = 0 ; i < items.size() ; i++) {
-			gl::drawString(items[i].label, 
+			sgui::drawString(items[i].label, 
 						   items[i].activeArea.getUpperLeft() + SimpleGUI::buttonGap,
 						   this->isSelected(i) ? SimpleGUI::textColor2 : SimpleGUI::textColor,
 						   SimpleGUI::textFont);
@@ -2927,7 +3012,7 @@ namespace cinder { namespace sgui {
 			if (selected)
 			{
 				gl::enableAlphaBlending();
-				gl::drawString(items[i].label,
+				sgui::drawString(items[i].label,
 							   b.getUpperLeft() + SimpleGUI::buttonGap,
 							   SimpleGUI::textColor,
 							   SimpleGUI::textFont);
@@ -2943,7 +3028,7 @@ namespace cinder { namespace sgui {
 		gl::color(SLIDER_COLOR);
 		gl::drawSolidRect(abase);
 		gl::enableAlphaBlending();
-		gl::drawString( "V", abase.getUpperLeft()+Vec2f(3,0), SimpleGUI::darkColor, SimpleGUI::textFont);
+		sgui::drawString( "V", abase.getUpperLeft()+Vec2f(3,0), SimpleGUI::darkColor, SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 		
 		if (dropped)
@@ -3036,14 +3121,14 @@ namespace cinder { namespace sgui {
 		if ( centered )
 		{
 			Vec2f p = pos + Vec2f( SimpleGUI::buttonSize.x * 0.5f, 0);
-			gl::drawStringCentered(name, Vec2f(p), pressed ? SimpleGUI::textColor2 : SimpleGUI::textColor, SimpleGUI::textFont);
+			sgui::drawStringCentered(name, Vec2f(p), pressed ? SimpleGUI::textColor2 : SimpleGUI::textColor, SimpleGUI::textFont);
 		}
 		else
 		{
 			ColorA c = ( pressed ? SimpleGUI::textColor2 : SimpleGUI::textColor );
-			gl::drawString(name, pos + SimpleGUI::buttonGap, c, SimpleGUI::textFont);
+			sgui::drawString(name, pos + SimpleGUI::buttonGap, c, SimpleGUI::textFont);
 			if (name2.length())
-				gl::drawStringRight(name2, pos + Vec2f(SimpleGUI::buttonSize.x,0) - SimpleGUI::buttonGap/2, c, SimpleGUI::textFont);
+				sgui::drawStringRight(name2, pos + Vec2f(SimpleGUI::buttonSize.x,0) - SimpleGUI::buttonGap/2, c, SimpleGUI::textFont);
 		}
 		gl::disableAlphaBlending();
 		
@@ -3164,13 +3249,13 @@ namespace cinder { namespace sgui {
 			else
 			{
 				//printf("name[%s] sz %d\n",name.c_str(),(int)name.length());
-				gl::drawString(name, pos, TEXT_COLOR, SimpleGUI::textFont);
+				sgui::drawString(name, pos, TEXT_COLOR, SimpleGUI::textFont);
 				if (var)
-					gl::drawStringRight((*var), pos+Vec2f(SimpleGUI::sliderSize.x,0), TEXT_COLOR, SimpleGUI::textFont);
+					sgui::drawStringRight((*var), pos+Vec2f(SimpleGUI::sliderSize.x,0), TEXT_COLOR, SimpleGUI::textFont);
 			}
 		}
 		else if (var)
-			gl::drawString((*var), pos, TEXT_COLOR, SimpleGUI::textFont);
+			sgui::drawString((*var), pos, TEXT_COLOR, SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 		
 		pos.y += backArea.getHeight() + SimpleGUI::spacing.y;
@@ -3266,7 +3351,7 @@ namespace cinder { namespace sgui {
 		gl::drawSolidRect(activeArea);
 
 		gl::enableAlphaBlending();
-		gl::drawString( (var?(*var?name:nameOff):name), (pos + SimpleGUI::tabGap), (selected ? SimpleGUI::textColor2 : SimpleGUI::textColor), SimpleGUI::textFont);
+		sgui::drawString( (var?(*var?name:nameOff):name), (pos + SimpleGUI::tabGap), (selected ? SimpleGUI::textColor2 : SimpleGUI::textColor), SimpleGUI::textFont);
 		gl::disableAlphaBlending();
 
 		if (var)
