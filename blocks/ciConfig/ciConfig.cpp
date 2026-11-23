@@ -1051,6 +1051,50 @@ namespace cinder {
 		ciConfigParam *p = params[id];
 		p->vec[i].setInitialValue(def,v);
 	}
+	//
+	// Snapshot
+	void ciConfig::takeSnapshot( ciConfigSnapshot & s )
+	{
+		s.values.assign( params.size() * 4, 0.0f );
+		s.strings.assign( params.size(), std::string() );
+		s.loaded.assign( params.size(), false );
+		s.displayFileName = mDisplayFileName;
+		for ( int id = 0 ; id < params.size() ; id++ )
+		{
+			ciConfigParam *p = params[id];
+			if ( p == NULL )
+				continue;
+			s.loaded[id] = p->loaded;
+			if ( p->isString() )
+				s.strings[id] = p->strval;
+			else
+				for ( int i = 0 ; i < 4 ; i++ )
+					s.values[id*4+i] = p->vec[i].get();
+		}
+	}
+	void ciConfig::restoreSnapshot( const ciConfigSnapshot & s )
+	{
+		for ( int id = 0 ; id < params.size() && id < s.strings.size() ; id++ )
+		{
+			ciConfigParam *p = params[id];
+			if ( p == NULL )
+				continue;
+			if ( p->isString() )
+			{
+				if ( p->strval != s.strings[id] )
+					this->set( id, s.strings[id].c_str() );
+			}
+			else
+			{
+				for ( int i = 0 ; i < 4 ; i++ )
+					if ( p->vec[i].get() != s.values[id*4+i] )
+						this->set( id, i, s.values[id*4+i] );		// raw value, no clamping
+			}
+			p->loaded = s.loaded[id];
+		}
+		mDisplayFileName = s.displayFileName;
+	}
+
 	void ciConfig::resetDefault(int def)
 	{
 		if (def >= MAX_DEFAULTS)

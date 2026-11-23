@@ -78,6 +78,7 @@ namespace cinder { namespace qb {
 		void			drawLineSegmented( const Vec3f & p0, const Vec3f & p1, int segments );
 		void			drawLineSegmented2D( const Vec3f & p0, const Vec3f & p1, int segments );
 		static void		drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest, float floorZ );
+		static void		computeLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest, float floorZ, std::vector<Vec3f> & points );
 
 		static Vec3f	getIntersectionFrom( const Vec3f & p0, const Vec3f & p1, bool closest=false );
 		static Vec3f	rayIntersectSphere( Vec3f p1, Vec3f p0, Vec3f center, float r );

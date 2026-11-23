@@ -395,6 +395,18 @@ public:
 
 ////////////////////////////////////////////////////////////////////////
 //
+// In-memory copy of all values, to change the config temporarily and restore it
+//
+struct ciConfigSnapshot
+{
+	std::vector<float>			values;		// 4 per param
+	std::vector<std::string>	strings;
+	std::vector<bool>			loaded;
+	std::string					displayFileName;
+};
+
+////////////////////////////////////////////////////////////////////////
+//
 // CONFIG CLASS
 //
 class ciConfig
@@ -583,6 +595,7 @@ public:
 
 	// Getters
 	short getParamCount()					{ return paramCount; }
+	int getParamSlots()						{ return (int)params.size(); }	// valid ids are 0..slots-1, may be NULL
 	ciConfigParam* getParamPtr(short i)		{ return params[i]; }
 	float getLastValue(int id, int i)		{ return params[id]->vec[i].getLastValue(); }
 	std::string getLastValueString(int id)	{ return params[id]->getLastValueString(); }
@@ -754,6 +767,8 @@ public:
 	// Shortcuts
 	void setFileExtension(const std::string e);
 	bool import();
+	void takeSnapshot( ciConfigSnapshot & s );
+	void restoreSnapshot( const ciConfigSnapshot & s );		// sets only changed values
 	bool exportas();
 	void openProjectFolder();
 	void setFile(const std::string & filename);

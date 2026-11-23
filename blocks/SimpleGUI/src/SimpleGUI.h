@@ -99,6 +99,7 @@ namespace cinder { namespace sgui {
 		static Vec2f tabGap;
 		static Vec2f separatorSize;
 		static Vec2f thumbnailSize;
+		static bool lowMemory;			// skip extra Fbos (texture previews)
 		static Font textFont;
 		
 		enum {
@@ -167,6 +168,7 @@ namespace cinder { namespace sgui {
 		
 		// ROGER
 		bool				anythingChanged();
+		bool				needsRedraw();
 		Control*			getControlByName(const std::string & name);
 		int					getColumnWidth()	{ return SimpleGUI::sliderSize.x; }
 		Vec2f				getSize()			{ return mSize; }
@@ -736,6 +738,8 @@ namespace cinder { namespace sgui {
 		TextureVarControl* setAlpha(bool a)			{ alpha = a; return this; }			// chained setters
 		void setTexture(gl::Texture * t)			{ var = t; mustRefresh = true; }
 	private:
+		gl::Texture getReducedTexture();
+		std::vector<gl::Fbo> mLevels;				// half size reductions of the texture, for smooth minification
 		bool alpha;
 		bool dragging;
 		float refreshRate;
@@ -848,6 +852,8 @@ namespace cinder { namespace sgui {
 		std::string lastVar;
 		gl::Texture wrapTex;
 		gl::Texture::Format wrapTexFmt;
+		std::string wrapText;			// text and color of wrapTex
+		ColorA wrapColor;
 		bool wrap;
 		bool hideNull;
 	};

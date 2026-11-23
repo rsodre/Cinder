@@ -246,14 +246,24 @@ namespace cinder { namespace qb {
 
 	void qbDomeMaster::drawLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest, float floorZ )
 	{
+		std::vector<Vec3f> points;
+		computeLineSegmentedFrom( from, p0, p1, segments, closest, floorZ, points );
 		glBegin( GL_LINE_STRIP );
+		for ( auto & p : points )
+			glVertex3f( p );
+		glEnd();
+	}
+	// Points of a line from p0 to p1 projected on the dome, as seen from a point
+	void qbDomeMaster::computeLineSegmentedFrom( const Vec3f & from, const Vec3f & p0, const Vec3f & p1, int segments, bool closest, float floorZ, std::vector<Vec3f> & points )
+	{
+		points.clear();
 		for (int i = 0 ; i <= segments ; i++)
 		{
 			float prog = (i / (float)segments);
 			Vec3f to = p0.lerp( prog, p1 );
 			Vec3f mid = getIntersectionFrom( from, to, closest );
 			if ( mid != Vec3f::zero() && mid.z >= floorZ )
-				glVertex3f( mid );
+				points.push_back( mid );
 			else
 			{
 				mid = lineClosestPointToSphere(from, to, Vec3f::zero(), 1.0);
@@ -261,10 +271,9 @@ namespace cinder { namespace qb {
 					mid = lineIntersectPlane(from, to, Vec3f(0,0,floorZ), Vec3f::zAxis());
 				// underground...
 				if ( mid != Vec3f::zero() )
-					glVertex3f( mid );
+					points.push_back( mid );
 			}
 		}
-		glEnd();
 	}
 	
 	//

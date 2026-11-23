@@ -165,6 +165,79 @@ namespace cinder { namespace sgui {
 	static void drawString( const std::string &str, const Vec2f &pos, const ColorA &color, Font font )			{ drawPixelString( str, pos, color, font, -1 ); }
 	static void drawStringCentered( const std::string &str, const Vec2f &pos, const ColorA &color, Font font )	{ drawPixelString( str, pos, color, font, 0 ); }
 	static void drawStringRight( const std::string &str, const Vec2f &pos, const ColorA &color, Font font )		{ drawPixelString( str, pos, color, font, 1 ); }
+
+#if defined( CINDER_MAC )
+	static float measurePixelString( const std::string &str, const Font &font )
+	{
+		if ( str.empty() )
+			return 0;
+		CFAttributedStringRef attrStr = cocoa::createCfAttributedString( str, font, ColorA::white() );
+		CTLineRef ctLine = ::CTLineCreateWithAttributedString( attrStr );
+		::CFRelease( attrStr );
+		float width = ::CTLineGetTypographicBounds( ctLine, NULL, NULL, NULL );
+		::CFRelease( ctLine );
+		return width;
+	}
+	//
+	// Multi-line pixel text, word wrapped to width (TextBox replacement)
+	static Surface8u renderPixelTextBox( const std::string &text, Font font, const ColorA &color, float width )
+	{
+		// wrap
+		std::vector<std::string> lines;
+		std::vector<std::string> paragraphs;
+		boost::split( paragraphs, text, boost::is_any_of("\n") );
+		for ( auto & para : paragraphs )
+		{
+			std::vector<std::string> words;
+			boost::split( words, para, boost::is_any_of(" ") );
+			std::string current;
+			for ( auto & word : words )
+			{
+				std::string candidate = ( current.empty() ? word : current + " " + word );
+				if ( current.empty() || measurePixelString( candidate, font ) <= width )
+					current = candidate;
+				else
+				{
+					lines.push_back( current );
+					current = word;
+				}
+			}
+			lines.push_back( current );
+		}
+
+		// render aliased, one whole pixel line height per line
+		float ascent = font.getAscent();
+		int lineHeight = (int)math<float>::ceil( font.getAscent() + font.getDescent() + font.getLeading() );
+		int pixelWidth = math<int>::max( 1, (int)math<float>::ceil( width ) );
+		int pixelHeight = math<int>::max( 1, lineHeight * (int)lines.size() );
+		Surface8u surface( pixelWidth, pixelHeight, true, SurfaceChannelOrder::RGBA );
+		ip::fill( &surface, ColorA8u( 0, 0, 0, 0 ) );
+		CGContextRef cgContext = cocoa::createCgBitmapContext( surface );
+		::CGContextSetShouldAntialias( cgContext, false );
+		::CGContextSetAllowsAntialiasing( cgContext, false );
+		::CGContextSetShouldSmoothFonts( cgContext, false );
+		::CGContextSetAllowsFontSmoothing( cgContext, false );
+		::CGContextSetShouldSubpixelPositionFonts( cgContext, false );
+		::CGContextSetShouldSubpixelQuantizeFonts( cgContext, false );
+		for ( size_t i = 0 ; i < lines.size() ; i++ )
+		{
+			if ( lines[i].empty() )
+				continue;
+			CFAttributedStringRef attrStr = cocoa::createCfAttributedString( lines[i], font, color );
+			CTLineRef ctLine = ::CTLineCreateWithAttributedString( attrStr );
+			::CFRelease( attrStr );
+			// CG origin is bottom-left
+			float baseline = pixelHeight - ( i * lineHeight + math<float>::floor( ascent + 0.5f ) );
+			::CGContextSetTextPosition( cgContext, 0, baseline );
+			::CTLineDraw( ctLine, cgContext );
+			::CFRelease( ctLine );
+		}
+		::CGContextFlush( cgContext );
+		::CGContextRelease( cgContext );
+		ip::unpremultiply( &surface );
+		return surface;
+	}
+#endif
 	
 	//-----------------------------------------------------------------------------
 	
@@ -190,6 +263,7 @@ namespace cinder { namespace sgui {
 	Vec2f SimpleGUI::tabGap = Vec2f(6, 6);
 	Vec2f SimpleGUI::separatorSize = Vec2f(128, 3);
 	Vec2f SimpleGUI::thumbnailSize = Vec2f(128, 128 / 1.7777);
+	bool SimpleGUI::lowMemory = false;
 	
 	SimpleGUI::SimpleGUI(App* app) {
 		init(app);
@@ -406,6 +480,21 @@ namespace cinder { namespace sgui {
 					 rect.getY1() + rect.getHeight()
 					 );
 	}
+	// Anything to draw on the GUI Fbo this frame?
+	bool SimpleGUI::needsRedraw()
+	{
+		if ( bForceRedraw || bShouldResize || bBlink || theTab != lastTab )
+			return true;
+		if ( bDisplayFps && this->shouldDrawTabs() )
+		{
+#ifndef RELEASE
+			return true;	// frame counter
+#endif
+			if ( Control::displayedValue(mCurrentFps,1) != Control::displayedValue(App::get()->getAverageFps(),1) )
+				return true;
+		}
+		return this->anythingChanged();
+	}
 	bool SimpleGUI::anythingChanged()
 	{
 		for (std::vector<Control*>::iterator it = controls.begin() ; it != controls.end() ; it++) {
@@ -501,20 +590,21 @@ namespace cinder { namespace sgui {
 #endif
 			}
 			
-			// Draw to FBO
-			mFbo.bindFramebuffer();
-			bForceRedraw |= (theTab != lastTab);
-			if ( bForceRedraw )
-				gl::clear( ColorA::zero() );
-            auto _size = mFbo.getSize();
-            auto _bounds = mFbo.getBounds();
-			gl::setMatricesWindow( mFbo.getSize() );
-			gl::setViewport( mFbo.getBounds() );
-			gl::scale(SGUI_DENSITY, SGUI_DENSITY);
-			//gl::clear( ColorA(1,0,0,0.5) );	// debug size with color
-			this->drawGui();
-			mFbo.unbindFramebuffer();
-			updated = true;
+			// Draw to FBO, only if something changed
+			if ( this->needsRedraw() )
+			{
+				mFbo.bindFramebuffer();
+				bForceRedraw |= (theTab != lastTab);
+				if ( bForceRedraw )
+					gl::clear( ColorA::zero() );
+				gl::setMatricesWindow( mFbo.getSize() );
+				gl::setViewport( mFbo.getBounds() );
+				gl::scale(SGUI_DENSITY, SGUI_DENSITY);
+				//gl::clear( ColorA(1,0,0,0.5) );	// debug size with color
+				this->drawGui();
+				mFbo.unbindFramebuffer();
+				updated = true;
+			}
 #ifdef DEBUG_FBO
 			printf("frame [%d] GUI Fbo updated!\n",app::getElapsedFrames());
 #endif
@@ -2784,7 +2874,7 @@ namespace cinder { namespace sgui {
 				glColorMask(1,1,1,0);
 			}
 			//gl::draw(*var, activeArea);
-			gl::draw(*var);
+			gl::draw( this->getReducedTexture(), var->getBounds() );
 			if ( ! alpha )
 				glColorMask(1,1,1,1);
 			glPopMatrix();
@@ -2803,6 +2893,76 @@ namespace cinder { namespace sgui {
 		
 		pos.y += backArea.getHeight() + SimpleGUI::spacing.y;
 		return pos;
+	}
+
+	//
+	// Bilinear alone aliases when a large texture is drawn much smaller (thin lines break into dots).
+	// Halve it until it's at most 2x the thumbnail, each step averaging exactly 2x2 texels.
+	gl::Texture TextureVarControl::getReducedTexture()
+	{
+		gl::Texture & src = *var;
+		int target = (int)( activeArea.getWidth() * SGUI_DENSITY * 2 );
+		std::vector<Vec2i> sizes;
+		Vec2i sz = src.getSize();
+		while ( ! SimpleGUI::lowMemory && target > 0 && sz.x / 2 >= target && sz.y >= 2 )
+		{
+			sz /= 2;
+			sizes.push_back( sz );
+		}
+		if ( sizes.empty() )
+		{
+			mLevels.clear();		// release
+			return src;
+		}
+
+		// (re)create levels
+		if ( mLevels.size() != sizes.size() || mLevels[0].getSize() != sizes[0] )
+		{
+			mLevels.clear();
+			gl::Fbo::Format fmt;
+			fmt.setColorInternalFormat( GL_RGBA8 );
+			fmt.enableDepthBuffer( false );
+			for ( auto & s : sizes )
+			{
+				gl::Fbo fbo( s.x, s.y, fmt );
+				fbo.getTexture().setFlipped();
+				mLevels.push_back( fbo );
+			}
+		}
+
+		// save state, we are drawing inside the GUI Fbo
+		GLint prevFbo;
+		glGetIntegerv( GL_FRAMEBUFFER_BINDING_EXT, &prevFbo );
+		GLfloat color[4];
+		glGetFloatv( GL_CURRENT_COLOR, color );
+		GLboolean colorMask[4];
+		glGetBooleanv( GL_COLOR_WRITEMASK, colorMask );
+		GLboolean blending = glIsEnabled( GL_BLEND );
+		Area vp = gl::getViewport();
+		gl::pushMatrices();
+
+		glColorMask( 1, 1, 1, 1 );
+		gl::disableAlphaBlending();
+		gl::color( Color::white() );
+		gl::Texture tex = src;
+		for ( auto & fbo : mLevels )
+		{
+			fbo.bindFramebuffer();
+			gl::setMatricesWindow( fbo.getSize() );
+			gl::setViewport( fbo.getBounds() );
+			gl::draw( tex, fbo.getBounds() );
+			tex = fbo.getTexture();
+		}
+
+		// restore
+		glBindFramebufferEXT( GL_FRAMEBUFFER_EXT, prevFbo );
+		gl::popMatrices();
+		gl::setViewport( vp );
+		glColorMask( colorMask[0], colorMask[1], colorMask[2], colorMask[3] );
+		glColor4fv( color );
+		if ( blending )
+			glEnable( GL_BLEND );
+		return tex;
 	}
 
 	// ROGER
@@ -3198,10 +3358,24 @@ namespace cinder { namespace sgui {
 		float h = SimpleGUI::labelSize.y;
 		if ( wrap && name.length() )
 		{
-			TextBox tbox = TextBox().size(Vec2i(SimpleGUI::sliderSize.x,TextBox::GROW)).font(SimpleGUI::textFont).text(name);
-			tbox.setColor( TEXT_COLOR );
-			wrapTex = gl::Texture( tbox.render(), wrapTexFmt );
-			h = floor(tbox.measure().y);
+			// render only when the text changes
+			ColorA color = TEXT_COLOR;
+			if ( ! wrapTex || name != wrapText || color != wrapColor )
+			{
+				wrapText = name;
+				wrapColor = color;
+#if defined( CINDER_MAC )
+				if ( SimpleGUI::textFont.getFilter() == GL_NEAREST )
+					wrapTex = gl::Texture( renderPixelTextBox( name, SimpleGUI::textFont, color, SimpleGUI::sliderSize.x ), wrapTexFmt );
+				else
+#endif
+				{
+					TextBox tbox = TextBox().size(Vec2i(SimpleGUI::sliderSize.x,TextBox::GROW)).font(SimpleGUI::textFont).text(name);
+					tbox.setColor( color );
+					wrapTex = gl::Texture( tbox.render(), wrapTexFmt );
+				}
+			}
+			h = wrapTex.getHeight();
 		}
 		backArea = Rectf(( -SimpleGUI::padding).x,
 						 ( -SimpleGUI::padding).y,
