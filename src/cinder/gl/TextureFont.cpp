@@ -259,7 +259,9 @@ TextureFont::TextureFont( const Font &font, const string &utf8Chars, const Forma
 		channel.copyFrom( glyphChannel, glyphChannel.getBounds(), curOffset );
 
 		GlyphInfo newInfo;
-		newInfo.mOriginOffset = Vec2f( gm.gmptGlyphOrigin.x, glyphExtents.y - gm.gmptGlyphOrigin.y );
+		// ROGER: glyph top is gmptGlyphOrigin.y above the baseline. TextBox::measureGlyphs() places the first line at y = 0
+		// (Cocoa: at the ascent) and drawGlyphs() subtracts the ascent, so add it back (was glyphExtents.y, drawn too high)
+		newInfo.mOriginOffset = Vec2f( gm.gmptGlyphOrigin.x, mFont.getAscent() - gm.gmptGlyphOrigin.y );
 		newInfo.mTexCoords = Area( curOffset, curOffset + Vec2i( gm.gmBlackBoxX, gm.gmBlackBoxY ) );
 		newInfo.mTextureIndex = curTextureIndex;
 		mGlyphMap[*glyphIt] = newInfo;

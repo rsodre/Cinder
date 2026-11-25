@@ -54,6 +54,10 @@
 #include "cinder/ip/Fill.h"
 #include <CoreText/CoreText.h>
 #endif
+#if defined( CINDER_MSW )
+#include "cinder/ip/Fill.h"
+#include <map>
+#endif
 
 #ifndef RELEASE
 //#define DEBUG_FBO
@@ -99,8 +103,191 @@ namespace cinder { namespace sgui {
 	// with the baseline and the draw position snapped to whole pixels.
 	// Same layout as gl::drawString(), which is used for any other font.
 	//
+#if defined( CINDER_MSW )
+	//
+	// Windows: GDI with NONANTIALIASED_QUALITY, same layout as the CoreText path below.
+	// The font size is the em height in pixels (as CoreText in a 1x context), not Cinder's MSW 72/96 points:
+	// pf_tempesta_seven is drawn on a 1/8 em grid, so at 8 pixels per em every glyph lands on whole pixels.
+	// The bitmap is (ascent + descent + 1) high with the baseline at row "ascent", drawn at pos.y - descent.
+	//
+	struct PixelFontMsw
+	{
+		HFONT	hfont;
+		int		ascent;
+		int		descent;
+	};
+	static HDC getPixelDcMsw()
+	{
+		static HDC dc = ::CreateCompatibleDC( NULL );
+		return dc;
+	}
+	static const PixelFontMsw & getPixelFontMsw( const Font &font )
+	{
+		static std::map<std::string,PixelFontMsw> fonts;
+		int pixelSize = (int)math<float>::floor( font.getSize() + 0.5f );
+		std::string key = font.getName() + "/" + std::to_string( pixelSize );
+		auto it = fonts.find( key );
+		if ( it != fonts.end() )
+			return it->second;
+		LOGFONTW lf = font.getLogfont();
+		lf.lfHeight = - pixelSize;
+		lf.lfWidth = 0;
+		lf.lfQuality = NONANTIALIASED_QUALITY;
+		PixelFontMsw pf;
+		pf.hfont = ::CreateFontIndirectW( &lf );
+		pf.ascent = pixelSize;
+		pf.descent = 0;
+		TEXTMETRICW tm;
+		HGDIOBJ old = ::SelectObject( getPixelDcMsw(), pf.hfont );
+		if ( ::GetTextMetricsW( getPixelDcMsw(), &tm ) )
+		{
+			pf.ascent = tm.tmAscent;
+			pf.descent = tm.tmDescent;
+		}
+		::SelectObject( getPixelDcMsw(), old );
+		return ( fonts[key] = pf );
+	}
+	static std::wstring toWideMsw( const std::string &str )
+	{
+		int len = ::MultiByteToWideChar( CP_UTF8, 0, str.c_str(), (int)str.length(), NULL, 0 );
+		std::wstring ws( len > 0 ? len : 0, L'\0' );
+		if ( len > 0 )
+			::MultiByteToWideChar( CP_UTF8, 0, str.c_str(), (int)str.length(), &ws[0], len );
+		return ws;
+	}
+	// advance width in whole pixels
+	static int measurePixelStringMsw( const std::string &str, const Font &font )
+	{
+		if ( str.empty() )
+			return 0;
+		const PixelFontMsw & pf = getPixelFontMsw( font );
+		std::wstring ws = toWideMsw( str );
+		SIZE size = { 0, 0 };
+		HGDIOBJ old = ::SelectObject( getPixelDcMsw(), pf.hfont );
+		::GetTextExtentPoint32W( getPixelDcMsw(), ws.c_str(), (int)ws.length(), &size );
+		::SelectObject( getPixelDcMsw(), old );
+		return (int)size.cx;
+	}
+	// Render lines of text, aliased, each baseline at (i * lineHeight + ascent)
+	static Surface8u renderPixelLinesMsw( const std::vector<std::string> &lines, const Font &font, const ColorA &color, int width, int lineHeight )
+	{
+		const PixelFontMsw & pf = getPixelFontMsw( font );
+		int pixelWidth = math<int>::max( 1, width );
+		int pixelHeight = math<int>::max( 1, lineHeight * (int)lines.size() );
+		Surface8u surface( pixelWidth, pixelHeight, true, SurfaceChannelOrder::RGBA );
+		// top-down 32 bit DIB, white text on black
+		BITMAPINFO bmi;
+		memset( &bmi, 0, sizeof(bmi) );
+		bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+		bmi.bmiHeader.biWidth = pixelWidth;
+		bmi.bmiHeader.biHeight = - pixelHeight;
+		bmi.bmiHeader.biPlanes = 1;
+		bmi.bmiHeader.biBitCount = 32;
+		bmi.bmiHeader.biCompression = BI_RGB;
+		void *bits = NULL;
+		HDC dc = getPixelDcMsw();
+		HBITMAP dib = ::CreateDIBSection( dc, &bmi, DIB_RGB_COLORS, &bits, NULL, 0 );
+		if ( ! dib || ! bits )
+		{
+			if ( dib ) ::DeleteObject( dib );
+			ip::fill( &surface, ColorA8u( 0, 0, 0, 0 ) );
+			return surface;
+		}
+		memset( bits, 0, pixelWidth * pixelHeight * 4 );
+		HGDIOBJ oldBmp = ::SelectObject( dc, dib );
+		HGDIOBJ oldFont = ::SelectObject( dc, pf.hfont );
+		::SetBkMode( dc, TRANSPARENT );
+		::SetTextColor( dc, RGB( 255, 255, 255 ) );
+		::SetTextAlign( dc, TA_BASELINE | TA_LEFT | TA_NOUPDATECP );
+		for ( size_t i = 0 ; i < lines.size() ; i++ )
+		{
+			if ( lines[i].empty() )
+				continue;
+			std::wstring ws = toWideMsw( lines[i] );
+			::TextOutW( dc, 0, (int)i * lineHeight + pf.ascent, ws.c_str(), (int)ws.length() );
+		}
+		::GdiFlush();
+		// coverage is 0 or 255: text color with straight alpha
+		ColorA8u c( color );
+		const uint8_t *src = (const uint8_t*)bits;
+		for ( int y = 0 ; y < pixelHeight ; y++ )
+		{
+			uint8_t *dst = surface.getData( Vec2i( 0, y ) );
+			for ( int x = 0 ; x < pixelWidth ; x++, src += 4, dst += 4 )
+			{
+				bool on = ( src[1] >= 128 );
+				dst[0] = on ? c.r : 0;
+				dst[1] = on ? c.g : 0;
+				dst[2] = on ? c.b : 0;
+				dst[3] = on ? c.a : 0;
+			}
+		}
+		::SelectObject( dc, oldFont );
+		::SelectObject( dc, oldBmp );
+		::DeleteObject( dib );
+		return surface;
+	}
+	static void drawPixelStringMsw( const std::string &str, const Vec2f &pos, const ColorA &color, const Font &font, int justification )
+	{
+		int pixelWidth = measurePixelStringMsw( str, font );
+		if ( pixelWidth <= 0 )
+			return;
+		const PixelFontMsw & pf = getPixelFontMsw( font );
+		std::vector<std::string> lines( 1, str );
+		gl::Texture::Format fmt;
+		fmt.setMinFilter( GL_NEAREST );
+		fmt.setMagFilter( GL_NEAREST );
+		gl::Texture tex( renderPixelLinesMsw( lines, font, color, pixelWidth, pf.ascent + pf.descent + 1 ), fmt );
+		// snap to whole pixels
+		Vec2f p = pos - Vec2f( 0, (float)pf.descent );
+		if ( justification == 0 )
+			p.x -= math<float>::floor( pixelWidth * 0.5f + 0.5f );
+		else if ( justification > 0 )
+			p.x -= pixelWidth;
+		p = Vec2f( math<float>::floor( p.x + 0.5f ), math<float>::floor( p.y + 0.5f ) );
+		glColor4ub( 255, 255, 255, 255 );
+		gl::draw( tex, p );
+	}
+	//
+	// Multi-line pixel text, word wrapped to width (TextBox replacement)
+	static Surface8u renderPixelTextBoxMsw( const std::string &text, const Font &font, const ColorA &color, float width )
+	{
+		std::vector<std::string> lines;
+		std::vector<std::string> paragraphs;
+		boost::split( paragraphs, text, boost::is_any_of("\n") );
+		for ( auto & para : paragraphs )
+		{
+			std::vector<std::string> words;
+			boost::split( words, para, boost::is_any_of(" ") );
+			std::string current;
+			for ( auto & word : words )
+			{
+				std::string candidate = ( current.empty() ? word : current + " " + word );
+				if ( current.empty() || measurePixelStringMsw( candidate, font ) <= width )
+					current = candidate;
+				else
+				{
+					lines.push_back( current );
+					current = word;
+				}
+			}
+			lines.push_back( current );
+		}
+		const PixelFontMsw & pf = getPixelFontMsw( font );
+		return renderPixelLinesMsw( lines, font, color, (int)math<float>::ceil( width ), pf.ascent + pf.descent + 1 );
+	}
+#endif
 	static void drawPixelString( const std::string &str, const Vec2f &pos, const ColorA &color, Font font, int justification )
 	{
+#if defined( CINDER_MSW )
+		if ( str.empty() )
+			return;
+		if ( font && font.getFilter() == GL_NEAREST )
+		{
+			drawPixelStringMsw( str, pos, color, font, justification );
+			return;
+		}
+#endif
 #if defined( CINDER_MAC )
 		if ( str.empty() )
 			return;
@@ -3367,6 +3554,11 @@ namespace cinder { namespace sgui {
 #if defined( CINDER_MAC )
 				if ( SimpleGUI::textFont.getFilter() == GL_NEAREST )
 					wrapTex = gl::Texture( renderPixelTextBox( name, SimpleGUI::textFont, color, SimpleGUI::sliderSize.x ), wrapTexFmt );
+				else
+#endif
+#if defined( CINDER_MSW )
+				if ( SimpleGUI::textFont.getFilter() == GL_NEAREST )
+					wrapTex = gl::Texture( renderPixelTextBoxMsw( name, SimpleGUI::textFont, color, SimpleGUI::sliderSize.x ), wrapTexFmt );
 				else
 #endif
 				{

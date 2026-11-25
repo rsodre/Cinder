@@ -636,9 +636,23 @@ Font::Obj::Obj( const string &aName, float aSize )
 #elif defined( CINDER_MSW )
 	FontManager::instance(); // force GDI+ init
 	assert( sizeof(wchar_t) == 2 );
-	std::u16string faceName = toUtf16( mName );
-    
-	mHfont = ::CreateFont( -mSize * 72 / 96, 0, 0, 0, FW_DONTCARE, false, false, false,
+	// ROGER: CreateFont() matches family names only, so a " Bold" / "-Bold" suffix selects the weight
+	// ("Arial Bold", "Helvetica-Bold"); mName keeps the full name
+	std::string familyName = mName;
+	int weight = FW_DONTCARE;
+	const char *boldSuffixes[] = { " Bold", "-Bold" };
+	for( const char *suffix : boldSuffixes ) {
+		size_t n = strlen( suffix );
+		if( familyName.length() > n && familyName.compare( familyName.length() - n, n, suffix ) == 0 ) {
+			familyName = familyName.substr( 0, familyName.length() - n );
+			weight = FW_BOLD;
+			break;
+		}
+	}
+	std::u16string faceName = toUtf16( familyName );
+
+	// ROGER: em height of mSize pixels, as CoreText in a 1x context (was -mSize * 72 / 96, 3/4 of the Mac size)
+	mHfont = ::CreateFont( -(int)( mSize + 0.5f ), 0, 0, 0, weight, false, false, false,
 						DEFAULT_CHARSET, OUT_TT_PRECIS, CLIP_DEFAULT_PRECIS,
 						ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE,
 						(wchar_t*)faceName.c_str() );
