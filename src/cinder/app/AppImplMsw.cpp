@@ -1339,6 +1339,13 @@ LRESULT CALLBACK WndProc(	HWND	mWnd,			// Handle For This Window
 		}
 		break;
 		case WM_SIZE:
+			// ROGER (Windows port): minimizing reports a 0 x 0 client area, and a window dragged to its smallest
+			// height has an empty client area. Keep the last size and do not resize, as on the Mac (a miniaturized
+			// window keeps its size): window-sized FBOs (SimpleGUI, qb) cannot be empty and would throw.
+			if( wParam == SIZE_MINIMIZED || LOWORD(lParam) == 0 || HIWORD(lParam) == 0 ) {
+				impl->mAppImpl->mainWindowPosChanged( mWnd );
+				return 0;
+			}
 			impl->mWindowWidth = LOWORD(lParam);
 			impl->mWindowHeight = HIWORD(lParam);
 			impl->mAppImpl->mainWindowPosChanged( mWnd );	// ROGER

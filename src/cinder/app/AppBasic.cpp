@@ -33,6 +33,8 @@
 
 #elif defined( CINDER_MSW )
 	#include <Shellapi.h>
+	#include <codecvt>
+	#include <locale>
 	#include "cinder/Utilities.h"
 	#include "cinder/app/AppImplMswBasic.h"
 #endif
@@ -61,6 +63,13 @@ AppBasic::~AppBasic()
 void AppBasic::executeLaunch( AppBasic *app, RendererRef renderer, const char *title )
 {
 	sInstance = app;
+
+	// ROGER (Windows port): narrow path strings are UTF-8, as on the Mac.
+	// boost::filesystem converts fs::path <-> std::string with the ANSI code page by default:
+	// path.string() of a file dialog / drop / argument path then loses every character outside it
+	// ('?', an invalid file name), and UTF-8 strings (args, prefs, project files, GUI) are misread.
+	// File access stays wide (Cinder opens files with path.wstring() on Windows).
+	fs::path::imbue( std::locale( std::locale(), new std::codecvt_utf8_utf16<wchar_t>() ) );
 
 	// MSW sends it arguments as widestrings, so we'll convert them to utf8 array and pass that
 	LPWSTR *szArglist;
