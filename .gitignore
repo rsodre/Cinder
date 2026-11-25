@@ -41,6 +41,5 @@ blocks/
 # Boost headers in folders named 'debug' (matched by Debug/ on case-insensitive file systems)
 !boost_1_66_0/**/debug/
 
-# Windows build products (rebuilt from vc2022/cinder.sln)
-lib/msw/x64/boost_msw*.lib
+# Visual Studio IDE state
 vc2022/.vs/
