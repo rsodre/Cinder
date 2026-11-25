@@ -48,6 +48,8 @@
 	#include <Shlwapi.h>
 	#include <shlobj.h>
 	#include "cinder/msw/StackWalker.h"
+	#include <shellapi.h>	// ShellExecute (launchDefaultApplication)
+	#include <iomanip>		// std::setfill, std::setw
 #elif defined( CINDER_WINRT )
 	#include "cinder/WinRTUtils.h"
 	#include <wrl/client.h>
@@ -243,7 +245,12 @@ void launchWebBrowser( const Url &url )
 	// ROGER
 	void launchDefaultApplication( const std::string &path )
 	{
+#if defined( CINDER_COCOA )
 		[[NSWorkspace sharedWorkspace] openFile:[NSString stringWithCString:path.c_str() encoding:NSUTF8StringEncoding]];
+#elif defined( CINDER_MSW )
+		std::u16string pathStr = toUtf16( path );
+		ShellExecute( NULL, L"open", (wchar_t*)pathStr.c_str(), NULL, NULL, SW_SHOWNORMAL );
+#endif
 	}
 
 void deleteFileAsync( const fs::path &path, std::function<void (fs::path)> callback)

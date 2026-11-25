@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Boost 1.66.0 compiled libraries (system, filesystem, thread, chrono, date_time, regex) as one static lib, without b2.
+       Sources: ..\..\boost_1_66_0\libs\<name>\src (only the files needed on Windows). Consumers must define BOOST_ALL_NO_LIB. -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <ProjectGuid>{B7D4E9A2-1F63-4C5B-8E2D-3A9F0C6B7E41}</ProjectGuid>
+    <RootNamespace>boost_msw</RootNamespace>
+    <ProjectName>boost_msw</ProjectName>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>..\..\lib\msw\$(PlatformTarget)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\build\$(Configuration)_$(Platform)\$(ProjectName)\</IntDir>
+    <TargetName>boost_msw_d</TargetName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>..\..\lib\msw\$(PlatformTarget)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\build\$(Configuration)_$(Platform)\$(ProjectName)\</IntDir>
+    <TargetName>boost_msw</TargetName>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\boost_1_66_0;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_LIB;NOMINMAX;_WIN32_WINNT=0x0601;_CRT_SECURE_NO_WARNINGS;_SCL_SECURE_NO_WARNINGS;BOOST_ALL_NO_LIB;BOOST_CONFIG_SUPPRESS_OUTDATED_MESSAGE;BOOST_THREAD_BUILD_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp14</LanguageStandard>
+      <ConformanceMode>false</ConformanceMode>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>false</SDLCheck>
+      <!-- /Z7: debug info embedded in the .lib, so no separate .pdb has to travel with it -->
+      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <DisableSpecificWarnings>4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+    </ClCompile>
+    <Lib>
+      <TargetMachine>MachineX64</TargetMachine>
+    </Lib>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <Optimization>Disabled</Optimization>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\boost_1_66_0\libs\chrono\src\chrono.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\chrono\src\process_cpu_clocks.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\chrono\src\thread_clock.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\date_time\src\gregorian\date_generators.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\date_time\src\gregorian\greg_month.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\date_time\src\gregorian\greg_weekday.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\date_time\src\gregorian\gregorian_types.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\date_time\src\posix_time\posix_time_types.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\filesystem\src\codecvt_error_category.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\filesystem\src\operations.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\filesystem\src\path.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\filesystem\src\path_traits.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\filesystem\src\portability.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\filesystem\src\unique_path.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\filesystem\src\utf8_codecvt_facet.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\filesystem\src\windows_file_codecvt.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\c_regex_traits.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\cpp_regex_traits.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\cregex.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\fileiter.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\instances.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\posix_api.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\regex.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\regex_debug.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\regex_raw_buffer.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\regex_traits_defaults.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\static_mutex.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\usinstances.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\w32_regex_traits.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\wc_regex_traits.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\wide_posix_api.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\regex\src\winstances.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\system\src\error_code.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\thread\src\future.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\thread\src\win32\thread.cpp" />
+    <ClCompile Include="..\..\boost_1_66_0\libs\thread\src\win32\tss_pe.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\boost_1_66_0\libs\date_time\src\gregorian\greg_names.hpp" />
+    <ClInclude Include="..\..\boost_1_66_0\libs\filesystem\src\windows_file_codecvt.hpp" />
+    <ClInclude Include="..\..\boost_1_66_0\libs\regex\src\internals.hpp" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,31 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "cinder", "cinder.vcxproj", "{5C1B2F7E-3D2A-4B8E-9C41-6F0E2A7B9D13}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B7D4E9A2-1F63-4C5B-8E2D-3A9F0C6B7E41} = {B7D4E9A2-1F63-4C5B-8E2D-3A9F0C6B7E41}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "boost_msw", "boost\boost_msw.vcxproj", "{B7D4E9A2-1F63-4C5B-8E2D-3A9F0C6B7E41}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5C1B2F7E-3D2A-4B8E-9C41-6F0E2A7B9D13}.Debug|x64.ActiveCfg = Debug|x64
+		{5C1B2F7E-3D2A-4B8E-9C41-6F0E2A7B9D13}.Debug|x64.Build.0 = Debug|x64
+		{5C1B2F7E-3D2A-4B8E-9C41-6F0E2A7B9D13}.Release|x64.ActiveCfg = Release|x64
+		{5C1B2F7E-3D2A-4B8E-9C41-6F0E2A7B9D13}.Release|x64.Build.0 = Release|x64
+		{B7D4E9A2-1F63-4C5B-8E2D-3A9F0C6B7E41}.Debug|x64.ActiveCfg = Debug|x64
+		{B7D4E9A2-1F63-4C5B-8E2D-3A9F0C6B7E41}.Debug|x64.Build.0 = Debug|x64
+		{B7D4E9A2-1F63-4C5B-8E2D-3A9F0C6B7E41}.Release|x64.ActiveCfg = Release|x64
+		{B7D4E9A2-1F63-4C5B-8E2D-3A9F0C6B7E41}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

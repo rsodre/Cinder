@@ -72,6 +72,13 @@ class Timeline;
 namespace boost { namespace asio {
 class io_service;
 } } // namespace boost::asio
+#elif defined( CINDER_MSW )
+// asio must see <winsock2.h> before <windows.h>, which every Cinder header pulls in on Windows: forward declare instead
+// (since Boost 1.66 io_service is a typedef of io_context)
+namespace boost { namespace asio {
+class io_context;
+typedef io_context io_service;
+} } // namespace boost::asio
 #else
 #include <boost/asio/io_service.hpp>
 #endif

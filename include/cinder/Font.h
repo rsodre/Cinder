@@ -58,7 +58,11 @@
 #endif
 
 // ROGER
-#include <OpenGL/gl.h>
+#if defined( CINDER_COCOA )
+	#include <OpenGL/gl.h>
+#else
+	#include "cinder/gl/GLee.h"
+#endif
 
 namespace cinder {
 

@@ -25,8 +25,11 @@
 #include <boost/config.hpp>
 
 # if (defined(_YVALS) || defined(_CPPLIB_VER)) && !defined(__SGI_STL_PORT) && \
-     !defined(_STLPORT_VERSION) && !defined(__QNX__) && !defined(_VX_CPU)
+     !defined(_STLPORT_VERSION) && !defined(__QNX__) && !defined(_VX_CPU) && \
+     !(defined(BOOST_MSVC) && defined(_MSVC_STL_VERSION) && _MSVC_STL_VERSION >= 141)
      /**/
+     // ROGER: the !(BOOST_MSVC && _MSVC_STL_VERSION >= 141) test is the upstream fix from Boost 1.69
+     // (std::fpos::seekpos() was removed from the MSVC STL in VS2017 15.8)
      
 #include <boost/iostreams/detail/ios.hpp>
 

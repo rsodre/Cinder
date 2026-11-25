@@ -22,6 +22,12 @@
  POSSIBILITY OF SUCH DAMAGE.
 */
 
+#include "cinder/Cinder.h"
+#if defined( CINDER_MSW )
+	// boost/asio (included below) requires <winsock2.h> before <windows.h>
+	#include <winsock2.h>
+#endif
+
 #include "cinder/app/App.h"
 #include "cinder/app/Renderer.h"
 #include "cinder/Camera.h"

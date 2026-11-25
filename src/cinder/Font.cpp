@@ -818,17 +818,11 @@ Font::Obj::Obj( DataSourceRef dataSource, float size )
 	// ROGER
 	Font::Obj::Obj( const string &aName, float aSize, GLenum filter )
 	: Font::Obj::Obj( aName, aSize )
-#if defined( CINDER_MSW )
-	, mHfont( 0 )
-#endif
 	{
 		mMinMagFilter = filter;
 	}
 	Font::Obj::Obj( DataSourceRef dataSourceame, float aSize, GLenum filter )
 	: Font::Obj::Obj( dataSourceame, aSize )
-#if defined( CINDER_MSW )
-	, mHfont( 0 )
-#endif
 	{
 		mMinMagFilter = filter;
 	}
