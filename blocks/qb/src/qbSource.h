@@ -14,7 +14,9 @@
 #include "cinder/Utilities.h"
 #include "cinder/audio/Voice.h"
 #include "cinder/audio/Context.h"
+#ifndef QB_NO_SYPHON
 #include "cinderSyphon.h"
+#endif
 #include "qbCube.h"
 #include <functional>
 #include <map>
@@ -218,6 +220,7 @@ namespace cinder { namespace qb {
 
 	//
 	// SYPHON Source
+#ifndef QB_NO_SYPHON
 	class qbSourceSyphon : public qbSourceBase {
 	public:
 		qbSourceSyphon() : qbSourceBase()
@@ -242,6 +245,7 @@ namespace cinder { namespace qb {
 	private:
 		syphonClient			mSyphonClient;
 	};
+#endif
 	
 	
 	//
@@ -349,7 +353,9 @@ namespace cinder { namespace qb {
 	protected:
 		
 		void	onFileDrop( app::FileDropEvent & event );
+#ifndef QB_NO_SYPHON
 		bool	loadSyphon( const std::string & _app, const std::string & _tex="" );
+#endif
 #ifndef QB_NO_NDI
 		bool	loadNDI( const std::string & _app, const std::string & _tex="" );
 #endif

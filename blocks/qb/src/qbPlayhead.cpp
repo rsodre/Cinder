@@ -6,8 +6,21 @@
 //
 #include "qbPlayhead.h"
 #include "qb.h"
+#if defined( CINDER_MSW )
+#include <chrono>
+#endif
 
 namespace cinder { namespace qb {
+	
+	// Current time in seconds (only differences are used)
+	static inline double qbPlayheadNow()
+	{
+#if defined( CINDER_MSW )
+		return std::chrono::duration<double>( std::chrono::steady_clock::now().time_since_epoch() ).count();
+#else
+		return CFAbsoluteTimeGetCurrent();
+#endif
+	}
 	
 	
 	//////////////////////////////////////////////////////////////////
@@ -86,7 +99,7 @@ namespace cinder { namespace qb {
 	// Rewind
 	void qbPlayhead::rewind()
 	{
-		mLastTime = CFAbsoluteTimeGetCurrent();
+		mLastTime = qbPlayheadNow();
 		mSeconds = 0.0;
 		mCurrentFrame = 0;
 		bShouldRewind = false;
@@ -108,7 +121,7 @@ namespace cinder { namespace qb {
 		if ( ! bPlaying )
 		{
 			bPlaying = true;
-			mLastTime = CFAbsoluteTimeGetCurrent();
+			mLastTime = qbPlayheadNow();
 		}
 	}
 	
@@ -128,7 +141,7 @@ namespace cinder { namespace qb {
 		// move playhead
 		else if ( bPlaying )
 		{
-			double now = CFAbsoluteTimeGetCurrent();
+			double now = qbPlayheadNow();
 			// Realtime = Play continuously, may lose frames
 			if ( _qb.isPreviewRealtime() )
 			{
@@ -172,13 +185,13 @@ namespace cinder { namespace qb {
 		//this->seekToTime( t );
 		mCurrentFrame = (int) ((QB_ANIM_FRAMES-1) * _prog);
 		mSeconds = ( mCurrentFrame * QB_FRAME_DURATION );
-		mLastTime = CFAbsoluteTimeGetCurrent();
+		mLastTime = qbPlayheadNow();
 	}
 	void qbPlayhead::seekToTime( double _s )
 	{
 		mSeconds = _s;
 		mCurrentFrame = (int) (mSeconds * QB_FRAMERATE);
-		mLastTime = CFAbsoluteTimeGetCurrent();
+		mLastTime = qbPlayheadNow();
 	}
 
 		

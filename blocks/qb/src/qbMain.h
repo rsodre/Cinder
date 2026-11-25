@@ -17,7 +17,9 @@
 #include "cinder/Camera.h"
 #include "cinder/ImageIo.h"
 
+#ifndef QB_NO_SYPHON
 #include "cinderSyphon.h"
+#endif
 #include "qbUpdatePool.h"
 #include "qbPlayhead.h"
 #include "qbRenderer.h"
@@ -267,9 +269,11 @@ private:
 	gl::Material				mMaterial;
 	gl::GlslProg				mShaderStereo;
 	
+#ifndef QB_NO_SYPHON
 	// Syphon Server
 	syphonServer		mSyphonServer;
 	syphonClient		mSyphonModul8;
+#endif
 	gl::Texture			mSyphonIcon;
 	gl::Texture			mCorner;
 	

@@ -8,6 +8,7 @@
 #include "qb.h"
 #include "SysInfo.h"
 #include "cinder/Display.h"
+#include <cstdarg>
 
 const float winScales[] = { 0.8, 0.75, 0.5, 0.25, 0.2, 0.1, 0.08, 0.075, 0.05, 0.025, 0.01, 0.0 };
 
@@ -27,7 +28,9 @@ namespace cinder { namespace qb {
 	//
 	qbMain::qbMain()
 	{
+#if defined( CINDER_COCOA )
 		NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+#endif
 
 		bInited					= false;
 		bRenderToFbo			= true;
@@ -46,8 +49,10 @@ namespace cinder { namespace qb {
 
 		for (int u = 0 ; u < QB_MAX_UNITS ; u++ )
 			mBoundSource[u]	= -1;
-		
+
+#if defined( CINDER_COCOA )
 		[pool drain];
+#endif
 	}
 	qbMain::~qbMain()
 	{
@@ -161,13 +166,17 @@ namespace cinder { namespace qb {
 		mFontHelvetica = Font( "Helvetica", 12 );
 		mFont = Font( loadResource("pf_tempesta_seven.ttf"), 8 );
 		mCorner = gl::Texture( loadImage( loadResource( "resize_corner.png" ) ) );
+#ifndef QB_NO_SYPHON
 		mSyphonIcon =  gl::Texture( loadImage( loadResource( "syphon.png" ) ) );
+#endif
 		mBackgroundColor = Color::gray(0.2f);
 
+#ifndef QB_NO_SYPHON
 		// Modul8 Syphon Client
 		mSyphonModul8.setup();
 		mSyphonModul8.setApplicationName( "Modul8" );
 		mSyphonModul8.setServerName("");
+#endif
 		
 		// start Timer!
 		mPlayhead.seekToTime( (double) mConfig->get(QBCFG_CURRENT_TIME) );
@@ -238,7 +247,7 @@ namespace cinder { namespace qb {
 				break;
 			case 'r':
 			case 'R':
-				if (event.isMetaDown()) // COMMAND
+				if (event.isAccelDown()) // COMMAND
 					mConfig->reset();
 				break;
 			case ' ':
@@ -250,17 +259,19 @@ namespace cinder { namespace qb {
 			case '/':
 				mConfig->invert( QBCFG_PLAY_BACKWARDS );
 				break;
+#ifndef QB_NO_SYPHON
 			case 'y':
 			case 'Y':
-				if (event.isMetaDown() && bSyphonControls) // COMMAND
+				if (event.isAccelDown() && bSyphonControls) // COMMAND
 				{
 					mConfig->invert( QBCFG_SYPHON_OUTPUT );
 					event.setHandled();
 				}
 				break;
+#endif
 			case 'x':
 			case 'X':
-				if (event.isMetaDown() && bRenderControls) // COMMAND
+				if (event.isAccelDown() && bRenderControls) // COMMAND
 				{
 					mRenderer.startstop();
 					event.setHandled();
@@ -268,7 +279,7 @@ namespace cinder { namespace qb {
 				break;
 			case 'z':
 			case 'Z':
-				if (event.isMetaDown() && bRenderControls) // COMMAND
+				if (event.isAccelDown() && bRenderControls) // COMMAND
 				{
 					mRenderer.finish();
 					event.setHandled();
@@ -276,21 +287,21 @@ namespace cinder { namespace qb {
 				break;
 			case 'c':
 			case 'C':
-				if (event.isMetaDown()) // COMMAND
+				if (event.isAccelDown()) // COMMAND
 				{
 					mRenderer.takeScreenshot();
 					event.setHandled();
 				}
 				break;
 			case 'p':
-				if (event.isMetaDown()) // COMMAND
+				if (event.isAccelDown()) // COMMAND
 				{
 					mConfig->invert( QBCFG_PREVIEW_DOWNSCALE );
 					event.setHandled();
 				}
 				break;
 			case 'P':
-				if (event.isMetaDown()) // COMMAND
+				if (event.isAccelDown()) // COMMAND
 				{
 					mConfig->invert( QBCFG_PREVIEW_UPSCALE );
 					event.setHandled();
@@ -493,7 +504,15 @@ namespace cinder { namespace qb {
 		
 		// File in Bundle?
 		std::string strippedFile = getPathFileName( _f );
+#if defined( CINDER_COCOA )
 		std::string bundleFile = App::get()->getResourcePath(strippedFile).string();
+#else
+		// Resources folder next to the exe
+		std::string bundleFile;
+		fs::path bundlePath = app::getAppPath() / "Resources" / strippedFile;
+		if( exists( bundlePath ) )
+			bundleFile = bundlePath.string();
+#endif
 		if ( bundleFile.length() > 0 )
 			return bundleFile;
 		
@@ -1005,7 +1024,9 @@ namespace cinder { namespace qb {
 			SaveBlendingState bl;
 			gl::enableAlphaBlending();
 			gl::color( ColorA::white() );
+#ifndef QB_NO_SYPHON
 			mSyphonModul8.draw( b );
+#endif
 		}
 	}
 	
@@ -1039,6 +1060,7 @@ namespace cinder { namespace qb {
 		
 		// Publish Syphon
 		gl::Texture tex;
+#ifndef QB_NO_SYPHON
 		if ( bSyphonControls && mConfig->getBool(QBCFG_SYPHON_OUTPUT) )
 		{
 			if ( ! mSyphonServer.isRunning() )
@@ -1054,6 +1076,7 @@ namespace cinder { namespace qb {
 		}
 		else if ( mSyphonServer.isRunning() )
 			mSyphonServer.shutdown();
+#endif
 		
 		// Add to render
 		// TODO:: Render sem FBO
@@ -1117,9 +1140,11 @@ namespace cinder { namespace qb {
 					float h = mCorner.getHeight() * this->getScreenDensity();
 					gl::draw( mCorner, Rectf(getRenderWidth()-w, getRenderHeight()-h, getRenderWidth(), getRenderHeight()) );
 				}
+#ifndef QB_NO_SYPHON
 				// Syphon Icon
 				if ( mConfig->getBool(QBCFG_SYPHON_OUTPUT) )
 					gl::draw( mSyphonIcon, Rectf( getRenderWidth()-mSyphonIcon.getWidth(), 0, getRenderWidth(), mSyphonIcon.getHeight()) );
+#endif
 				gl::disableAlphaBlending();
 			}
 		}
@@ -1133,8 +1158,13 @@ namespace cinder { namespace qb {
 	//
 	void qbMain::createFolder( const std::string & name )
 	{
+#if defined( CINDER_COCOA )
 		NSURL *url = [NSURL fileURLWithPath:[NSString stringWithUTF8String:name.c_str()]];
 		[[NSFileManager defaultManager] createDirectoryAtURL:url withIntermediateDirectories:YES attributes: nil error:nil];
+#else
+		boost::system::error_code ec;
+		fs::create_directories( fs::path( name ), ec );
+#endif
 		printf("Create Folder [%s]\n",name.c_str());
 	}
 

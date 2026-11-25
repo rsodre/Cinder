@@ -996,7 +996,7 @@ namespace cinder { namespace sgui {
 				return;
 			case 'k':
 			case 'K':
-				if (event.isMetaDown()) // COMMAND
+				if (event.isAccelDown()) // COMMAND
 				{
 					bBlink = ! bBlink;
 					this->bForceRedraw = true;

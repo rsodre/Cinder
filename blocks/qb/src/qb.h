@@ -72,7 +72,11 @@ namespace cinder { namespace qb {
 #define QB_APP_VERSION			(sysinfo::SysInfo::getAppVersion())
 #define QB_APP_VERSION_LONG		(sysinfo::SysInfo::getAppVersionLong())
 //#define QB_CAPTURE_FOLDER        "/Users/roger/Movies/CAPTURE"
+#if defined( CINDER_MSW )
+#define QB_CAPTURE_FOLDER        ( ( ci::getDocumentsDirectory() / "BlendyDomeVJ" ).string() )
+#else
 #define QB_CAPTURE_FOLDER        "/Volumes/R500/CAPTURE"
+#endif
 #define QB_FONT					(_qb.mFont)
 
 // Flags

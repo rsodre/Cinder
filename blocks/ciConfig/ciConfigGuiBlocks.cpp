@@ -22,7 +22,11 @@
 namespace cinder { namespace sgui {
 	ciGuiBlockLoadSave::ciGuiBlockLoadSave( ciConfigGui *cfg ) : ciConfigGuiBlock(cfg)
 	{
+#if defined( CINDER_MSW )
+		std::string cmd = "CTRL+";
+#else
 		std::string cmd = toString((unsigned char)174);		// (R) = COMMAND SIGN for pf_tempesta_seven_ROGER.ttf
+#endif
 		//std::string shft = toString((unsigned char)169);	// (C) = SHIFT SIGN for pf_tempesta_seven_ROGER.ttf
 		
 		cfg->guiAddTab("FILE");
@@ -266,12 +270,16 @@ namespace cinder { namespace sgui {
 			mCfg->guiAddButton("Rewind", this, &ciGuiBlockQBSourceTab::cbRewind);
 		}
 		// COLUMN
+#ifdef CFG_BLOCK_SYPHON
 		mCfg->guiAddGroup( std::string("> SYPHON") );
 		{
 			mDirSyphon = new ciGuiBlockSyphonDirectory( cfg, _cfgName );
 			_cfg.guiAddBlock( mDirSyphon );
 			mCfg->guiAddParam("Client Framerate",	&mCurrFPSSyphon, 1, true );
 		}
+#else
+		mDirSyphon = NULL;
+#endif
 		// COLUMN
 #ifndef QB_NO_NDI
 		mCfg->guiAddGroup( std::string("> NDI") );
@@ -295,12 +303,16 @@ namespace cinder { namespace sgui {
 		//if ( mSource->getType() == QB_TYPE_SYPHON && ! mDir->isSelected() )
 		//	mDir->refresh();
 		
+#ifdef CFG_BLOCK_SYPHON
 		// New Syphon source selected
 		if ( mDirSyphon->isFresh() )
 		{
 			if ( ! mDirSyphon->getCurrentName().empty() )
 				mCfg->set( cfgName, std::string("syphon::") + mDirSyphon->getCurrentName() );
 		}
+#else
+		if ( false ) {}		// no Syphon: start of the else-if chain
+#endif
 		// New NDI source selected
 #ifndef QB_NO_NDI
 		else if ( mDirNDI->isFresh() )
@@ -312,9 +324,11 @@ namespace cinder { namespace sgui {
 		// New media loaded
 		else if ( mSource->isFresh() )
 		{
+#ifdef CFG_BLOCK_SYPHON
 			// Unselect Syphon
 			if ( mSource->getType() != QB_SOURCE_SYPHON )
 				mDirSyphon->unselect();
+#endif
 #ifndef QB_NO_NDI
 			if ( mSource->getType() != QB_SOURCE_NDI )
 				mDirNDI->unselect();
@@ -557,7 +571,12 @@ namespace cinder { namespace sgui {
 		mListControl = mCfg->guiAddParamList("", &mListId, valueLabels);
 		this->update();
 	}
-	
+} } // namespace cinder::sgui
+#endif	// CFG_BLOCK_SYPHON
+
+// Server name helpers, also built without Syphon
+namespace cinder { namespace sgui {
+
 	std::string ciGuiBlockSyphonDirectory::makeServerDisplayName( std::string appName, std::string textureName )
 	{
 		std::stringstream servername;
@@ -583,6 +602,10 @@ namespace cinder { namespace sgui {
 		}
 		return std::make_pair( appName, textureName );
 	}
+} } // namespace cinder::sgui
+
+#ifdef CFG_BLOCK_SYPHON
+namespace cinder { namespace sgui {
 
 	void ciGuiBlockSyphonDirectory::update()
 	{

@@ -15,9 +15,9 @@
 #include "cinder/gl/Vbo.h"
 #include "cinder/TriMesh.h"
 
-#import <string>
-#import <vector>
-#import <list>
+#include <string>
+#include <vector>
+#include <list>
 
 enum enumTexCoordType
 {

@@ -6,7 +6,9 @@
 //
 
 #include "ciConfigGui.h"
+#if ! defined( CINDER_MSW )
 #include <sys/time.h>
+#endif
 
 #ifdef QB
 #include "qbSource.h"

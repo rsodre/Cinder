@@ -7,7 +7,9 @@
 #pragma once
 
 // Allow Syphon params
+#ifndef CFG_NO_SYPHON
 #define CFG_BLOCK_SYPHON
+#endif
 #ifndef QB_NO_NDI
 #define CFG_BLOCK_NDI
 #endif
@@ -216,6 +218,16 @@ namespace cinder { namespace sgui {
 		float		mClientFPS;
 		int			mClientWidth;
 		int			mClientHeight;
+	};
+} } // namespace cinder::sgui
+#else	// CFG_BLOCK_SYPHON
+namespace cinder { namespace sgui {
+	//
+	// No Syphon: keep the server name helpers ("app | texture"), used by source names
+	class ciGuiBlockSyphonDirectory {
+	public:
+		static std::string makeServerDisplayName( std::string appName, std::string textureName );
+		static std::pair<std::string,std::string> splitServerDisplayName( std::string displayName );
 	};
 } } // namespace cinder::sgui
 #endif

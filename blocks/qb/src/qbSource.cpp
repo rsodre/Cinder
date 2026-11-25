@@ -28,6 +28,16 @@ namespace cinder { namespace qb {
 	
 	std::vector<std::string> _qbSourceExt;
 
+#if ! defined( CINDER_COCOA )
+	// Is the file inside the Resources folder next to the exe?
+	static bool _isBundledFile( const std::string & f )
+	{
+		std::string res = toLower( ( app::getAppPath() / "Resources" ).generic_string() ) + "/";
+		std::string ff = toLower( fs::path( f ).generic_string() );
+		return ( ff.compare( 0, res.length(), res ) == 0 );
+	}
+#endif
+
 	// Registered procedural sources, by source name
 	static std::map<std::string,qbSourceSelector::GeneratorFactory> & _qbGenerators()
 	{
@@ -97,8 +107,14 @@ namespace cinder { namespace qb {
 		// Syphn prefix
 		if ( _f.compare(0,8,"syphon::") == 0 )
 		{
+#ifndef QB_NO_SYPHON
 			const auto serverName = ciGuiBlockSyphonDirectory::splitServerDisplayName( _f.substr(8) );
 			this->loadSyphon( serverName.first, serverName.second );
+#else
+			// Syphon is not available on this platform: source not loaded
+			printf("SOURCE [%s] Syphon not available\n",_f.c_str());
+			return false;
+#endif
 		}
 #ifndef QB_NO_NDI
 		else if ( _f.compare(0,5,"ndi::") == 0 )
@@ -156,6 +172,7 @@ namespace cinder { namespace qb {
 			cfgNamePtr->set( cfgNameId, _f );
 		return true;
 	}
+#ifndef QB_NO_SYPHON
 	bool qbSourceSelector::loadSyphon( const std::string & _app, const std::string & _tex )
 	{
 		if (mSrc == nullptr || mSrc->getType() != QB_SOURCE_SYPHON)
@@ -167,6 +184,7 @@ namespace cinder { namespace qb {
 			return false;
 		return ((qbSourceSyphon*)mSrc.get())->load( _app, _tex, mFlags );
 	}
+#endif
 #ifndef QB_NO_NDI
 	bool qbSourceSelector::loadNDI( const std::string & _app, const std::string & _tex )
 	{
@@ -309,8 +327,14 @@ namespace cinder { namespace qb {
 		mBoundUnit		= 0;
 		mSpawnedAtFrame = -1;
 		mSize = Vec2f::zero();
+#if defined( CINDER_MSW )
+		// GL_REPEAT is invalid on rectangle textures, strict drivers raise GL_INVALID_ENUM
+		mTexFormat.setWrapS( GL_CLAMP_TO_EDGE );
+		mTexFormat.setWrapT( GL_CLAMP_TO_EDGE );
+#else
 		mTexFormat.setWrapS( GL_REPEAT );
 		mTexFormat.setWrapT( GL_REPEAT );
+#endif
 		mTexFormat.setTarget( GL_TEXTURE_RECTANGLE_ARB );		// compatible with MovieGl/Syphon
 		//mTexFormat.enableMipmapping();						// useless for RECTANGLE
 		//mTexFormat.setMinFilter(GL_LINEAR_MIPMAP_LINEAR);		// useless for RECTANGLE
@@ -441,7 +465,11 @@ namespace cinder { namespace qb {
 		// make name
 		std::stringstream os;
 		os << getPathFileName( theFile );
+#if defined( CINDER_COCOA )
 		if ( theFile.find(".app/Contents/Resources/") != std::string::npos )
+#else
+		if ( _isBundledFile( theFile ) )
+#endif
 			os << " (Bundle)";
 		mName = os.str();
 
@@ -526,10 +554,14 @@ namespace cinder { namespace qb {
 		// make name
 		std::stringstream os;
 		os << getPathFileName( theFile );
+#if defined( CINDER_COCOA )
 		if ( theFile.find(".app/Contents/Resources/") != std::string::npos )
+#else
+		if ( _isBundledFile( theFile ) )
+#endif
 			os << " (Bundle)";
 		mName = os.str();
-		
+
 		// make desc
 		os.str("");
 		os.setf(std::ios::fixed);
@@ -643,6 +675,7 @@ namespace cinder { namespace qb {
 	//
 	// SYPHON
 	//
+#ifndef QB_NO_SYPHON
 	bool qbSourceSyphon::load( const std::string & _app, char _flags )
 	{
 		return this->load( _app, "", _flags );
@@ -691,6 +724,7 @@ namespace cinder { namespace qb {
 		mDesc = os.str();
 		return true;
 	}
+#endif	// QB_NO_SYPHON
 	
 	
 	///////////////////////////////////////////

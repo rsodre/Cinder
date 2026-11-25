@@ -66,7 +66,12 @@ namespace cinder {
 		mAppName = AppBasic::get()->getAppName();
 		mAppVersion = AppBasic::get()->getAppVersion();
 		mFolderApp = getPathDirectory( app::getAppPath().string() );
+#if defined( CINDER_COCOA )
 		mFolderBundle = getPathDirectory( App::get()->getResourcePath().string() ) + "Resources/";
+#else
+		// Resources folder next to the exe
+		mFolderBundle = mFolderApp + "Resources/";
+#endif
 		mFolderSave = mFolderApp;
 		mFolderAppSupport = AppBasic::get()->getApplicationSupportFolder().string();
 
@@ -274,11 +279,19 @@ namespace cinder {
 	{
 		char c = event.getChar();
 		//printf("EVENT>> ciConfig::keyDown [%d] [%c]\n",c,c);
+#if defined( CINDER_MSW )
+		// Save : CONTROL + SHIFT + NUMBER (with SHIFT the char is not the digit, use the key code)
+		if (event.isAccelDown() && event.isShiftDown() && event.getCode() >= KeyEvent::KEY_0 && event.getCode() <= KeyEvent::KEY_9)
+		{
+			this->save( (char)('0' + (event.getCode() - KeyEvent::KEY_0)) );
+			return;
+		}
+#endif
 		switch( c ) {
 #ifndef CICONFIG_DISABLE_RESET
 			case 'r':
 			case 'R':
-				if (event.isMetaDown()) // COMMAND
+				if (event.isAccelDown()) // COMMAND
 				{
 					this->reset();
 					return;
@@ -287,14 +300,14 @@ namespace cinder {
 #ifndef NO_SAVE
 			case 'l':
 			case 'L':
-				if (event.isMetaDown()) // COMMAND
+				if (event.isAccelDown()) // COMMAND
 				{
 					this->load();
 					return;
 				}
 			case 's':
 			case 'S':
-				if (event.isMetaDown()) // COMMAND
+				if (event.isAccelDown()) // COMMAND
 				{
 					//if (event.isShiftDown())
 					//	this->exportas();
@@ -304,14 +317,14 @@ namespace cinder {
 				}
 			case 'i':
 			case 'I':
-				if (event.isMetaDown()) // COMMAND
+				if (event.isAccelDown()) // COMMAND
 				{
 					this->import();
 					return;
 				}
 			case 'e':
 			case 'E':
-				if (event.isMetaDown()) // COMMAND
+				if (event.isAccelDown()) // COMMAND
 				{
 					this->exportas();
 					return;
@@ -328,6 +341,7 @@ namespace cinder {
 			case '9' :
 			case '0' :
 				{
+#if defined( CINDER_COCOA )
 					// Save : CONTROL + COMMAND + NUMBER
 					if (event.isControlDown() && event.isMetaDown())
 					{
@@ -335,8 +349,10 @@ namespace cinder {
 						//event.setHandled();
 						return;
 					}
-					// Load : COMMAND + NUMBER
-					else if (event.isMetaDown())
+					else
+#endif
+					// Load : COMMAND + NUMBER (CONTROL + NUMBER on Windows)
+					if (event.isAccelDown())
 					{
 						this->load(c);
 						//event.setHandled();
@@ -1696,7 +1712,11 @@ namespace cinder {
 	// OBS: Nao faz mais muito sentido ter isso...
 	void ciConfig::setFile(const std::string & f)
 	{
+#if defined( CINDER_MSW )
+		if (fs::path(f).is_absolute() || fs::path(f).has_root_directory())
+#else
 		if (f[0] == '/')
+#endif
 			mCurrentFileName = f;
 		else
 			mCurrentFileName = mFolderSave + "/" + f;

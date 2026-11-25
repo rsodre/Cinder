@@ -5,7 +5,9 @@
 //  Copyright 2011 Studio Avante. All rights reserved.
 //
 
+#if defined( __OBJC__ )
 #import <Foundation/Foundation.h>
+#endif
 #include <sstream>
 #include "qbConfig.h"
 #include "qb.h"
@@ -180,8 +182,12 @@ void qbConfig::setup() {
 	//
 	// SETUP GUI
 	//
+#if defined( CINDER_MSW )
+	std::string cmd = "CTRL+";
+#else
 	unsigned char ccmd = 174;				// (R) = COMMAND SIGN for pf_tempesta_seven_ROGER.ttf
 	std::string cmd = toString(ccmd);
+#endif
 	//this->mGui->thumbnailSize = QBCFG_THUMB_SIZE;
 	FloatVarControl *cf;
 	ColorVarControl *cc;
@@ -233,12 +239,16 @@ void qbConfig::setup() {
 	this->guiAddParam(QBCFG_OFFSET,					"Offset", 3 );
 	// Syphon
 	panelSyphon = this->mGui->addPanel("panelSyphon");
+#ifndef QB_NO_SYPHON
 	this->guiAddSeparator();
 	this->guiAddText("> SYPHON");
+#endif
 	this->setValueLabels(QBCFG_MODUL8_INPUT, LABELS_MODUL8_INPUT);
 	this->setFlag(QBCFG_MODUL8_INPUT, CFG_FLAG_DROP_DOWN);
+#ifndef QB_NO_SYPHON
 	this->guiAddParam(QBCFG_MODUL8_INPUT,			"" );
 	this->guiAddParam(QBCFG_SYPHON_OUTPUT,			"Syphon Output" );
+#endif
 	//
 	// Info
 	this->mGui->addPanel("fps");

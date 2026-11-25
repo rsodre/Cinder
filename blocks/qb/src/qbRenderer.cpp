@@ -5,6 +5,7 @@
 //  Copyright 2011 Studio Avante. All rights reserved.
 //
 #include <stdlib.h>
+#include <iomanip>
 #include "qbRenderer.h"
 #include "qb.h"
 #include "cinder/Filesystem.h"
@@ -149,7 +150,11 @@ namespace cinder { namespace qb {
 		if ( ! bOpened )
 		{
 			// Make file name
+#if defined( CINDER_MSW )
+			if ( fs::path( _f ).is_absolute() || fs::path( _f ).has_root_directory() )
+#else
 			if ( _f.c_str()[0] == '/' )
+#endif
 				mFileName = _f;
 			else if ( ! _cfg.get(QBCFG_RENDER_PNG_SEQUENCE) )
 				mFileName = makeFileNameTime( mFolder, mFileNameBase, "mov" );
