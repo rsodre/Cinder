@@ -11,7 +11,7 @@ xcuserdata/
 build/
 #lib/libcinder*.a
 lib/msw/x86/cinder*.lib
-lib/msw/x64/cinder*.lib
+#lib/msw/x64/cinder*.lib
 lib/msw/x86/cinder*.idb
 lib/msw/x64/cinder*.idb
 lib/msw/x86/cinder*.pdb

@@ -281,6 +281,16 @@ namespace cinder { namespace sgui {
 		mDirSyphon = NULL;
 #endif
 		// COLUMN
+#ifdef CFG_BLOCK_SPOUT
+		mCurrFPSSpout = 0.0f;
+		mCfg->guiAddGroup( std::string("> SPOUT") );
+		{
+			mDirSpout = new ciGuiBlockSpoutDirectory( cfg, _cfgName );
+			_cfg.guiAddBlock( mDirSpout );
+			mCfg->guiAddParam("Client Framerate",	&mCurrFPSSpout, 1, true );
+		}
+#endif
+		// COLUMN
 #ifndef QB_NO_NDI
 		mCfg->guiAddGroup( std::string("> NDI") );
 		{
@@ -313,6 +323,14 @@ namespace cinder { namespace sgui {
 #else
 		if ( false ) {}		// no Syphon: start of the else-if chain
 #endif
+#ifdef CFG_BLOCK_SPOUT
+		// New Spout source selected
+		else if ( mDirSpout->isFresh() )
+		{
+			if ( ! mDirSpout->getCurrentName().empty() )
+				mCfg->set( cfgName, std::string("spout::") + mDirSpout->getCurrentName() );
+		}
+#endif
 		// New NDI source selected
 #ifndef QB_NO_NDI
 		else if ( mDirNDI->isFresh() )
@@ -328,6 +346,11 @@ namespace cinder { namespace sgui {
 			// Unselect Syphon
 			if ( mSource->getType() != QB_SOURCE_SYPHON )
 				mDirSyphon->unselect();
+#endif
+#ifdef CFG_BLOCK_SPOUT
+			// Unselect Spout
+			if ( mSource->getType() != QB_SOURCE_SPOUT )
+				mDirSpout->unselect();
 #endif
 #ifndef QB_NO_NDI
 			if ( mSource->getType() != QB_SOURCE_NDI )
@@ -382,6 +405,9 @@ namespace cinder { namespace sgui {
 		mCurrFPS		= ( mSource->getType() == QB_SOURCE_MOVIE ? mSource->getCurrentFrameRate() : 0.0 );
 		mCurrFPSSyphon	= ( mSource->getType() == QB_SOURCE_SYPHON ? mSource->getCurrentFrameRate() : 0.0 );
 		mCurrFPSNDI		= ( mSource->getType() == QB_SOURCE_NDI ? mSource->getCurrentFrameRate() : 0.0 );
+#ifdef CFG_BLOCK_SPOUT
+		mCurrFPSSpout	= ( mSource->getType() == QB_SOURCE_SPOUT ? mSource->getCurrentFrameRate() : 0.0 );
+#endif
 		if (mName.empty())
 			mName = "< none >";
 		if (mFileName.empty())
@@ -722,6 +748,100 @@ namespace cinder { namespace sgui {
 #endif
 	
 	
+
+
+/////////////////////////////////////////////////////////////////
+//
+// SPOUT BLOCK (Windows, same behaviour as the Syphon directory)
+//
+#ifdef CFG_BLOCK_SPOUT
+namespace cinder { namespace sgui {
+	spoutServerDirectory _SpoutDirectory;
+	ciGuiBlockSpoutDirectory::ciGuiBlockSpoutDirectory( ciConfigGui *cfg, int _cfgName ) : ciConfigGuiBlock(cfg)
+	{
+		cfgName = _cfgName;
+		mListId = mLastId = -1;
+		mServerCount = 0;
+		bFreshness = false;
+
+		// Setup Directory
+		_SpoutDirectory.setup();
+
+		// Setup GUI
+		mPanel = mCfg->guiAddPanel("ciGuiBlockSpoutDirectory");
+		mLabel = cfg->guiAddText("---");	// update() will set
+		std::map<int,std::string> valueLabels;
+		mListControl = mCfg->guiAddParamList("", &mListId, valueLabels);
+		this->update();
+	}
+
+	void ciGuiBlockSpoutDirectory::update()
+	{
+		bFreshness = false;
+
+		// Current Server we're using
+		std::string current = mCfg->getString(cfgName);
+		if ( current.compare(0,7,"spout::") == 0 )		// remove qbSource prefix
+			current = current.substr(7);
+
+		// Changed? (hasChanged() is true once per change, as with Syphon)
+		bool changed = _SpoutDirectory.hasChanged();
+		if ( changed || mCfg->isFresh(cfgName) )
+		{
+			// Make new Spout list
+			int key = 0;
+			std::map<int,std::string> valueLabels;
+			for (int i = 0 ; i < _SpoutDirectory.getServerCount() ; i++)
+			{
+				std::string servername = ciGuiBlockSyphonDirectory::makeServerDisplayName( _SpoutDirectory.getServer(i).getAppName(), _SpoutDirectory.getServer(i).getName() );
+				// no feedback!!
+				if ( servername.compare( mExclude ) == 0 )
+					continue;
+				// Set label
+				valueLabels[key++] = servername;
+			}
+			// Update list
+			mListControl->update( valueLabels );
+			mServerCount = (int) valueLabels.size();
+			// Unselect / Select
+			this->reselect( current );
+		}
+
+		// New Spout source selected
+		// (the Syphon block re-checks the directory here; its hasChanged() was already consumed above, same result)
+		if ( mLastId != mListId )
+		{
+			if (mListId >= 0)
+			{
+				mCurrentName = mListControl->getValueLabel( mListId );
+				mCfg->set( cfgName, mCurrentName );
+			}
+			else
+				mCurrentName = "";
+			this->reselect( mCurrentName );
+			bFreshness = true;
+		}
+		mLastId = mListId;
+
+		// Refresh Data
+		mLabel->setName( mServerCount == 0 ? "No Available Clients!" : "Available Clients..." );
+	}
+
+	void ciGuiBlockSpoutDirectory::reselect( const std::string & name )
+	{
+		mListId = -1;
+		for (int i = 0 ; i < mListControl->items.size() ; i++ ) {
+			if ( name.compare( mListControl->getValueLabel(i) ) == 0 )
+			{
+				mListId = i;
+				break;
+			}
+		}
+	}
+} } // namespace cinder::sgui
+#endif	// CFG_BLOCK_SPOUT
+
+
 
 
 /////////////////////////////////////////////////////////////////

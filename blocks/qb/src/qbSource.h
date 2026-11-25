@@ -17,6 +17,9 @@
 #ifndef QB_NO_SYPHON
 #include "cinderSyphon.h"
 #endif
+#ifdef QB_SPOUT
+#include "cinderSpout.h"	// BLOCK/Spout (Windows)
+#endif
 #include "qbCube.h"
 #include <functional>
 #include <map>
@@ -52,6 +55,9 @@ namespace cinder { namespace qb {
 #define QB_SOURCE_IMAGE			"Image"
 #define QB_SOURCE_MOVIE			"Movie"
 #define QB_SOURCE_SYPHON		"Syphon"
+#ifdef QB_SPOUT
+#define QB_SOURCE_SPOUT			"Spout"
+#endif
 #define QB_SOURCE_NDI			"NDI"
 #define QB_SOURCE_GENERATOR		"Generator"
 
@@ -246,6 +252,34 @@ namespace cinder { namespace qb {
 		syphonClient			mSyphonClient;
 	};
 #endif
+
+	//
+	// SPOUT Source (Windows counterpart of qbSourceSyphon: RECT texture, flipped like Syphon's)
+#ifdef QB_SPOUT
+	class qbSourceSpout : public qbSourceBase {
+	public:
+		qbSourceSpout() : qbSourceBase()
+		{
+			mSpoutClient.setup();
+			mSpoutClient.setApplicationName( "" );
+			mSpoutClient.setServerName("");
+			mDesc = "Spout";
+		}
+
+		bool load(const std::string & _app, char _flags=0);
+		bool load(const std::string & _app, const std::string & _tex, char _flags=0);
+		bool updateFrame( bool _force=false );
+
+		const std::string getType()			{ return QB_SOURCE_SPOUT; }
+		const float	getCurrentFrameRate()	{ return mSpoutClient.getCurrentFrameRate(); }
+
+		void bind(int unit=0)	{ mSpoutClient.bind(unit); }
+		void unbind()			{ mSpoutClient.unbind(); }
+
+	private:
+		spoutClient				mSpoutClient;
+	};
+#endif
 	
 	
 	//
@@ -355,6 +389,9 @@ namespace cinder { namespace qb {
 		void	onFileDrop( app::FileDropEvent & event );
 #ifndef QB_NO_SYPHON
 		bool	loadSyphon( const std::string & _app, const std::string & _tex="" );
+#endif
+#ifdef QB_SPOUT
+		bool	loadSpout( const std::string & _app, const std::string & _tex="" );
 #endif
 #ifndef QB_NO_NDI
 		bool	loadNDI( const std::string & _app, const std::string & _tex="" );

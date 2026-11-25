@@ -116,6 +116,14 @@ namespace cinder { namespace qb {
 			return false;
 #endif
 		}
+#ifdef QB_SPOUT
+		// Spout prefix: "spout::app | name" (sender "app - name")
+		else if ( _f.compare(0,7,"spout::") == 0 )
+		{
+			const auto serverName = ciGuiBlockSyphonDirectory::splitServerDisplayName( _f.substr(7) );
+			this->loadSpout( serverName.first, serverName.second );
+		}
+#endif
 #ifndef QB_NO_NDI
 		else if ( _f.compare(0,5,"ndi::") == 0 )
 		{
@@ -183,6 +191,19 @@ namespace cinder { namespace qb {
 		if (mSrc == nullptr)
 			return false;
 		return ((qbSourceSyphon*)mSrc.get())->load( _app, _tex, mFlags );
+	}
+#endif
+#ifdef QB_SPOUT
+	bool qbSourceSelector::loadSpout( const std::string & _app, const std::string & _tex )
+	{
+		if (mSrc == nullptr || mSrc->getType() != QB_SOURCE_SPOUT)
+		{
+			qbSourceSpout *newSrc = new qbSourceSpout();
+			this->setSource(newSrc);
+		}
+		if (mSrc == nullptr)
+			return false;
+		return ((qbSourceSpout*)mSrc.get())->load( _app, _tex, mFlags );
 	}
 #endif
 #ifndef QB_NO_NDI
@@ -725,6 +746,57 @@ namespace cinder { namespace qb {
 		return true;
 	}
 #endif	// QB_NO_SYPHON
+
+
+	///////////////////////////////////////////
+	//
+	// SPOUT (Windows, same as Syphon)
+	//
+#ifdef QB_SPOUT
+	bool qbSourceSpout::load( const std::string & _app, char _flags )
+	{
+		return this->load( _app, "", _flags );
+	}
+	bool qbSourceSpout::load( const std::string & _app, const std::string & _tex, char _flags )
+	{
+		mSpoutClient.setApplicationName( _app );
+		mSpoutClient.setServerName(_tex);
+		this->updateFrame(true);
+
+		// source properties
+		bHasAlpha = true;
+
+		// Make name (= Spout sender name)
+		mName = spoutJoinSenderName( _app, _tex );
+		mDesc2 = "";
+		mSpawnedAtFrame = app::getElapsedFrames();
+		this->play();	// Always playing
+
+		printf("SOURCE Spout [%s] loaded!\n",mName.c_str());
+		return true;
+	}
+	//
+	// Get new Frame
+	// qbUpdateObject VIRTUAL
+	bool qbSourceSpout::updateFrame( bool _force )
+	{
+		if ( ! _force && ! mSpoutClient.hasNewFrame() )
+			return false;
+		mSpoutClient.update();
+		mTex = mSpoutClient.getTexture();		// RECT, flipped (like syphonClient)
+		mSize = mSpoutClient.getSize();
+		if(mSurface)
+			mSurface = Surface8u();		// clear surface
+		// calc UV?
+		if (mTex)
+			this->makeUV( mTex.getMaxU(), mTex.getMaxV() );
+		// update desc
+		std::stringstream os;
+		os << "Spout: " << mSize.x << " x " << mSize.y;
+		mDesc = os.str();
+		return true;
+	}
+#endif	// QB_SPOUT
 	
 	
 	///////////////////////////////////////////

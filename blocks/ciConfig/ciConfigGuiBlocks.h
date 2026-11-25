@@ -13,6 +13,10 @@
 #ifndef QB_NO_NDI
 #define CFG_BLOCK_NDI
 #endif
+// Allow Spout params (Windows, BLOCK/Spout)
+#if defined( CFG_SPOUT ) && ! defined( CFG_BLOCK_SPOUT )
+#define CFG_BLOCK_SPOUT
+#endif
 
 #include "ciConfigGui.h"
 #include "cinder/app/AppBasic.h"
@@ -86,6 +90,9 @@ namespace cinder { namespace sgui {
 	// QB Source TAB
 	class ciGuiBlockSyphonDirectory;
 	class ciGuiBlockNDIDirectory;
+#ifdef CFG_BLOCK_SPOUT
+	class ciGuiBlockSpoutDirectory;
+#endif
 	class ciGuiBlockQBSourceTab : public ciConfigGuiBlock {
 	public:
 		ciGuiBlockQBSourceTab( ciConfigGui *cfg, qb::qbSourceSelector * src, const std::string &label, int _cfgSelector, int _cfgName, int _cfgFileName, int _cfgIgnoreAlpha=-1, std::function<void()> infoBlock=nullptr, std::function<void()> generatorBlock=nullptr );
@@ -97,6 +104,10 @@ namespace cinder { namespace sgui {
 	protected:
 		ciGuiBlockSyphonDirectory	* mDirSyphon;
 		ciGuiBlockNDIDirectory		* mDirNDI;
+#ifdef CFG_BLOCK_SPOUT
+		ciGuiBlockSpoutDirectory	* mDirSpout;
+		float						mCurrFPSSpout;
+#endif
 		qb::qbSourceSelector		* mSource;
 		TextureVarControl			* mTextureControl;
 		IntVarControl				* mSelectorControl;
@@ -231,6 +242,49 @@ namespace cinder { namespace sgui {
 	};
 } } // namespace cinder::sgui
 #endif
+
+
+/////////////////////////////////
+//
+// Spout (Windows counterpart of the Syphon directory)
+// List labels are "app | name" (ciGuiBlockSyphonDirectory::makeServerDisplayName), the sender
+// "app - name" split by spoutServerDirectory. Sources are named "spout::app | name".
+//
+#ifdef CFG_BLOCK_SPOUT
+#include "cinderSpout.h"
+namespace cinder { namespace sgui {
+	extern spoutServerDirectory _SpoutDirectory;
+	class ciGuiBlockSpoutDirectory : public ciConfigGuiBlock {
+	public:
+		ciGuiBlockSpoutDirectory( ciConfigGui *cfg, int _cfgName );
+		~ciGuiBlockSpoutDirectory() {}
+
+		void exclude( const std::string & name )	{ mExclude = name; }
+		void unselect()								{ mListId = -1; }
+
+		bool isFresh()					{ return bFreshness; }
+		std::string getCurrentName()	{ return mCurrentName; }
+		bool isSelected()				{ return (mListId >= 0); }
+
+		// virtuals
+		void update();
+
+	private:
+
+		void reselect( const std::string & name );
+
+		ListVarControl *	mListControl;
+		LabelControl *		mLabel;
+
+		int				cfgName;
+		int				mListId, mLastId;	// List id watcher
+		bool			bFreshness;			// selected/unselected new
+		int				mServerCount;
+		std::string		mExclude;
+		std::string		mCurrentName;
+	};
+} } // namespace cinder::sgui
+#endif	// CFG_BLOCK_SPOUT
 
 
 

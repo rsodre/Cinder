@@ -22,6 +22,39 @@ namespace cinder { namespace qb {
 	// Globals
 	qbMain __qb;
 	
+#if defined( CINDER_MSW )
+	// Windows: the executable's ProductVersion string, e.g. "1.8 (w001) BETA"
+	static std::string getProductVersionMsw( const std::string & fallback )
+	{
+		wchar_t path[MAX_PATH];
+		if ( ! ::GetModuleFileNameW( NULL, path, MAX_PATH ) )
+			return fallback;
+		DWORD handle = 0;
+		DWORD size = ::GetFileVersionInfoSizeW( path, &handle );
+		if ( size == 0 )
+			return fallback;
+		std::vector<char> data( size );
+		if ( ! ::GetFileVersionInfoW( path, 0, size, &data[0] ) )
+			return fallback;
+		// first translation: language + code page
+		struct { WORD lang; WORD codepage; } *trans = NULL;
+		UINT len = 0;
+		if ( ! ::VerQueryValueW( &data[0], L"\\VarFileInfo\\Translation", (LPVOID*)&trans, &len ) || len < sizeof(*trans) )
+			return fallback;
+		wchar_t key[64];
+		swprintf_s( key, L"\\StringFileInfo\\%04x%04x\\ProductVersion", trans->lang, trans->codepage );
+		wchar_t *value = NULL;
+		if ( ! ::VerQueryValueW( &data[0], key, (LPVOID*)&value, &len ) || len == 0 || ! value[0] )
+			return fallback;
+		int n = ::WideCharToMultiByte( CP_UTF8, 0, value, -1, NULL, 0, NULL, NULL );
+		if ( n <= 1 )
+			return fallback;
+		std::string result( n - 1, '\0' );
+		::WideCharToMultiByte( CP_UTF8, 0, value, -1, &result[0], n, NULL, NULL );
+		return result;
+	}
+#endif
+
 	//////////////////////////////////////////////////////////////////
 	//
 	// SETTINGS
@@ -102,7 +135,20 @@ namespace cinder { namespace qb {
 		// Screen name
 		std::stringstream os;
 		//os << "__" << SysInfo::getAppName();
+#if defined( CINDER_MSW )
+		// Windows: with the release stage from ProductVersion "1.8 (w001) BETA" -> "Blendy Dome VJ v_1.8 BETA"
+		// (the label is clipped at the tab column width, 128 px: the full ProductVersion does not fit)
+		{
+			std::string productVersion = getProductVersionMsw( "" );
+			size_t stagePos = productVersion.rfind( ") " );
+			std::string stage = ( stagePos != std::string::npos ? productVersion.substr( stagePos + 2 ) : "" );
+			os << SysInfo::getAppName() << " v_" << SysInfo::getAppVersion();
+			if ( ! stage.empty() )
+				os << " " << stage;
+		}
+#else
 		os << SysInfo::getAppName() << " v_" << SysInfo::getAppVersion();
+#endif
 		mScreenName = os.str();
 		printf("----- QB app_name [%s] screen_name [%s] app_ver [%s]\n",SysInfo::getAppName().c_str(),mScreenName.c_str(),SysInfo::getAppVersionLong().c_str());
 
