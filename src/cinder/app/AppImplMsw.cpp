@@ -40,6 +40,14 @@
 #undef min
 #undef max
 #pragma comment(lib, "gdiplus")
+// ROGER (Windows port): VERSIONINFO, known folders, registry
+#include <KnownFolders.h>
+#include <algorithm>
+#pragma comment(lib, "version")
+#pragma comment(lib, "shell32")
+#pragma comment(lib, "ole32")
+#pragma comment(lib, "advapi32")
+#pragma comment(lib, "uuid")
 
 using std::string;
 using std::wstring;
@@ -54,7 +62,8 @@ static const wchar_t *WINDOWED_WIN_CLASS_NAME = TEXT("CinderWinClass");
 static const wchar_t *BLANKING_WINDOW_CLASS_NAME = TEXT("CinderBlankingWindow");
 
 AppImplMsw::AppImplMsw( App *aApp )
-	: mApp( aApp ), mSetupHasBeenCalled( false ), mActive( true )
+	: mApp( aApp ), mSetupHasBeenCalled( false ), mActive( true ),
+	mRememberPosWnd( NULL ), mRememberPosDirty( false ), mInSizeMove( false )
 {
 	Gdiplus::GdiplusStartupInput gdiplusStartupInput;
 	Gdiplus::GdiplusStartup( &mGdiplusToken, &gdiplusStartupInput, NULL );
@@ -322,16 +331,389 @@ fs::path AppImplMsw::getSaveFilePath( const fs::path &initialPath, vector<string
 
 
 ///////////////////////////////////////////////////////////////////////////////
+// ROGER (Windows port): DPI, app info, cursor, dropped files, main window position
+
+void AppImplMsw::enableDpiAwareness()
+{
+	static bool sDone = false;
+	if( sDone )
+		return;
+	sDone = true;
+
+	// Windows 10 1703+: per-monitor V2. Fails with ERROR_ACCESS_DENIED when a manifest (or an earlier call) already set the awareness: keep it.
+	typedef BOOL (WINAPI *SetProcessDpiAwarenessContextFn)( HANDLE );
+	HMODULE user32 = ::GetModuleHandleW( L"user32.dll" );
+	SetProcessDpiAwarenessContextFn setContext = user32 ? (SetProcessDpiAwarenessContextFn)::GetProcAddress( user32, "SetProcessDpiAwarenessContext" ) : NULL;
+	if( setContext ) {
+		const HANDLE PER_MONITOR_AWARE_V2 = (HANDLE)(LONG_PTR)-4;	// DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+		if( setContext( PER_MONITOR_AWARE_V2 ) || ::GetLastError() == ERROR_ACCESS_DENIED )
+			return;
+	}
+	// Windows 8.1+: per-monitor (V1)
+	HMODULE shcore = ::LoadLibraryW( L"shcore.dll" );
+	if( shcore ) {
+		typedef HRESULT (WINAPI *SetProcessDpiAwarenessFn)( int );
+		SetProcessDpiAwarenessFn setAwareness = (SetProcessDpiAwarenessFn)::GetProcAddress( shcore, "SetProcessDpiAwareness" );
+		if( setAwareness ) {
+			HRESULT hr = setAwareness( 2 );	// PROCESS_PER_MONITOR_DPI_AWARE
+			if( SUCCEEDED( hr ) || hr == E_ACCESSDENIED )
+				return;
+		}
+	}
+	// Vista+: system aware
+	typedef BOOL (WINAPI *SetProcessDPIAwareFn)();
+	SetProcessDPIAwareFn setAware = user32 ? (SetProcessDPIAwareFn)::GetProcAddress( user32, "SetProcessDPIAware" ) : NULL;
+	if( setAware )
+		setAware();
+}
+
+std::string AppImplMsw::wideToUtf8( const wchar_t *wide )
+{
+	if( wide == NULL || wide[0] == 0 )
+		return std::string();
+	int len = ::WideCharToMultiByte( CP_UTF8, 0, wide, -1, NULL, 0, NULL, NULL );
+	if( len <= 1 )
+		return std::string();
+	std::string result( len - 1, '\0' );
+	::WideCharToMultiByte( CP_UTF8, 0, wide, -1, &result[0], len, NULL, NULL );
+	return result;
+}
+
+std::vector<fs::path> AppImplMsw::getDroppedFiles( HDROP drop )
+{
+	std::vector<fs::path> files;
+	UINT count = ::DragQueryFileW( drop, 0xFFFFFFFF, NULL, 0 );
+	for( UINT i = 0; i < count; ++i ) {
+		UINT len = ::DragQueryFileW( drop, i, NULL, 0 );
+		std::wstring name( len + 1, L'\0' );
+		UINT got = ::DragQueryFileW( drop, i, &name[0], len + 1 );
+		name.resize( got );
+		// built from the wide name: exact whatever boost::filesystem's narrow codecvt is (path.string() converts with it, path.wstring() is exact)
+		files.push_back( fs::path( name ) );
+	}
+	return files;
+}
+
+namespace {
+
+std::wstring getExePathW()
+{
+	std::vector<wchar_t> buf( MAX_PATH );
+	for( ;; ) {
+		DWORD len = ::GetModuleFileNameW( NULL, buf.data(), (DWORD)buf.size() );
+		if( len == 0 )
+			return std::wstring();
+		if( len < buf.size() )
+			return std::wstring( buf.data(), len );
+		buf.resize( buf.size() * 2 );
+	}
+}
+
+// The exe's VERSIONINFO, loaded once (same lookup as BLOCK/SysInfo/SysInfo_win.cpp)
+class ExeVersionInfo {
+  public:
+	ExeVersionInfo() : mFixed( NULL )
+	{
+		std::wstring path = getExePathW();
+		if( path.empty() )
+			return;
+		DWORD handle = 0;
+		DWORD size = ::GetFileVersionInfoSizeW( path.c_str(), &handle );
+		if( size == 0 )
+			return;
+		mData.resize( size );
+		if( ! ::GetFileVersionInfoW( path.c_str(), 0, size, mData.data() ) ) {
+			mData.clear();
+			return;
+		}
+		UINT len = 0;
+		VS_FIXEDFILEINFO *fixed = NULL;
+		if( ::VerQueryValueW( mData.data(), L"\\", (LPVOID*)&fixed, &len ) && fixed && len >= sizeof( VS_FIXEDFILEINFO ) )
+			mFixed = fixed;
+		struct LangCodePage { WORD lang; WORD codepage; } *trans = NULL;
+		if( ::VerQueryValueW( mData.data(), L"\\VarFileInfo\\Translation", (LPVOID*)&trans, &len ) && trans ) {
+			for( UINT i = 0; i < len / sizeof( LangCodePage ); ++i ) {
+				wchar_t block[64];
+				swprintf( block, 64, L"\\StringFileInfo\\%04x%04x\\", trans[i].lang, trans[i].codepage );
+				mBlocks.push_back( block );
+			}
+		}
+		mBlocks.push_back( L"\\StringFileInfo\\040904b0\\" );
+		mBlocks.push_back( L"\\StringFileInfo\\040904e4\\" );
+	}
+
+	std::string getString( const wchar_t *key ) const
+	{
+		if( mData.empty() )
+			return std::string();
+		for( auto &block : mBlocks ) {
+			std::wstring query = block + key;
+			wchar_t *value = NULL;
+			UINT len = 0;
+			if( ::VerQueryValueW( (LPVOID)mData.data(), query.c_str(), (LPVOID*)&value, &len ) && value && len > 0 ) {
+				std::string s = AppImplMsw::wideToUtf8( value );
+				size_t b = s.find_first_not_of( " \t\r\n" );
+				if( b == std::string::npos )
+					continue;
+				size_t e = s.find_last_not_of( " \t\r\n" );
+				return s.substr( b, e - b + 1 );
+			}
+		}
+		return std::string();
+	}
+
+	const VS_FIXEDFILEINFO*	getFixed() const { return mFixed; }
+
+	static const ExeVersionInfo& get() { static ExeVersionInfo sInfo; return sInfo; }
+
+  private:
+	std::vector<BYTE>			mData;
+	std::vector<std::wstring>	mBlocks;
+	VS_FIXEDFILEINFO			*mFixed;
+};
+
+} // anonymous namespace
+
+std::string AppImplMsw::getVersionInfoAppName()
+{
+	const ExeVersionInfo &vi = ExeVersionInfo::get();
+	std::string result = vi.getString( L"BundleName" );		// mirrors CFBundleName
+	if( result.empty() )
+		result = vi.getString( L"ProductName" );
+	if( result.empty() ) {
+		std::wstring path = getExePathW();
+		size_t slash = path.find_last_of( L"\\/" );
+		if( slash != std::wstring::npos )
+			path = path.substr( slash + 1 );
+		size_t dot = path.find_last_of( L'.' );
+		if( dot != std::wstring::npos && dot > 0 )
+			path = path.substr( 0, dot );
+		result = wideToUtf8( path.c_str() );
+	}
+	if( result.empty() )
+		result = "CinderApp";
+	return result;
+}
+
+std::string AppImplMsw::getVersionInfoAppVersion()
+{
+	// Cocoa returns CFBundleVersion (the build), so the custom "BuildVersion" key comes first
+	const ExeVersionInfo &vi = ExeVersionInfo::get();
+	std::string result = vi.getString( L"BuildVersion" );
+	if( result.empty() )
+		result = vi.getString( L"ProductVersion" );
+	if( result.empty() )
+		result = vi.getString( L"FileVersion" );
+	if( result.empty() && vi.getFixed() ) {
+		const VS_FIXEDFILEINFO *f = vi.getFixed();
+		char buf[64];
+		snprintf( buf, sizeof( buf ), "%u.%u.%u.%u", HIWORD( f->dwProductVersionMS ), LOWORD( f->dwProductVersionMS ), HIWORD( f->dwProductVersionLS ), LOWORD( f->dwProductVersionLS ) );
+		result = buf;
+	}
+	if( result.empty() )
+		result = "0";
+	return result;
+}
+
+fs::path AppImplMsw::getApplicationSupportFolder( const std::string &appName, bool create )
+{
+	PWSTR roaming = NULL;
+	fs::path result;
+	if( SUCCEEDED( ::SHGetKnownFolderPath( FOLDERID_RoamingAppData, KF_FLAG_CREATE, NULL, &roaming ) ) && roaming )
+		result = fs::path( std::wstring( roaming ) ) / fs::path( msw::toWideString( appName ) );
+	if( roaming )
+		::CoTaskMemFree( roaming );
+	if( result.empty() )
+		return result;
+	boost::system::error_code ec;
+	if( create && ! fs::exists( result, ec ) )
+		fs::create_directories( result, ec );
+	return result;
+}
+
+static HCURSOR sAppCursor = NULL;
+
+void AppImplMsw::setCursor( HCURSOR cursor )
+{
+	sAppCursor = cursor;
+	// apply now if the mouse is over one of our windows' client area
+	POINT pt;
+	if( ::GetCursorPos( &pt ) ) {
+		HWND wnd = ::WindowFromPoint( pt );
+		wchar_t className[64] = L"";
+		if( wnd && ::GetClassNameW( wnd, className, 64 ) && wcscmp( className, WINDOWED_WIN_CLASS_NAME ) == 0 )
+			::SetCursor( sAppCursor ? sAppCursor : ::LoadCursor( NULL, IDC_ARROW ) );
+	}
+}
+
+HCURSOR AppImplMsw::getCursor()
+{
+	return sAppCursor;
+}
+
+namespace {
+
+void computeWindowStyles( bool fullScreen, bool borderless, bool resizable, bool toolWindow, bool noActivate, bool alwaysOnTop, DWORD *style, DWORD *exStyle )
+{
+	DWORD baseEx = toolWindow ? WS_EX_TOOLWINDOW : WS_EX_APPWINDOW;
+	if( fullScreen ) {
+		*exStyle = baseEx;
+		*style = WS_POPUP;
+	}
+	else if( borderless ) {
+		*exStyle = baseEx;
+		*style = WS_POPUP;
+	}
+	else {
+		*exStyle = baseEx | WS_EX_WINDOWEDGE;
+		*style = ( resizable ) ? WS_OVERLAPPEDWINDOW
+			:	( WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MINIMIZEBOX & ~WS_MAXIMIZEBOX );
+	}
+	if( noActivate )
+		*exStyle |= WS_EX_NOACTIVATE;
+	if( alwaysOnTop )
+		*exStyle |= WS_EX_TOPMOST;
+}
+
+std::wstring mainWindowRegKey( const std::string &appName )
+{
+	return std::wstring( L"Software\\Studio Avante\\" ) + msw::toWideString( appName ) + L"\\MainWindow";
+}
+
+bool regReadInt( HKEY key, const wchar_t *name, int *value )
+{
+	DWORD v = 0, size = sizeof( v ), type = 0;
+	if( ::RegQueryValueExW( key, name, NULL, &type, (LPBYTE)&v, &size ) != ERROR_SUCCESS || type != REG_DWORD )
+		return false;
+	*value = (int)v;
+	return true;
+}
+
+void regWriteInt( HKEY key, const wchar_t *name, int value )
+{
+	DWORD v = (DWORD)value;
+	::RegSetValueExW( key, name, 0, REG_DWORD, (const BYTE*)&v, sizeof( v ) );
+}
+
+struct MonitorWorkAreas {
+	std::vector<RECT> rects;
+	static BOOL CALLBACK proc( HMONITOR mon, HDC, LPRECT, LPARAM lParam ) {
+		MONITORINFO mi = { sizeof( MONITORINFO ) };
+		if( ::GetMonitorInfoW( mon, &mi ) )
+			reinterpret_cast<MonitorWorkAreas*>( lParam )->rects.push_back( mi.rcWork );
+		return TRUE;
+	}
+	MonitorWorkAreas() { ::EnumDisplayMonitors( NULL, NULL, proc, (LPARAM)this ); }
+};
+
+} // anonymous namespace
+
+bool AppImplMsw::restoreMainWindowPos( Window::Format &format, const std::string &appName )
+{
+	HKEY key = NULL;
+	if( ::RegOpenKeyExW( HKEY_CURRENT_USER, mainWindowRegKey( appName ).c_str(), 0, KEY_READ, &key ) != ERROR_SUCCESS )
+		return false;
+	int x = 0, y = 0, w = 0, h = 0, maximized = 0;
+	bool ok = regReadInt( key, L"X", &x ) && regReadInt( key, L"Y", &y ) && regReadInt( key, L"Width", &w ) && regReadInt( key, L"Height", &h );
+	regReadInt( key, L"Maximized", &maximized );
+	::RegCloseKey( key );
+	if( ! ok || w < 64 || h < 64 || w > 32000 || h > 32000 )
+		return false;
+
+	// the frame rect this client rect would get
+	DWORD style, exStyle;
+	computeWindowStyles( false, format.isBorderless(), format.isResizable(), format.isToolWindow(), format.isNoActivate(), format.isAlwaysOnTop(), &style, &exStyle );
+	RECT wr = { x, y, x + w, y + h };
+	::AdjustWindowRectEx( &wr, style, FALSE, exStyle );
+
+	// valid only if the top of the window (where the title bar is) is visibly inside the work area of a current monitor
+	// (displays may have changed since the position was saved)
+	MonitorWorkAreas monitors;
+	const RECT *home = NULL;
+	for( auto &work : monitors.rects ) {
+		RECT band = { wr.left, wr.top, wr.right, wr.top + 24 };
+		RECT inter;
+		if( ::IntersectRect( &inter, &band, &work ) && ( inter.right - inter.left ) >= std::min<LONG>( 100, w ) && ( inter.bottom - inter.top ) >= 8 ) {
+			home = &work;
+			break;
+		}
+	}
+	if( ! home )
+		return false;
+
+	// keep the whole window inside that monitor's work area if it does not fit
+	int frameW = ( wr.right - wr.left ) - w, frameH = ( wr.bottom - wr.top ) - h;
+	int workW = home->right - home->left, workH = home->bottom - home->top;
+	if( w + frameW > workW ) w = std::max( 64, workW - frameW );
+	if( h + frameH > workH ) h = std::max( 64, workH - frameH );
+	int left = x + ( wr.left - x ), top = y + ( wr.top - y );	// frame origin
+	int fw = w + frameW, fh = h + frameH;
+	if( left < home->left ) left = home->left;
+	if( top < home->top ) top = home->top;
+	if( left + fw > home->right ) left = home->right - fw;
+	if( top + fh > home->bottom ) top = home->bottom - fh;
+	x = left + ( x - wr.left );
+	y = top + ( y - wr.top );
+
+	format.setPos( x, y );
+	format.setSize( w, h );
+	return maximized != 0;
+}
+
+void AppImplMsw::trackMainWindowPos( HWND wnd, const std::string &appName )
+{
+	mRememberPosWnd = wnd;
+	mRememberPosAppName = appName;
+	mRememberPosDirty = false;
+}
+
+void AppImplMsw::saveMainWindowPos( bool force )
+{
+	if( ! mRememberPosWnd || ! ::IsWindow( mRememberPosWnd ) )
+		return;
+	if( ! force && ( ! mRememberPosDirty || mInSizeMove ) )
+		return;
+	mRememberPosDirty = false;
+
+	if( ::IsIconic( mRememberPosWnd ) )
+		return;
+	WindowImplMsw *impl = reinterpret_cast<WindowImplMsw*>( ::GetWindowLongPtr( mRememberPosWnd, GWLP_USERDATA ) );
+	if( impl && impl->isFullScreen() )
+		return;
+
+	HKEY key = NULL;
+	if( ::RegCreateKeyExW( HKEY_CURRENT_USER, mainWindowRegKey( mRememberPosAppName ).c_str(), 0, NULL, 0, KEY_WRITE, NULL, &key, NULL ) != ERROR_SUCCESS )
+		return;
+	bool zoomed = ::IsZoomed( mRememberPosWnd ) != FALSE;
+	if( ! zoomed ) {
+		RECT client;
+		::GetClientRect( mRememberPosWnd, &client );
+		POINT origin = { 0, 0 };
+		::ClientToScreen( mRememberPosWnd, &origin );
+		regWriteInt( key, L"X", origin.x );
+		regWriteInt( key, L"Y", origin.y );
+		regWriteInt( key, L"Width", client.right - client.left );
+		regWriteInt( key, L"Height", client.bottom - client.top );
+	}
+	regWriteInt( key, L"Maximized", zoomed ? 1 : 0 );
+	::RegCloseKey( key );
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // WindowImplMsw
 WindowImplMsw::WindowImplMsw( const Window::Format &format, RendererRef sharedRenderer, AppImplMsw *appImpl )
-	: mWindowOffset( 0, 0 ), mAppImpl( appImpl ), mIsDragging( false ), mHidden( false )
-{	
+	: mWindowOffset( 0, 0 ), mAppImpl( appImpl ), mIsDragging( false ), mHidden( false ), mDisplayChangeCount( Display::getChangeCount() )
+{
 	mFullScreen = format.isFullScreen();
 	mDisplay = format.getDisplay();
 	mRenderer = format.getRenderer();
 	mResizable = format.isResizable();
 	mAlwaysOnTop = format.isAlwaysOnTop();
 	mBorderless = format.isBorderless();
+	mToolWindow = format.isToolWindow();	// ROGER
+	mNoActivate = format.isNoActivate();	// ROGER
+	if( ! mDisplay )
+		mDisplay = Display::getMainDisplay();
 
 	mWindowedSize = format.getSize();
 	mWindowWidth = mWindowedSize.x;
@@ -339,8 +721,9 @@ WindowImplMsw::WindowImplMsw( const Window::Format &format, RendererRef sharedRe
 	if( format.isPosSpecified() )
 		mWindowOffset = mWindowedPos = format.getPos();
 	else {
+		// ROGER: centred on the target display (was centred on its size only, ignoring its origin)
 		Vec2i displaySize = mDisplay->getSize();
-		mWindowOffset = mWindowedPos = ( displaySize - mWindowedSize ) / 2;
+		mWindowOffset = mWindowedPos = mDisplay->getBounds().getUL() + ( displaySize - mWindowedSize ) / 2;
 	}
 
 	createWindow( Vec2i( mWindowWidth, mWindowHeight ), format.getTitle(), mDisplay, sharedRenderer );
@@ -351,7 +734,9 @@ WindowImplMsw::WindowImplMsw( const Window::Format &format, RendererRef sharedRe
 }
 
 WindowImplMsw::WindowImplMsw( HWND hwnd, RendererRef renderer, RendererRef sharedRenderer, AppImplMsw *appImpl )
-	: mWnd( hwnd ), mRenderer( renderer ), mAppImpl( appImpl ), mIsDragging( false )
+	: mWnd( hwnd ), mRenderer( renderer ), mAppImpl( appImpl ), mIsDragging( false ),
+	mHidden( false ), mFullScreen( false ), mBorderless( false ), mAlwaysOnTop( false ), mResizable( true ),
+	mToolWindow( false ), mNoActivate( false ), mWindowStyle( 0 ), mWindowExStyle( 0 ), mDisplayChangeCount( Display::getChangeCount() )
 {
 	RECT rect;
 	::GetWindowRect( mWnd, &rect );
@@ -387,20 +772,9 @@ void WindowImplMsw::createWindow( const Vec2i &windowSize, const std::string &ti
 	}
 
 	registerWindowClass();
-	
-	if( mFullScreen ) {
-		mWindowExStyle = WS_EX_APPWINDOW;								// Window Extended Style
-		mWindowStyle = WS_POPUP;										// Windows Style
-	}
-	else if( mBorderless ) {
-		mWindowExStyle = WS_EX_APPWINDOW;
-		mWindowStyle = WS_POPUP;
-	}
-	else {
-		mWindowExStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;			// Window Extended Style
-		mWindowStyle = ( mResizable ) ? WS_OVERLAPPEDWINDOW
-			:	( WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MINIMIZEBOX & ~WS_MAXIMIZEBOX );	// Windows Style
-	}
+
+	// ROGER: styles also carry toolWindow / noActivate / alwaysOnTop (WS_EX_TOPMOST set at creation)
+	updateWindowStyles();
 
 	::AdjustWindowRectEx( &windowRect, mWindowStyle, FALSE, mWindowExStyle );		// Adjust Window To True Requested Size
 
@@ -431,13 +805,30 @@ void WindowImplMsw::createWindow( const Vec2i &windowSize, const std::string &ti
 
 	if( mAlwaysOnTop ) {
 		::SetWindowLongA( mWnd, GWL_EXSTYLE, ::GetWindowLongA( mWnd, GWL_EXSTYLE ) | WS_EX_TOPMOST );
-		::SetWindowPos( mWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
+		::SetWindowPos( mWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE );	// ROGER: NOACTIVATE, the window is shown later
 	}
 
 	// update display
 	mDisplay = Display::findFromHmonitor( ::MonitorFromWindow( mWnd, MONITOR_DEFAULTTONEAREST ) );
+	mDisplayChangeCount = Display::getChangeCount();
 
 	mRenderer->setup( mAppImpl->getApp(), mWnd, mDC, sharedRenderer );
+}
+
+// ROGER
+void WindowImplMsw::updateWindowStyles()
+{
+	computeWindowStyles( mFullScreen, mBorderless, mResizable, mToolWindow, mNoActivate, mAlwaysOnTop, &mWindowStyle, &mWindowExStyle );
+}
+
+// ROGER: the Display is looked up again after a display configuration change
+DisplayRef WindowImplMsw::getDisplay() const
+{
+	if( mDisplayChangeCount != Display::getChangeCount() && mWnd ) {
+		mDisplay = Display::findFromHmonitor( ::MonitorFromWindow( mWnd, MONITOR_DEFAULTTONEAREST ) );
+		mDisplayChangeCount = Display::getChangeCount();
+	}
+	return mDisplay;
 }
 
 void WindowImplMsw::completeCreation()
@@ -446,9 +837,15 @@ void WindowImplMsw::completeCreation()
 	if( mAppImpl->mApp->getSettings().isMultiTouchEnabled() )
 		enableMultiTouch();
 
-	::ShowWindow( mWnd, SW_SHOW );
-	::SetForegroundWindow( mWnd );
-	::SetFocus( mWnd );
+	if( mNoActivate ) {
+		// ROGER: never steals the focus / foreground from the current window
+		::ShowWindow( mWnd, SW_SHOWNOACTIVATE );
+	}
+	else {
+		::ShowWindow( mWnd, SW_SHOW );
+		::SetForegroundWindow( mWnd );
+		::SetFocus( mWnd );
+	}
 }
 
 void WindowImplMsw::registerWindowClass()
@@ -537,7 +934,7 @@ void WindowImplMsw::setPos( const Vec2i &windowPos )
 	clientArea.left = windowPos.x; clientArea.top = windowPos.y;
 	clientArea.right = windowPos.x + 1; clientArea.bottom = windowPos.y + 1; // we don't actually care about the lower-right
 	::AdjustWindowRectEx( &clientArea, mWindowStyle, FALSE, mWindowExStyle );
-	::SetWindowPos( mWnd, HWND_TOP, clientArea.left, clientArea.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER );
+	::SetWindowPos( mWnd, HWND_TOP, clientArea.left, clientArea.top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | ( mNoActivate ? SWP_NOACTIVATE : 0 ) );	// ROGER: NOACTIVATE
 	
 	POINT upperLeft;
 	upperLeft.x = upperLeft.y = 0;
@@ -554,7 +951,7 @@ void WindowImplMsw::hide()
 
 void WindowImplMsw::show()
 {
-	::ShowWindow( mWnd, SW_SHOW );
+	::ShowWindow( mWnd, mNoActivate ? SW_SHOWNOACTIVATE : SW_SHOW );	// ROGER
 	mHidden = false;
 }
 
@@ -587,7 +984,7 @@ void WindowImplMsw::setSize( const Vec2i &windowSize )
 {
 	int screenWidth, screenHeight;
 	getScreenSize( windowSize.x, windowSize.y, &screenWidth, &screenHeight );
-	::SetWindowPos( mWnd, HWND_TOP, 0, 0, screenWidth, screenHeight, SWP_NOMOVE | SWP_NOZORDER );
+	::SetWindowPos( mWnd, HWND_TOP, 0, 0, screenWidth, screenHeight, SWP_NOMOVE | SWP_NOZORDER | ( mNoActivate ? SWP_NOACTIVATE : 0 ) );	// ROGER: NOACTIVATE
 }
 
 void WindowImplMsw::close()
@@ -741,15 +1138,10 @@ void WindowImplMsw::setBorderless( bool borderless )
 {
 	if( mBorderless != borderless ) {
 		mBorderless = borderless;
-		if( mBorderless ) {
-			mWindowExStyle = WS_EX_APPWINDOW;
-			mWindowStyle = WS_POPUP;
-		}
-		else {
-			mWindowExStyle = WS_EX_APPWINDOW | WS_EX_WINDOWEDGE;			// Window Extended Style
-			mWindowStyle = ( mResizable ) ? WS_OVERLAPPEDWINDOW
-				:	( WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME );							// Windows Style
-		}
+		// ROGER: keeps toolWindow / noActivate / topmost (was resetting the ex style to WS_EX_APPWINDOW)
+		updateWindowStyles();
+		if( ! mBorderless && ! mResizable )
+			mWindowStyle = ( WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME );	// as before for this case
 
 		POINT upperLeft;
 		upperLeft.x = upperLeft.y = 0;
@@ -764,7 +1156,7 @@ void WindowImplMsw::setBorderless( bool borderless )
 		::SetWindowLongA( mWnd, GWL_STYLE, mWindowStyle );
 		::SetWindowLongA( mWnd, GWL_EXSTYLE, mWindowExStyle );
 		::SetWindowPos( mWnd, HWND_TOP, windowRect.left, windowRect.top, windowRect.right - windowRect.left, windowRect.bottom - windowRect.top,
-				SWP_FRAMECHANGED|SWP_SHOWWINDOW|SWP_NOZORDER );
+				SWP_FRAMECHANGED|SWP_SHOWWINDOW|SWP_NOZORDER | ( mNoActivate ? SWP_NOACTIVATE : 0 ) );
 		if( mBorderless )
 			::InvalidateRect( 0, NULL, TRUE );
 	}
@@ -777,11 +1169,11 @@ void WindowImplMsw::setAlwaysOnTop( bool alwaysOnTop )
 		LONG oldExStyle = ::GetWindowLongA( mWnd, GWL_EXSTYLE );
 		if( mAlwaysOnTop ) {
 			::SetWindowLongA( mWnd, GWL_EXSTYLE, oldExStyle | WS_EX_TOPMOST );
-			::SetWindowPos( mWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
+			::SetWindowPos( mWnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | ( mNoActivate ? SWP_NOACTIVATE : 0 ) );	// ROGER: NOACTIVATE
 		}
 		else {
 			::SetWindowLongA( mWnd, GWL_EXSTYLE, oldExStyle &= (~WS_EX_TOPMOST) );
-			::SetWindowPos( mWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE );
+			::SetWindowPos( mWnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | ( mNoActivate ? SWP_NOACTIVATE : 0 ) );	// ROGER: NOACTIVATE
 		}
 	}
 }
@@ -801,8 +1193,21 @@ LRESULT CALLBACK WndProc(	HWND	mWnd,			// Handle For This Window
 	else // the warning on this line is harmless
 		impl = reinterpret_cast<WindowImplMsw*>( ::GetWindowLongPtr( mWnd, GWLP_USERDATA ) );
 
+	// ROGER (Windows port): a borderless (WS_POPUP, no frame) window may be larger than the desktop, like NSWindowUnlimited on the Mac.
+	// Handled before the impl test: the first WM_GETMINMAXINFO arrives before WM_NCCREATE, during CreateWindowEx.
+	if( uMsg == WM_GETMINMAXINFO ) {
+		LONG style = ::GetWindowLongW( mWnd, GWL_STYLE );
+		if( ( style & WS_POPUP ) && ! ( style & ( WS_THICKFRAME | WS_CAPTION ) ) ) {
+			MINMAXINFO *mmi = reinterpret_cast<MINMAXINFO*>( lParam );
+			DefWindowProc( mWnd, uMsg, wParam, lParam );
+			mmi->ptMaxTrackSize.x = 32767;	// ptMaxSize (maximized size) is left alone
+			mmi->ptMaxTrackSize.y = 32767;
+			return 0;
+		}
+	}
+
 	if( ! impl )
-		return DefWindowProc( mWnd, uMsg, wParam, lParam );		
+		return DefWindowProc( mWnd, uMsg, wParam, lParam );
 	impl->mAppImpl->setWindow( impl->mWindowRef );
 
 	switch( uMsg ) {
@@ -936,12 +1341,36 @@ LRESULT CALLBACK WndProc(	HWND	mWnd,			// Handle For This Window
 		case WM_SIZE:
 			impl->mWindowWidth = LOWORD(lParam);
 			impl->mWindowHeight = HIWORD(lParam);
+			impl->mAppImpl->mainWindowPosChanged( mWnd );	// ROGER
 			if( impl->getWindow() && impl->mAppImpl->setupHasBeenCalled() ) {
 				impl->getWindow()->emitResize();
 			}
 			return 0;
 		break;
+		// ROGER (Windows port)
+		case WM_ENTERSIZEMOVE:
+			impl->mAppImpl->mInSizeMove = true;
+		break;
+		case WM_EXITSIZEMOVE:
+			impl->mAppImpl->mInSizeMove = false;
+			impl->mAppImpl->mainWindowPosChanged( mWnd );
+		break;
+		case WM_MOUSEACTIVATE:
+			if( impl->mNoActivate )
+				return MA_NOACTIVATE;
+		break;
+		case WM_SETCURSOR:
+			if( LOWORD( lParam ) == HTCLIENT && AppImplMsw::getCursor() ) {
+				::SetCursor( AppImplMsw::getCursor() );
+				return TRUE;
+			}
+		break;
+		case WM_DISPLAYCHANGE:
+			// the display list is re-enumerated on its next use; Window::getDisplay() looks its Display up again
+			Display::privateMarkChanged__();
+		break;
 		case WM_MOVE: {
+			impl->mAppImpl->mainWindowPosChanged( mWnd );	// ROGER
 			impl->mWindowOffset = Vec2i( LOSHORT(lParam), HISHORT(lParam) );
 			if( impl->getWindow() ) {
 				DisplayRef oldDisplay = impl->mDisplay;
@@ -959,14 +1388,8 @@ LRESULT CALLBACK WndProc(	HWND	mWnd,			// Handle For This Window
 		case WM_DROPFILES: {
 			HDROP dropH = (HDROP)wParam;
 			POINT dropPoint;
-			char fileName[8192];
-			vector<fs::path> files;
-			
-			int droppedFileCount = ::DragQueryFile( dropH, 0xFFFFFFFF, 0, 0 );
-			for( int i = 0; i < droppedFileCount; ++i ) {
-				::DragQueryFileA( dropH, i, fileName, 8192 );
-				files.push_back( std::string( fileName ) );
-			}
+			// ROGER: wide names (DragQueryFileA lost every character outside the ANSI code page)
+			vector<fs::path> files = AppImplMsw::getDroppedFiles( dropH );
 
 			::DragQueryPoint( dropH, &dropPoint );
 			::DragFinish( dropH );

@@ -47,6 +47,7 @@
 	#include <filesystem>
 #elif defined( CINDER_MSW )
 	#include "cinder/msw/OutputDebugStringStream.h"
+	#include "cinder/msw/CinderMsw.h"
 	#include "cinder/app/AppImplMsw.h"
 #endif
 
@@ -209,6 +210,33 @@ DataSourceRef App::loadResource( const string &macPath )
 DataSourceRef App::loadResource( int mswID, const string &mswType )
 {
 	return DataSourceBuffer::create( AppImplMsw::loadResource( mswID, mswType ) );
+}
+
+// ROGER (Windows port): resources by file name, loose files in <exe folder>\Resources
+DataSourceRef App::loadResource( const string &macPath )
+{
+	fs::path resourcePath = getResourcePath( fs::path( msw::toWideString( macPath ) ) );
+	if( resourcePath.empty() )
+		throw ResourceLoadExc( macPath );
+	else
+		return DataSourcePath::create( resourcePath );
+}
+
+fs::path App::getResourcePath( const fs::path &rsrcRelativePath )
+{
+	if( rsrcRelativePath.empty() || rsrcRelativePath.filename().empty() )
+		return fs::path();
+	fs::path result = getResourcePath() / rsrcRelativePath;
+	result.make_preferred();
+	boost::system::error_code ec;
+	if( ! fs::is_regular_file( result, ec ) )
+		return fs::path();
+	return result;
+}
+
+fs::path App::getResourcePath()
+{
+	return AppImplMsw::getAppPath() / L"Resources";
 }
 
 #endif
@@ -551,6 +579,9 @@ void App::prepareLaunch()
 {
 #if defined( CINDER_COCOA )
     sAutoReleasePool = [[NSAutoreleasePool alloc] init];
+#elif defined( CINDER_MSW )
+	// ROGER (Windows port): per-monitor V2 DPI awareness when the exe has no DPI manifest (before any window is created)
+	AppImplMsw::enableDpiAwareness();
 #endif
 }
 
@@ -615,6 +646,12 @@ ResourceLoadExc::ResourceLoadExc( int mswID, const string &mswType )
 ResourceLoadExc::ResourceLoadExc( const string &macPath, int mswID, const string &mswType )
 {
 	sprintf( mMessage, "Failed to load resource: #%d type: %s Mac path: %s", mswID, mswType.c_str(), macPath.c_str() );
+}
+
+// ROGER (Windows port)
+ResourceLoadExc::ResourceLoadExc( const string &macPath )
+{
+	snprintf( mMessage, sizeof( mMessage ), "Failed to load resource: %s", macPath.c_str() );
 }
 #endif // defined( CINDER_MSW )
 

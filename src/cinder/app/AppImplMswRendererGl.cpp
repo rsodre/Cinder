@@ -26,6 +26,7 @@
 #include "cinder/app/App.h"
 #include "cinder/Camera.h"
 #include <windowsx.h>
+#include <map>
 
 namespace cinder { namespace app {
 
@@ -154,131 +155,131 @@ HWND createDummyWindow( int *width, int *height, bool fullscreen )
 	return wnd;
 }
 
-bool AppImplMswRendererGl::initialize( HWND wnd, HDC dc, RendererRef sharedRenderer )
-{
-	if( ( ! sMultisampleSupported ) && mRenderer->getAntiAliasing() ) {
-		// first create a dummy window and use it to determine if we can do antialiasing
-		int width = 640;
-		int height = 480;
-		HWND dummyWnd = createDummyWindow( &width, &height, false );
-		HDC dummyDC = ::GetDC( dummyWnd );
-		
-		bool result = initializeInternal( dummyWnd, dummyDC, NULL );
-		
-		::ReleaseDC( dummyWnd, dummyDC );
-		::DestroyWindow( dummyWnd );
-		::UnregisterClass( TEXT("FLINTDUMMY"), ::GetModuleHandle( NULL ) );
-		
-		if( ! result )
-			return false;
-		// now do it again but with newly created multisample settings
-	}
-	
-	RendererGl *sharedRendererGl = dynamic_cast<RendererGl*>( sharedRenderer.get() );
-	HGLRC sharedRC = ( sharedRenderer ) ? sharedRendererGl->mImpl->mRC : NULL;
+// ROGER (Windows port): the pixel format is chosen per window (per renderer AA level). It used to be kept in
+// static globals once the first MSAA window was created, so every later window (AA_NONE too) got the MSAA format.
+// Depth 24 / alpha 8 / stencil 8 in both paths (was depth 16, no alpha, no stencil). Cocoa asks for depth 24 (alpha and stencil not requested).
+namespace {
 
-	return initializeInternal( wnd, dc, sharedRC );
+PIXELFORMATDESCRIPTOR makePixelFormatDescriptor()
+{
+	PIXELFORMATDESCRIPTOR pfd;
+	memset( &pfd, 0, sizeof( pfd ) );
+	pfd.nSize = sizeof( PIXELFORMATDESCRIPTOR );
+	pfd.nVersion = 1;
+	pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
+	pfd.iPixelType = PFD_TYPE_RGBA;
+	pfd.cColorBits = 32;
+	pfd.cAlphaBits = 8;
+	pfd.cDepthBits = 24;
+	pfd.cStencilBits = 8;
+	pfd.iLayerType = PFD_MAIN_PLANE;
+	return pfd;
 }
 
-bool AppImplMswRendererGl::initializeInternal( HWND wnd, HDC dc, HGLRC sharedRC )
+// requested AA level -> ARB pixel format (0 if none) and the level obtained
+struct MsaaPixelFormat { int pixelFormat; int level; };
+std::map<int, MsaaPixelFormat>	sMsaaPixelFormats;
+
+} // anonymous namespace
+
+bool AppImplMswRendererGl::initialize( HWND wnd, HDC dc, RendererRef sharedRenderer )
 {
-	int pixelFormat;
+	const int requestedLevel = mRenderer->getAntiAliasing();
+	int pixelFormat = 0;
+
+	if( requestedLevel > RendererGl::AA_NONE ) {
+		auto found = sMsaaPixelFormats.find( requestedLevel );
+		if( found == sMsaaPixelFormats.end() ) {
+			// first create a dummy window with a plain context, needed to call wglChoosePixelFormatARB
+			MsaaPixelFormat result = { 0, RendererGl::AA_NONE };
+			int width = 640;
+			int height = 480;
+			HGLRC prevRC = ::wglGetCurrentContext();
+			HDC prevDC = ::wglGetCurrentDC();
+			HWND dummyWnd = createDummyWindow( &width, &height, false );
+			if( dummyWnd ) {
+				HDC dummyDC = ::GetDC( dummyWnd );
+				PIXELFORMATDESCRIPTOR pfd = makePixelFormatDescriptor();
+				int dummyFormat = ::ChoosePixelFormat( dummyDC, &pfd );
+				if( dummyFormat && ::SetPixelFormat( dummyDC, dummyFormat, &pfd ) ) {
+					HGLRC dummyRC = ::wglCreateContext( dummyDC );
+					if( dummyRC && ::wglMakeCurrent( dummyDC, dummyRC ) ) {
+						result.level = initMultisample( pfd, requestedLevel, dummyDC );
+						result.pixelFormat = sArbMultisampleFormat;
+						if( result.level <= RendererGl::AA_NONE )
+							result.pixelFormat = 0;
+					}
+					::wglMakeCurrent( NULL, NULL );
+					if( dummyRC )
+						::wglDeleteContext( dummyRC );
+				}
+				::ReleaseDC( dummyWnd, dummyDC );
+				::DestroyWindow( dummyWnd );
+			}
+			::UnregisterClass( TEXT("FLINTDUMMY"), ::GetModuleHandle( NULL ) );
+			if( prevRC )
+				::wglMakeCurrent( prevDC, prevRC );
+			found = sMsaaPixelFormats.insert( std::make_pair( requestedLevel, result ) ).first;
+		}
+		pixelFormat = found->second.pixelFormat;
+		mRenderer->setAntiAliasing( found->second.level );
+	}
+
+	RendererGl *sharedRendererGl = dynamic_cast<RendererGl*>( sharedRenderer.get() );
+	HGLRC sharedRC = ( sharedRendererGl && sharedRendererGl->mImpl ) ? sharedRendererGl->mImpl->mRC : NULL;
+
+	return initializeInternal( wnd, dc, sharedRC, pixelFormat );
+}
+
+bool AppImplMswRendererGl::initializeInternal( HWND wnd, HDC dc, HGLRC sharedRC, int pixelFormat )
+{
 	mWnd = wnd;
 	mDC = dc;
 
-	static PIXELFORMATDESCRIPTOR pfd =				// pfd Tells Windows How We Want Things To Be
-	{
-		sizeof(PIXELFORMATDESCRIPTOR),				// Size Of This Pixel Format Descriptor
-		1,											// Version Number
-		PFD_DRAW_TO_WINDOW |						// Format Must Support Window
-		PFD_SUPPORT_OPENGL |						// Format Must Support OpenGL
-		PFD_DOUBLEBUFFER,							// Must Support Double Buffering
-		PFD_TYPE_RGBA,								// Request An RGBA Format
-		32,											// Select Our Color Depth
-		0, 0, 0, 0, 0, 0,							// Color Bits Ignored
-		0,											// No Alpha Buffer
-		0,											// Shift Bit Ignored
-		0,											// No Accumulation Buffer
-		0, 0, 0, 0,									// Accumulation Bits Ignored
-		16,											// 32Bit Z-Buffer (Depth Buffer)  
-		0,											// No Stencil Buffer
-		0,											// No Auxiliary Buffer
-		PFD_MAIN_PLANE,								// Main Drawing Layer
-		0,											// Reserved
-		0, 0, 0										// Layer Masks Ignored
-	};
+	PIXELFORMATDESCRIPTOR pfd = makePixelFormatDescriptor();
 
-	/*
-	Our first pass, Multisampling hasn't been created yet, so we create a window normally
-	If it is supported, then we're on our second pass
-	that means we want to use our pixel format for sampling
-	so set PixelFormat to arbMultiSampleformat instead
-	*/
-	if( ! sMultisampleSupported ) {
+	if( pixelFormat == 0 ) {
 		pixelFormat = ::ChoosePixelFormat( dc, &pfd );				// Find A Compatible Pixel Format
-		if( pixelFormat == 0 ) {												// Did We Find A Compatible Format?
-			return false;										
+		if( pixelFormat == 0 ) {									// Did We Find A Compatible Format?
+			return false;
 		}
 	}
-	else {
-		pixelFormat = sArbMultisampleFormat;
-	}
+	else
+		::DescribePixelFormat( dc, pixelFormat, sizeof( pfd ), &pfd );	// ARB (multisample) format
 
 	if( ! ::SetPixelFormat( dc, pixelFormat, &pfd ) ) {		// Are We Able To Set The Pixel Format?
-		return false;								
+		return false;
 	}
 
 	if( ! ( mRC = ::wglCreateContext( dc ) ) )	{			// Are We Able To Get A Rendering Context?
-		return false;								
+		return false;
 	}
+
+	// share before the context is made current or used (wglShareLists requires a context without objects)
+	if( mPrevRC )
+		::wglShareLists( mPrevRC, mRC );
+
+	if( sharedRC )
+		::wglShareLists( sharedRC, mRC );
 
 	if( ! ::wglMakeCurrent( dc, mRC ) ){					// Try To Activate The Rendering Context
-		return false;								
-	}
-
-	if( ( ! sMultisampleSupported ) && ( mRenderer->getAntiAliasing() > RendererGl::AA_NONE ) )  {
-		int level = initMultisample( pfd, mRenderer->getAntiAliasing(), dc );
-		mRenderer->setAntiAliasing( RendererGl::AA_NONE + level );
-		if( level > 0 ) {
-			// kill the current context and relaunch
-			::wglMakeCurrent( NULL, NULL );
-			::wglDeleteContext( mRC );
-			return true; // our caller will run us again
-		}
+		return false;
 	}
 
 	if( mPrevRC )
 		BOOL success = ::wglCopyContext( mPrevRC, mRC, GL_ALL_ATTRIB_BITS );
-
-	if( mPrevRC )
-		::wglShareLists( mPrevRC, mRC );
-	
-	if( sharedRC )
-		::wglShareLists( sharedRC, mRC );
 
 	return true;									// Success
 }
 
 int AppImplMswRendererGl::initMultisample( PIXELFORMATDESCRIPTOR pfd, int requestedLevelIdx, HDC dc )
 {
-	// this is an array that corresponds to AppSettings::AA_NONE through AA_MSAA_16
-	if( ( ! WGL_ARB_multisample ) || ( ! wglChoosePixelFormatARB ) ) {
-		sMultisampleSupported = false;
-		return 0;
-	}
-
-	// Get Our Current Device Context
-//	mDC = ::GetDC( mWnd );
+	// GLee: wglChoosePixelFormatARB is resolved on first call (needs a current context)
 	int	pixelFormat;
 	int	valid;
 	UINT numFormats;
 	float fAttributes[] = {0,0};
 
-	// These Attributes Are The Bits We Want To Test For In Our Sample
-	// Everything Is Pretty Standard, The Only One We Want To 
-	// Really Focus On Is The SAMPLE BUFFERS ARB And WGL SAMPLES
-	// These Two Are Going To Do The Main Testing For Whether Or Not
-	// We Support Multisampling On This Hardware.
 	int iAttributes[] =
 	{
 		WGL_DRAW_TO_WINDOW_ARB,GL_TRUE,
@@ -286,8 +287,8 @@ int AppImplMswRendererGl::initMultisample( PIXELFORMATDESCRIPTOR pfd, int reques
 		WGL_ACCELERATION_ARB,WGL_FULL_ACCELERATION_ARB,
 		WGL_COLOR_BITS_ARB,24,
 		WGL_ALPHA_BITS_ARB,8,
-		WGL_DEPTH_BITS_ARB,16,
-		WGL_STENCIL_BITS_ARB,0,
+		WGL_DEPTH_BITS_ARB,24,		// ROGER: was 16
+		WGL_STENCIL_BITS_ARB,8,		// ROGER: was 0
 		WGL_DOUBLE_BUFFER_ARB,GL_TRUE,
 		WGL_SAMPLE_BUFFERS_ARB,GL_TRUE,
 		WGL_SAMPLES_ARB, 0,
@@ -298,12 +299,11 @@ int AppImplMswRendererGl::initMultisample( PIXELFORMATDESCRIPTOR pfd, int reques
 	for( int levelIdx = requestedLevelIdx; levelIdx > RendererGl::AA_NONE; --levelIdx ) {
 		iAttributes[19] = RendererGl::sAntiAliasingSamples[levelIdx];
 
-		// First We Check To See If We Can Get A Pixel Format For 4 Samples
+		numFormats = 0;
 		valid = ::wglChoosePixelFormatARB( dc, iAttributes, fAttributes, 1, &pixelFormat, &numFormats );
-		// If We Returned True, And Our Format Count Is Greater Than 1
 		if( valid && ( numFormats >= 1 ) ) {
 			sMultisampleSupported = true;
-			sArbMultisampleFormat = pixelFormat;	
+			sArbMultisampleFormat = pixelFormat;
 			return levelIdx;
 		}
 	}
@@ -315,7 +315,9 @@ int AppImplMswRendererGl::initMultisample( PIXELFORMATDESCRIPTOR pfd, int reques
 void AppImplMswRendererGl::kill()
 {
 	if( mRC ) {											// Do We Have A Rendering Context?
-		::wglMakeCurrent( NULL, NULL );					// release The DC And RC Contexts
+		// ROGER: only unbind it if it is the current one (closing a window used to leave no context current at all)
+		if( ::wglGetCurrentContext() == mRC )
+			::wglMakeCurrent( NULL, NULL );				// release The DC And RC Contexts
 		::wglDeleteContext( mRC );						// delete The RC
 	}
 

@@ -188,6 +188,13 @@ class AppBasic : public App {
 	virtual std::string getAppName();
 	virtual std::string getAppVersion();
 	virtual fs::path getApplicationSupportFolder(bool create=true);
+#if defined( CINDER_MSW ) && ! defined( CINDER_WINRT )
+	// (Windows port) The Mac code sets NSCursor directly; on MSW the cursor must survive WM_SETCURSOR, so it goes through here.
+	//! MSW only: sets the cursor shown in the client area of every app window to the system cursor \a systemCursor (IDC_ARROW, IDC_HAND, IDC_CROSS, IDC_SIZEALL, ...). nullptr restores the default arrow.
+	void setCursorMsw( const wchar_t *systemCursor );
+	//! MSW only: same with any HCURSOR (NULL restores the default arrow).
+	void setCursorHandleMsw( HCURSOR cursor );
+#endif
 
   protected:
 	static AppBasic*	sInstance;

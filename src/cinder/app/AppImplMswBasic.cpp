@@ -29,6 +29,9 @@
 
 #include <windowsx.h>
 #include <winuser.h>
+#include <shellapi.h>
+#include <algorithm>
+#include <vector>
 
 using std::vector;
 using std::string;
@@ -49,10 +52,25 @@ void AppImplMswBasic::run()
 	auto formats = mApp->getSettings().getWindowFormats();
 	if( formats.empty() )
 		formats.push_back( mApp->getSettings().getDefaultWindowFormat() );
+
+	// ROGER (Windows port): Settings::rememberMainWindowPos(), restored before the main window is created
+	const bool rememberPos = mApp->getSettings().getRememberMainWindowPos();
+	const std::string appName = rememberPos ? mApp->getAppName() : std::string();
+	bool maximizeMainWindow = false;
+
 	for( auto format = formats.begin(); format != formats.end(); ++format ) {
 		if( ! format->isTitleSpecified() )
 			format->setTitle( mApp->getSettings().getTitle() );
+		if( rememberPos && format == formats.begin() && ! format->isFullScreen() )
+			maximizeMainWindow = restoreMainWindowPos( *format, appName );
 		createWindow( *format );
+	}
+
+	if( rememberPos && ! mWindows.empty() ) {
+		HWND mainWnd = mWindows.front()->getHwnd();
+		if( maximizeMainWindow )
+			::ShowWindow( mainWnd, SW_MAXIMIZE );
+		trackMainWindowPos( mainWnd, appName );
 	}
 
 	mApp->privateSetup__();
@@ -67,12 +85,28 @@ void AppImplMswBasic::run()
 	// initialize our next frame time
 	mNextFrameTime = getElapsedSeconds();
 
+	bool firstFrame = true;
+
 	// inner loop
 	while( ! mShouldQuit ) {
 		// update and draw
 		mApp->privateUpdate__();
-		for( auto windowIt = mWindows.begin(); windowIt != mWindows.end(); ++windowIt )
-			(*windowIt)->redraw();
+		// ROGER: iterate over a copy, a window can be closed (and deleted) while another one draws
+		std::vector<WindowImplMswBasic*> windows( mWindows.begin(), mWindows.end() );
+		for( auto windowIt = windows.begin(); windowIt != windows.end(); ++windowIt ) {
+			if( std::find( mWindows.begin(), mWindows.end(), *windowIt ) != mWindows.end() )
+				(*windowIt)->redraw();
+		}
+
+		// ROGER: "open document" from the command line (double-click on a document), as Cocoa's application:openFile:,
+		// which a running app receives between frames
+		if( firstFrame ) {
+			firstFrame = false;
+			emitCommandLineFileOpen();
+		}
+
+		// ROGER: remember the main window position (only writes when it changed and no move/size is in progress)
+		saveMainWindowPos();
 
 		// get current time in seconds
 		double currentSeconds = mApp->getElapsedSeconds();
@@ -103,6 +137,7 @@ void AppImplMswBasic::run()
 	}
 
 //	killWindow( mFullScreen );
+	saveMainWindowPos( true );	// ROGER
 	mApp->emitShutdown();
 	delete mApp;
 }
@@ -156,10 +191,26 @@ void AppImplMswBasic::closeWindow( WindowImplMsw *windowImpl )
 {
 	auto winIt = find( mWindows.begin(), mWindows.end(), windowImpl );
 	if( winIt != mWindows.end() ) {
-		windowImpl->getWindow()->emitClose();
+		// ROGER: last save of the main window position
+		if( windowImpl->getHwnd() == mRememberPosWnd ) {
+			saveMainWindowPos( true );
+			mRememberPosWnd = NULL;
+		}
+		WindowRef closingWindow = windowImpl->getWindow();
+		closingWindow->emitClose();
 		windowImpl->privateClose();
+		closingWindow->setInvalid();	// ROGER: as Cocoa; using the closed Window now throws ExcInvalidWindow instead of touching freed memory
 		delete windowImpl; // this corresponds to winIt
 		mWindows.erase( winIt );
+
+		// ROGER: the active / foreground Window must not stay on the closed one (Cocoa falls back to the first window)
+		if( mActiveWindow == closingWindow )
+			mActiveWindow = mWindows.empty() ? WindowRef() : mWindows.front()->getWindow();
+		if( mForegroundWindow == closingWindow )
+			mForegroundWindow = WindowRef();
+		// ROGER: keep a GL context current, so GL calls made after closing a window (e.g. in update()) still work
+		if( mActiveWindow && ::wglGetCurrentContext() == NULL && mActiveWindow->getRenderer() )
+			mActiveWindow->getRenderer()->makeCurrentContext();
 	}
 
 	if( mWindows.empty() && mApp->getSettings().isQuitOnLastWindowCloseEnabled() )
@@ -227,6 +278,60 @@ void AppImplMswBasic::disableFrameRate()
 bool AppImplMswBasic::isFrameRateEnabled() const
 {
 	return mFrameRateEnabled;
+}
+
+// ROGER (Windows port)
+bool AppImplMswBasic::isMinimized() const
+{
+	if( mWindows.empty() )
+		return false;
+	return ::IsIconic( mWindows.front()->getHwnd() ) != FALSE;
+}
+
+void AppImplMswBasic::setFocusMainWindow()
+{
+	if( mWindows.empty() )
+		return;
+	HWND wnd = mWindows.front()->getHwnd();
+	// Cocoa makes it the key window without un-minimizing it
+	if( ::GetForegroundWindow() != wnd )
+		::SetForegroundWindow( wnd );
+	::SetFocus( wnd );
+}
+
+void AppImplMswBasic::emitCommandLineFileOpen()
+{
+	int numArgs = 0;
+	LPWSTR *args = ::CommandLineToArgvW( ::GetCommandLineW(), &numArgs );
+	if( ! args )
+		return;
+	vector<fs::path> files;
+	for( int i = 1; i < numArgs; ++i ) {
+		// wide path: exact for any character
+		const std::wstring arg( args[i] );
+		fs::path p( arg );
+		boost::system::error_code ec;
+		if( fs::is_regular_file( p, ec ) ) {
+			try { p = fs::absolute( p ); }
+			catch( ... ) {}
+			files.push_back( p );
+		}
+	}
+	::LocalFree( args );
+
+	// one event per file, at (0,0) on the main window, like Cocoa's application:openFile:
+	for( auto &file : files ) {
+		if( mWindows.empty() )
+			break;
+		WindowImplMswBasic *mainWindow = mWindows.front();
+		WindowRef window = mainWindow->getWindow();
+		setWindow( window );
+		if( window->getRenderer() )
+			window->getRenderer()->makeCurrentContext();
+		vector<fs::path> paths( 1, file );
+		FileDropEvent event( window, 0, 0, paths );
+		window->emitFileDrop( &event );
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////

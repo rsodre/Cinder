@@ -411,8 +411,15 @@ class App {
 #elif defined( CINDER_MSW )
 	//! Returns a DataSourceRef to an application resource. \a mswID and \a mswType identify the resource as defined the application's .rc file(s). \sa \ref CinderResources
 	static DataSourceRef		loadResource( int mswID, const std::string &mswType );
+	// ROGER (Windows port): resources by file name, loose files in a "Resources" folder beside the exe
+	//! Returns a DataSourceRef to the file \a macPath (UTF-8, relative, '/' or '\\' separators) inside the "Resources" folder beside the executable. Throws ResourceLoadExc on failure.
+	static DataSourceRef		loadResource( const std::string &macPath );
+	//! Returns the absolute path of \a rsrcRelativePath inside the "Resources" folder beside the executable, or an empty path if that file does not exist (as Cocoa).
+	static fs::path				getResourcePath( const fs::path &rsrcRelativePath );
+	//! Returns the absolute path of the "Resources" folder beside the executable.
+	static fs::path				getResourcePath();
 #endif
-	
+
 	//! Returns a DataSourceRef to an application asset. Throws a AssetLoadExc on failure.
 	DataSourceRef			loadAsset( const fs::path &relativePath );
 	//! Returns a fs::path to an application asset. Returns an empty path on failure.
@@ -670,6 +677,8 @@ inline DataSourceRef		loadResource( const std::string &macPath, int mswID, const
 #elif defined( CINDER_MSW )
 	//! Returns a DataSource to an application resource. \a mswID and \a mswType identify the resource as defined the application's .rc file(s). \sa \ref CinderResources
 	inline DataSourceRef	loadResource( int mswID, const std::string &mswType ) { return App::loadResource( mswID, mswType ); }
+	//! (ROGER, Windows port) Returns a DataSource to the file \a macPath inside the "Resources" folder beside the executable. Throws ResourceLoadExc on failure.
+	inline DataSourceRef	loadResource( const std::string &macPath ) { return App::loadResource( macPath ); }
 #endif
 
 //! Returns a DataSourceRef to the active App's's asset. Throws a AssetLoadExc on failure.
@@ -733,6 +742,7 @@ class ResourceLoadExc : public Exception {
 #elif defined( CINDER_MSW )
 	ResourceLoadExc( int mswID, const std::string &mswType );
 	ResourceLoadExc( const std::string &macPath, int mswID, const std::string &mswType );
+	ResourceLoadExc( const std::string &macPath );	// ROGER (Windows port)
 #endif
 
 	virtual const char * what() const throw() { return mMessage; }

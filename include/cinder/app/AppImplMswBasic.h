@@ -57,8 +57,15 @@ class AppImplMswBasic : public AppImplMsw {
 	void		setupBlankingWindows( DisplayRef fullScreenDisplay );
 	void		destroyBlankingWindows();
 
+	// ROGER (Windows port)
+	//! Main window (index 0) is minimized (IsIconic)
+	bool		isMinimized() const;
+	//! Brings the main window (index 0) to the foreground and gives it the keyboard focus
+	void		setFocusMainWindow();
+
   private:
 	void		sleep( double seconds );
+	void		emitCommandLineFileOpen();	// ROGER: files given on the command line, delivered as FileDropEvents to the main window
 
 	WindowRef		createWindow( Window::Format format );
 	virtual void	closeWindow( class WindowImplMsw *windowImpl ) override;

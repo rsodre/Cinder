@@ -43,6 +43,7 @@
 	#include <windows.h>
 	#undef min
 	#undef max
+	#include <string>
 #endif
 
 #include <map>
@@ -99,7 +100,18 @@ class Display {
 	static Area								getSpanningArea();
 	//! Refresh available displays
 	static void								refresh();	// ROGER
-	
+#if defined( CINDER_MSW )
+	//! (ROGER, Windows port) Returns a counter incremented each time the system reports a display configuration change (WM_DISPLAYCHANGE). Cheap: compare with a stored value each frame to notice a change without polling the OS. The display list is re-enumerated automatically on the next getDisplays() / getMainDisplay() after a change.
+	static uint32_t							getChangeCount();
+	//! \cond
+	// Called by the MSW window procedure on WM_DISPLAYCHANGE: increments the change count and marks the display list dirty.
+	static void								privateMarkChanged__();
+	//! \endcond
+#else
+	//! (ROGER, Windows port) Always 0 outside MSW (Mac code uses its own CoreGraphics reconfiguration callback).
+	static uint32_t							getChangeCount() { return 0; }
+#endif
+
 #if defined( CINDER_MAC )
 	static DisplayRef			findFromCgDirectDisplayId( CGDirectDisplayID displayID );
 	static DisplayRef			findFromNsScreen( NSScreen *nsScreen );
@@ -107,6 +119,12 @@ class Display {
 	//! Finds a Display based on its HMONITOR. Returns the primary display if it's not found
 	static DisplayRef			findFromHmonitor( HMONITOR hMonitor );
 	static BOOL CALLBACK enumMonitorProc( HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM lParam );
+	//! (ROGER, Windows port) Returns the HMONITOR of this Display
+	HMONITOR					getHmonitor() const { return mMonitor; }
+	//! (ROGER, Windows port) Returns the GDI device name of this Display (MONITORINFOEX::szDevice, e.g. "\\.\DISPLAY1"), UTF-8
+	const std::string&			getDeviceName() const { return mDeviceName; }
+	//! (ROGER, Windows port) Returns true if this is the system's primary display (MONITORINFOF_PRIMARY)
+	bool						isPrimary() const { return mPrimary; }
 #endif
 
 	friend std::ostream& operator<<( std::ostream &o, const Display &display )
@@ -134,6 +152,10 @@ class Display {
 	signals::signal<void()>	mSignalDisplaysChanged;
 #elif defined( CINDER_MSW )
 	HMONITOR			mMonitor;
+	std::string			mDeviceName;	// ROGER
+	bool				mPrimary;		// ROGER
+	static uint32_t		sChangeCount;	// ROGER
+	static bool			sDirty;			// ROGER
 #endif
 	
 	static void		enumerateDisplays();

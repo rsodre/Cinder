@@ -141,6 +141,7 @@ class Window : public std::enable_shared_from_this<Window> {
 		Format( RendererRef renderer = RendererRef(), DisplayRef display = Display::getMainDisplay(), bool fullScreen = false, Vec2i size = Vec2i( 640, 480 ), Vec2i pos = Vec2i::zero() )
 			: mRenderer( renderer ), mFullScreen( fullScreen ), mDisplay( display ), mSize( size ), mPos( pos ), mPosSpecified( false ),
 			mResizable( true ), mBorderless( false ), mAlwaysOnTop( false ), mFullScreenButtonEnabled( false ),
+			mToolWindow( false ), mNoActivate( false ),
 			mTitleSpecified( false ), mTitle( "" )
 #if defined( CINDER_COCOA_TOUCH )
 			, mRootViewController( NULL )
@@ -230,6 +231,20 @@ class Window : public std::enable_shared_from_this<Window> {
 		//! On Mac OS X returns whether the native full screen toggle button is displayed. Defaults to \c false.
 		bool		isFullScreenButtonEnabled() const { return mFullScreenButtonEnabled; }
 
+		// ROGER (Windows port)
+		//! MSW only (ignored elsewhere): creates a tool window (WS_EX_TOOLWINDOW instead of WS_EX_APPWINDOW): no taskbar button, not listed in Alt-Tab. Defaults to \c false.
+		bool		isToolWindow() const { return mToolWindow; }
+		//! MSW only (ignored elsewhere): creates a tool window (WS_EX_TOOLWINDOW instead of WS_EX_APPWINDOW): no taskbar button, not listed in Alt-Tab. Defaults to \c false.
+		void		setToolWindow( bool toolWindow = true ) { mToolWindow = toolWindow; }
+		//! MSW only (ignored elsewhere): creates a tool window (WS_EX_TOOLWINDOW instead of WS_EX_APPWINDOW): no taskbar button, not listed in Alt-Tab. Defaults to \c false.
+		Format&		toolWindow( bool tool = true ) { mToolWindow = tool; return *this; }
+		//! MSW only (ignored elsewhere): the Window never becomes the active/foreground window (WS_EX_NOACTIVATE, shown with SW_SHOWNOACTIVATE, clicks do not activate it). Creating it does not take focus from the current window. Defaults to \c false.
+		bool		isNoActivate() const { return mNoActivate; }
+		//! MSW only (ignored elsewhere): the Window never becomes the active/foreground window (WS_EX_NOACTIVATE, shown with SW_SHOWNOACTIVATE, clicks do not activate it). Creating it does not take focus from the current window. Defaults to \c false.
+		void		setNoActivate( bool noActivate = true ) { mNoActivate = noActivate; }
+		//! MSW only (ignored elsewhere): the Window never becomes the active/foreground window (WS_EX_NOACTIVATE, shown with SW_SHOWNOACTIVATE, clicks do not activate it). Creating it does not take focus from the current window. Defaults to \c false.
+		Format&		noActivate( bool noAct = true ) { mNoActivate = noAct; return *this; }
+
 		//! Returns the title of the Window as a UTF-8 string.
 		std::string getTitle() const { return mTitle; }
 		//! Sets the title of the Window as a UTF-8 string.
@@ -250,6 +265,7 @@ class Window : public std::enable_shared_from_this<Window> {
 		Vec2i					mSize, mPos;
 		bool					mPosSpecified;
 		bool					mResizable, mBorderless, mAlwaysOnTop, mFullScreenButtonEnabled;
+		bool					mToolWindow, mNoActivate;	// ROGER (Windows port)
 		std::string				mTitle;
 		bool					mTitleSpecified;
 

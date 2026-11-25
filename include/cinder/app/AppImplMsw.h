@@ -35,6 +35,7 @@
 #include <vector>
 #include <list>
 #include <windows.h>
+#include <shellapi.h>
 #undef min
 #undef max
 
@@ -83,11 +84,37 @@ class AppImplMsw {
 	static fs::path		getOpenFilePath( const fs::path &initialPath, std::vector<std::string> extensions );
 	static fs::path		getSaveFilePath( const fs::path &initialPath, std::vector<std::string> extensions );
 	static fs::path		getFolderPath( const fs::path &initialPath );
-	
+
+	// ROGER (Windows port)
+	//! Makes the process per-monitor V2 DPI aware if no manifest did it already (no-op when already set). Called by App::prepareLaunch().
+	static void			enableDpiAwareness();
+	//! Product name from the exe VERSIONINFO ("BundleName", then "ProductName"), falling back to the exe file name without extension. Never empty.
+	static std::string	getVersionInfoAppName();
+	//! Build version from the exe VERSIONINFO ("BuildVersion", mirrors CFBundleVersion), then "ProductVersion", "FileVersion", then the numeric product version. Never empty ("0").
+	static std::string	getVersionInfoAppVersion();
+	//! %APPDATA%\<appName>, created when \a create is true and it does not exist.
+	static fs::path		getApplicationSupportFolder( const std::string &appName, bool create );
+	//! Sets the cursor shown in the client area of all app windows (NULL = arrow). Kept across WM_SETCURSOR.
+	static void			setCursor( HCURSOR cursor );
+	static HCURSOR		getCursor();
+	//! Converts a wide string to UTF-8 (used for dropped / command line paths).
+	static std::string	wideToUtf8( const wchar_t *wide );
+	//! Reads all the files of an HDROP as paths, built from the wide (UTF-16) names. Does not call DragFinish().
+	static std::vector<fs::path>	getDroppedFiles( HDROP drop );
+
   protected:
 	bool					setupHasBeenCalled() const { return mSetupHasBeenCalled; }
 	virtual void			closeWindow( class WindowImplMsw *windowImpl ) = 0;
 	virtual void			setForegroundWindow( WindowRef window ) = 0;
+
+	// ROGER (Windows port): Settings::rememberMainWindowPos(), stored in HKCU\Software\Studio Avante\<AppName>\MainWindow
+	//! Replaces pos/size of \a format with the saved ones when they are valid on the current desktop. Returns true if the window should then be maximized.
+	bool					restoreMainWindowPos( Window::Format &format, const std::string &appName );
+	//! Starts tracking \a wnd (the main window) for saving
+	void					trackMainWindowPos( HWND wnd, const std::string &appName );
+	//! Saves the tracked window placement now if it changed (or always if \a force)
+	void					saveMainWindowPos( bool force = false );
+	void					mainWindowPosChanged( HWND wnd )	{ if( wnd && wnd == mRememberPosWnd ) mRememberPosDirty = true; }
 
 	class App				*mApp;
 	float					mFrameRate;
@@ -95,6 +122,10 @@ class AppImplMsw {
 	bool					mSetupHasBeenCalled;
 	bool					mActive;
 	ULONG_PTR				mGdiplusToken;
+	HWND					mRememberPosWnd;		// ROGER
+	std::string				mRememberPosAppName;	// ROGER
+	bool					mRememberPosDirty;		// ROGER
+	bool					mInSizeMove;			// ROGER
 
 	friend class WindowImplMsw;
 	friend LRESULT CALLBACK WndProc( HWND, UINT, WPARAM, LPARAM );
@@ -118,7 +149,7 @@ class WindowImplMsw {
 	virtual void		hide();
 	virtual void		show();
 	virtual bool		isHidden() const;
-	virtual DisplayRef	getDisplay() const { return mDisplay; }
+	virtual DisplayRef	getDisplay() const;
 	virtual RendererRef	getRenderer() const { return mRenderer; }
 	virtual const std::vector<TouchEvent::Touch>&	getActiveTouches() const { return mActiveTouches; }
 	virtual void*		getNative() { return mWnd; }
@@ -128,6 +159,10 @@ class WindowImplMsw {
 	void			setBorderless( bool borderless );
 	bool			isAlwaysOnTop() const { return mAlwaysOnTop; }
 	void			setAlwaysOnTop( bool alwaysOnTop );
+	// ROGER (Windows port)
+	bool			isToolWindow() const { return mToolWindow; }
+	bool			isNoActivate() const { return mNoActivate; }
+	HWND			getHwnd() const { return mWnd; }
 
 	AppImplMsw*				getAppImpl() { return mAppImpl; }
 	WindowRef				getWindow() { return mWindowRef; }
@@ -144,6 +179,7 @@ class WindowImplMsw {
 	void			getScreenSize( int clientWidth, int clientHeight, int *resultWidth, int *resultHeight );
 	void			onTouch( HWND hWnd, WPARAM wParam, LPARAM lParam );
 	virtual void	toggleFullScreen( const app::FullScreenOptions &options );
+	void			updateWindowStyles();	// ROGER: mWindowStyle / mWindowExStyle from the flags
 
 	AppImplMsw				*mAppImpl;
 	WindowRef				mWindowRef;
@@ -154,8 +190,10 @@ class WindowImplMsw {
 	bool					mHidden;
 	int						mWindowWidth, mWindowHeight;
 	bool					mFullScreen, mBorderless, mAlwaysOnTop, mResizable;
+	bool					mToolWindow, mNoActivate;		// ROGER
 	Vec2i					mWindowedPos, mWindowedSize;
-	DisplayRef				mDisplay;
+	mutable DisplayRef		mDisplay;
+	mutable uint32_t		mDisplayChangeCount;			// ROGER: Display::getChangeCount() when mDisplay was found
 	RendererRef				mRenderer;
 	std::map<DWORD,Vec2f>			mMultiTouchPrev;
 	std::vector<TouchEvent::Touch>	mActiveTouches;

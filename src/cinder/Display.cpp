@@ -35,6 +35,9 @@ using namespace std;
 	using namespace cinder::winrt;
 	using namespace Windows::UI::Core;
 	using namespace Windows::Graphics::Display;
+#elif defined( CINDER_MSW )
+	#include "cinder/msw/CinderMsw.h"
+	#include <algorithm>
 #endif
 
 namespace cinder {
@@ -281,46 +284,103 @@ DisplayRef Display::findFromHmonitor( HMONITOR hMonitor )
 	return getMainDisplay(); // failure
 }
 
+// ROGER (Windows port): bounds, primary flag and device name come from GetMonitorInfo (rect / szDevice were never filled before)
 BOOL CALLBACK Display::enumMonitorProc( HMONITOR hMonitor, HDC hdc, LPRECT rect, LPARAM lParam )
 {
 	vector<DisplayRef > *displaysVector = reinterpret_cast<vector<DisplayRef >*>( lParam );
+
+	MONITORINFOEXW mix;
+	memset( &mix, 0, sizeof( MONITORINFOEXW ) );
+	mix.cbSize = sizeof( MONITORINFOEXW );
+	RECT bounds = *rect;
+	bool primary = false;
+	if( ::GetMonitorInfoW( hMonitor, &mix ) ) {
+		bounds = mix.rcMonitor;
+		primary = ( mix.dwFlags & MONITORINFOF_PRIMARY ) != 0;
+	}
+
+	// ROGER: skip zero-size monitors, as on Cocoa
+	if( bounds.right - bounds.left <= 0 || bounds.bottom - bounds.top <= 0 )
+		return TRUE;
+
 	DisplayRef newDisplay( new Display );
-	newDisplay->mArea = Area( rect->left, rect->top, rect->right, rect->bottom );
+	newDisplay->mArea = Area( bounds.left, bounds.top, bounds.right, bounds.bottom );
 	newDisplay->mMonitor = hMonitor;
-	newDisplay->mContentScale = 1.0f;
+	newDisplay->mContentScale = 1.0f;	// coordinates are physical pixels (per-monitor DPI aware process)
+	newDisplay->mPrimary = primary;
+	newDisplay->mDeviceName = msw::toUtf8String( mix.szDevice );
+	newDisplay->mBitsPerPixel = 24;
 
 	// retrieve the depth of the display
-	MONITORINFOEX mix;
-	memset( &mix, 0, sizeof( MONITORINFOEX ) );
-	mix.cbSize = sizeof( MONITORINFOEX );
-	HDC hMonitorDC = CreateDC( TEXT("DISPLAY"), mix.szDevice, NULL, NULL );
-	if (hMonitorDC) {
-		newDisplay->mBitsPerPixel = ::GetDeviceCaps( hMonitorDC, BITSPIXEL );
-		::DeleteDC( hMonitorDC );
+	if( mix.szDevice[0] ) {
+		HDC hMonitorDC = ::CreateDCW( L"DISPLAY", mix.szDevice, NULL, NULL );
+		if( hMonitorDC ) {
+			newDisplay->mBitsPerPixel = ::GetDeviceCaps( hMonitorDC, BITSPIXEL );
+			::DeleteDC( hMonitorDC );
+		}
 	}
-	
+
 	displaysVector->push_back( newDisplay );
 	return TRUE;
 }
 
+uint32_t	Display::sChangeCount = 0;
+bool		Display::sDirty = false;
+
+uint32_t Display::getChangeCount()
+{
+	return sChangeCount;
+}
+
+void Display::privateMarkChanged__()
+{
+	// WM_DISPLAYCHANGE is sent to every top-level window: count one change until the list is enumerated again
+	if( ! sDirty ) {
+		sDirty = true;
+		++sChangeCount;
+	}
+}
+
 void Display::enumerateDisplays()
 {
-	if( sDisplaysInitialized )
+	if( sDisplaysInitialized && ! sDirty )
 		return;
 
+	sDisplays.clear();
+	sDirty = false;
+
 	::EnumDisplayMonitors( NULL, NULL, enumMonitorProc, (LPARAM)&sDisplays );
-	
+
+	if( sDisplays.empty() ) {
+		// should never happen; keep getMainDisplay() valid
+		DisplayRef newDisplay( new Display );
+		newDisplay->mArea = Area( 0, 0, ::GetSystemMetrics( SM_CXSCREEN ), ::GetSystemMetrics( SM_CYSCREEN ) );
+		newDisplay->mMonitor = ::MonitorFromPoint( POINT{ 0, 0 }, MONITOR_DEFAULTTOPRIMARY );
+		newDisplay->mContentScale = 1.0f;
+		newDisplay->mBitsPerPixel = 24;
+		newDisplay->mPrimary = true;
+		sDisplays.push_back( newDisplay );
+	}
+
 	// ensure that the primary display is sDisplay[0]
-	const POINT ptZero = { 0, 0 };
-	HMONITOR primMon = MonitorFromPoint( ptZero, MONITOR_DEFAULTTOPRIMARY );
-	
 	size_t m;
 	for( m = 0; m < sDisplays.size(); ++m )
-		if( sDisplays[m]->mMonitor == primMon )
+		if( sDisplays[m]->mPrimary )
 			break;
+	if( m == sDisplays.size() ) {
+		const POINT ptZero = { 0, 0 };
+		HMONITOR primMon = ::MonitorFromPoint( ptZero, MONITOR_DEFAULTTOPRIMARY );
+		for( m = 0; m < sDisplays.size(); ++m )
+			if( sDisplays[m]->mMonitor == primMon )
+				break;
+	}
 	if( ( m != 0 ) && ( m < sDisplays.size() ) )
 		std::swap( sDisplays[0], sDisplays[m] );
-	
+
+	// ROGER: sort the others by X pos, keeping the main display first (same rule as Cocoa)
+	if( sDisplays.size() > 2 )
+		std::stable_sort( sDisplays.begin() + 1, sDisplays.end(), []( const DisplayRef &a, const DisplayRef &b ) { return a->mArea.x1 < b->mArea.x1; } );
+
 	sDisplaysInitialized = true;
 }
 #endif // defined( CINDER_MSW )

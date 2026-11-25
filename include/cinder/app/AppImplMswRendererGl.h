@@ -41,7 +41,7 @@ class AppImplMswRendererGl : public AppImplMswRenderer {
 	virtual void	makeCurrentContext();
 
  protected:
-	bool	initializeInternal( HWND wnd, HDC dc, HGLRC sharedRC );
+	bool	initializeInternal( HWND wnd, HDC dc, HGLRC sharedRC, int pixelFormat );	// ROGER: pixelFormat 0 = ChoosePixelFormat
 	int		initMultisample( PIXELFORMATDESCRIPTOR pfd, int requestedLevelIdx, HDC dc );
 	
 	RendererGl	*mRenderer;

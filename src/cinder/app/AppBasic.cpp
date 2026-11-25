@@ -287,6 +287,8 @@ bool AppBasic::privateShouldQuit()
 	{
 #if defined( CINDER_MAC )
 		return [mImpl isMinimized];
+#elif defined( CINDER_MSW ) && ! defined( CINDER_WINRT )
+		return mImpl ? mImpl->isMinimized() : false;		// Windows port
 #else
 		return false;
 #endif
@@ -295,12 +297,17 @@ bool AppBasic::privateShouldQuit()
 	{
 #if defined( CINDER_MAC )
 		[mImpl setFocusMainWindow];
+#elif defined( CINDER_MSW ) && ! defined( CINDER_WINRT )
+		if( mImpl )
+			mImpl->setFocusMainWindow();				// Windows port
 #endif
 	};
 	std::string AppBasic::getAppName()
 	{
 #if defined( CINDER_COCOA )
 		return [mImpl getAppName];
+#elif defined( CINDER_MSW ) && ! defined( CINDER_WINRT )
+		return AppImplMsw::getVersionInfoAppName();		// Windows port
 #else
 		return "";
 #endif
@@ -309,6 +316,8 @@ bool AppBasic::privateShouldQuit()
 	{
 #if defined( CINDER_COCOA )
 		return [mImpl getAppVersion];
+#elif defined( CINDER_MSW ) && ! defined( CINDER_WINRT )
+		return AppImplMsw::getVersionInfoAppVersion();	// Windows port
 #else
 		return "";
 #endif
@@ -317,10 +326,23 @@ bool AppBasic::privateShouldQuit()
 	{
 #if defined( CINDER_COCOA )
 		return [mImpl getApplicationSupportFolder:create];
+#elif defined( CINDER_MSW ) && ! defined( CINDER_WINRT )
+		return AppImplMsw::getApplicationSupportFolder( getAppName(), create );	// Windows port
 #else
 		return "";
 #endif
 	}
+#if defined( CINDER_MSW ) && ! defined( CINDER_WINRT )
+	// Windows port
+	void AppBasic::setCursorMsw( const wchar_t *systemCursor )
+	{
+		AppImplMsw::setCursor( systemCursor ? ::LoadCursorW( NULL, systemCursor ) : NULL );
+	}
+	void AppBasic::setCursorHandleMsw( HCURSOR cursor )
+	{
+		AppImplMsw::setCursor( cursor );
+	}
+#endif
 
 	
 //////////////////////////////////////////////////////////////////////////////////////////////
