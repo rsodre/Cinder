@@ -61,11 +61,14 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>false</SDLCheck>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <ProgramDataBaseFileName>..\lib\msw\$(PlatformTarget)\cinder-$(PlatformToolset)_d.pdb</ProgramDataBaseFileName>
+      <!-- The libs are committed to git (GitHub limit 100 MB): no debug info, and Debug is optimized (/O2 /Ob1, still _DEBUG + /MTd).
+           With /Od the Debug lib is ~230 MB with /Zi, ~170 MB without debug info. Call stacks still show cinder function names (public symbols). -->
+      <DebugInformationFormat>None</DebugInformationFormat>
       <DisableSpecificWarnings>4996;4068;%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <Optimization>Disabled</Optimization>
-      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <Optimization>MaxSpeed</Optimization>
+      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <SupportJustMyCode>false</SupportJustMyCode>
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Lib>
@@ -86,8 +89,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>false</SDLCheck>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <ProgramDataBaseFileName>..\lib\msw\$(PlatformTarget)\cinder-$(PlatformToolset).pdb</ProgramDataBaseFileName>
+      <DebugInformationFormat>None</DebugInformationFormat>
       <DisableSpecificWarnings>4996;4068;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <Optimization>Full</Optimization>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>

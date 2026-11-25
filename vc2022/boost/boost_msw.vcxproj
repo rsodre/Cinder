@@ -60,8 +60,8 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>false</SDLCheck>
-      <!-- /Z7: debug info embedded in the .lib, so no separate .pdb has to travel with it -->
-      <DebugInformationFormat>OldStyle</DebugInformationFormat>
+      <!-- No debug info: keeps the committed .lib small (debug info was 45% of boost_msw_d.lib with /Z7), and no .pdb has to travel with it -->
+      <DebugInformationFormat>None</DebugInformationFormat>
       <DisableSpecificWarnings>4996;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
