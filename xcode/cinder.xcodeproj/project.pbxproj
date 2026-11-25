@@ -4439,6 +4439,7 @@
 					../lib/macosx_m1/libboost_date_time.a,
 					../lib/macosx/libz.a,
 				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				PRELINK_LIBS = "../lib/macosx_m1/libboost_filesystem.a ../lib/macosx_m1/libboost_system.a ../lib/macosx_m1/libboost_date_time.a ../lib/macosx/libz.a";
 				PRODUCT_NAME = "$(TARGET_NAME)_d";
 				SDKROOT = macosx;
@@ -4484,6 +4485,7 @@
 					../lib/macosx_m1/libboost_date_time.a,
 					../lib/macosx/libz.a,
 				);
+				MACOSX_DEPLOYMENT_TARGET = 12.0;
 				PRELINK_LIBS = "../lib/macosx_m1/libboost_filesystem.a ../lib/macosx_m1/libboost_system.a ../lib/macosx_m1/libboost_date_time.a ../lib/macosx/libz.a";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
