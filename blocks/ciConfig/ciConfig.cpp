@@ -1635,7 +1635,7 @@ namespace cinder {
 						else
 						{
 							//int v = (int)this->get(id,i) - (int)this->getMin(id,i);
-							std::string l = param->valueLabels[this->getInt(id)];
+							const std::string & l = param->valueLabels[this->getInt(id)];	// reference: the returned c_str() must outlive this function
 							if (l.length())
 								return l.c_str();
 							else
@@ -1778,8 +1778,11 @@ namespace cinder {
 		{
 			std::string f = this->makeFileName( mFolderList[n], preset );
 			if( fs::exists( f ) )
-				if ( int ps = this->readFile( f, preset ) > 0 )
+			{
+				int ps = this->readFile( f, preset );
+				if ( ps > 0 )
 					return ps;
+			}
 		}
 		return 0;
 	}

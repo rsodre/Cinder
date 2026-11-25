@@ -3438,7 +3438,7 @@ namespace cinder { namespace sgui {
 	
 	//-----------------------------------------------------------------------------		
 	
-	SeparatorControl::SeparatorControl(SimpleGUI *parent) : Control(parent,name) {
+	SeparatorControl::SeparatorControl(SimpleGUI *parent) : Control(parent,"separator") {
 		this->type = Control::SEPARATOR;
 		this->name = "separator";
 		// ROGER

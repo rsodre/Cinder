@@ -785,8 +785,8 @@ namespace cinder { namespace sgui {
 		
 		// Current Server we're using
 		std::string current = mCfg->getString(cfgName);
-		if ( current.compare(0,8,"ndi::") == 0 )		// remove qbSource prefix
-			current = current.substr(8);
+		if ( current.compare(0,5,"ndi::") == 0 )		// remove qbSource prefix
+			current = current.substr(5);
 		//else
 		//	current = "";
 		

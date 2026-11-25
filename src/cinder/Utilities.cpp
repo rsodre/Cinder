@@ -356,7 +356,8 @@ string loadString( DataSourceRef dataSource )
 	}
 	void unhex(const unsigned char * from, unsigned char * to, int bytes)
 	{
-		unsigned char c[2];
+		unsigned char c[3];
+		c[2] = '\0';		// hex2byte() reads a NUL-terminated string
 		for (int i = 0 ; i < bytes ; i++)
 		{
 			c[0] = from[i*2+0];
