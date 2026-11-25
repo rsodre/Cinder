@@ -10,6 +10,7 @@
 #ifndef BOOST_NUMERIC_CONVERSION_DETAIL_CONVERTER_FLC_12NOV2002_HPP
 #define BOOST_NUMERIC_CONVERSION_DETAIL_CONVERTER_FLC_12NOV2002_HPP
 
+#include "boost/type_traits/integral_constant.hpp"
 #include <functional>
 
 #include "boost/numeric/conversion/detail/meta.hpp"
@@ -23,10 +24,10 @@
 namespace boost { namespace numeric { namespace convdetail
 {
   // Integral Constants representing rounding modes
-  typedef mpl::integral_c<std::float_round_style, std::round_toward_zero>         round2zero_c ;
-  typedef mpl::integral_c<std::float_round_style, std::round_to_nearest>          round2nearest_c ;
-  typedef mpl::integral_c<std::float_round_style, std::round_toward_infinity>     round2inf_c ;
-  typedef mpl::integral_c<std::float_round_style, std::round_toward_neg_infinity> round2neg_inf_c ;
+  typedef boost::integral_constant<std::float_round_style, std::round_toward_zero>         round2zero_c ;
+  typedef boost::integral_constant<std::float_round_style, std::round_to_nearest>          round2nearest_c ;
+  typedef boost::integral_constant<std::float_round_style, std::round_toward_infinity>     round2inf_c ;
+  typedef boost::integral_constant<std::float_round_style, std::round_toward_neg_infinity> round2neg_inf_c ;
 
   // Metafunction:
   //

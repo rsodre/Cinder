@@ -10,6 +10,7 @@
 #ifndef BOOST_NUMERIC_CONVERSION_CONVERTER_POLICIES_FLC_12NOV2002_HPP
 #define BOOST_NUMERIC_CONVERSION_CONVERTER_POLICIES_FLC_12NOV2002_HPP
 
+#include "boost/type_traits/integral_constant.hpp"
 #include <typeinfo> // for std::bad_cast
 
 #include <boost/config/no_tr1/cmath.hpp> // for std::floor and std::ceil
@@ -42,7 +43,7 @@ struct Trunc
     return s < static_cast<S>(0) ? ceil(s) : floor(s) ;
   }
 
-  typedef mpl::integral_c< std::float_round_style, std::round_toward_zero> round_style ;
+  typedef boost::integral_constant<std::float_round_style, std::round_toward_zero> round_style ;
 } ;
 
 
@@ -63,7 +64,7 @@ struct Floor
     return floor(s) ;
   }
 
-  typedef mpl::integral_c< std::float_round_style, std::round_toward_neg_infinity> round_style ;
+  typedef boost::integral_constant<std::float_round_style, std::round_toward_neg_infinity> round_style ;
 } ;
 
 template<class S>
@@ -82,7 +83,7 @@ struct Ceil
     return ceil(s) ;
   }
 
-  typedef mpl::integral_c< std::float_round_style, std::round_toward_infinity> round_style ;
+  typedef boost::integral_constant<std::float_round_style, std::round_toward_infinity> round_style ;
 } ;
 
 template<class S>
@@ -121,7 +122,7 @@ struct RoundEven
     }
   }
 
-  typedef mpl::integral_c< std::float_round_style, std::round_to_nearest> round_style ;
+  typedef boost::integral_constant<std::float_round_style, std::round_to_nearest> round_style ;
 } ;
 
 

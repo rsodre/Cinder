@@ -10,6 +10,7 @@
 #ifndef BOOST_NUMERIC_CONVERSION_DETAIL_INT_FLOAT_MIXTURE_FLC_12NOV2002_HPP
 #define BOOST_NUMERIC_CONVERSION_DETAIL_INT_FLOAT_MIXTURE_FLC_12NOV2002_HPP
 
+#include "boost/type_traits/integral_constant.hpp"
 #include "boost/config.hpp"
 #include "boost/limits.hpp"
 
@@ -21,10 +22,10 @@
 namespace boost { namespace numeric { namespace convdetail
 {
   // Integral Constants for 'IntFloatMixture'
-  typedef mpl::integral_c<int_float_mixture_enum, integral_to_integral> int2int_c ;
-  typedef mpl::integral_c<int_float_mixture_enum, integral_to_float>    int2float_c ;
-  typedef mpl::integral_c<int_float_mixture_enum, float_to_integral>    float2int_c ;
-  typedef mpl::integral_c<int_float_mixture_enum, float_to_float>       float2float_c ;
+  typedef boost::integral_constant<int_float_mixture_enum, integral_to_integral> int2int_c ;
+  typedef boost::integral_constant<int_float_mixture_enum, integral_to_float>    int2float_c ;
+  typedef boost::integral_constant<int_float_mixture_enum, float_to_integral>    float2int_c ;
+  typedef boost::integral_constant<int_float_mixture_enum, float_to_float>       float2float_c ;
 
   // Metafunction:
   //

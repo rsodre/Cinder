@@ -10,6 +10,7 @@
 #ifndef BOOST_NUMERIC_CONVERSION_DETAIL_SIGN_MIXTURE_FLC_12NOV2002_HPP
 #define BOOST_NUMERIC_CONVERSION_DETAIL_SIGN_MIXTURE_FLC_12NOV2002_HPP
 
+#include "boost/type_traits/integral_constant.hpp"
 #include "boost/config.hpp"
 #include "boost/limits.hpp"
 
@@ -21,10 +22,10 @@
 namespace boost { namespace numeric { namespace convdetail
 {
   // Integral Constants for 'SignMixture'
-  typedef mpl::integral_c<sign_mixture_enum, unsigned_to_unsigned> unsig2unsig_c ;
-  typedef mpl::integral_c<sign_mixture_enum, signed_to_signed>     sig2sig_c ;
-  typedef mpl::integral_c<sign_mixture_enum, signed_to_unsigned>   sig2unsig_c ;
-  typedef mpl::integral_c<sign_mixture_enum, unsigned_to_signed>   unsig2sig_c ;
+  typedef boost::integral_constant<sign_mixture_enum, unsigned_to_unsigned> unsig2unsig_c ;
+  typedef boost::integral_constant<sign_mixture_enum, signed_to_signed>     sig2sig_c ;
+  typedef boost::integral_constant<sign_mixture_enum, signed_to_unsigned>   sig2unsig_c ;
+  typedef boost::integral_constant<sign_mixture_enum, unsigned_to_signed>   unsig2sig_c ;
 
   // Metafunction:
   //
