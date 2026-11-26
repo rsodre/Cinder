@@ -183,6 +183,9 @@ namespace cinder { namespace qb {
 #ifndef QB_NO_SYPHON
 	bool qbSourceSelector::loadSyphon( const std::string & _app, const std::string & _tex )
 	{
+#ifdef BLENDY_DEMO
+		return false;	// Demo: live input (Syphon) disabled, reader compiled out
+#else
 		if (mSrc == nullptr || mSrc->getType() != QB_SOURCE_SYPHON)
 		{
 			qbSourceSyphon *newSrc = new qbSourceSyphon();
@@ -191,11 +194,15 @@ namespace cinder { namespace qb {
 		if (mSrc == nullptr)
 			return false;
 		return ((qbSourceSyphon*)mSrc.get())->load( _app, _tex, mFlags );
+#endif
 	}
 #endif
 #ifdef QB_SPOUT
 	bool qbSourceSelector::loadSpout( const std::string & _app, const std::string & _tex )
 	{
+#ifdef BLENDY_DEMO
+		return false;	// Demo: live input (Spout) disabled, reader compiled out
+#else
 		if (mSrc == nullptr || mSrc->getType() != QB_SOURCE_SPOUT)
 		{
 			qbSourceSpout *newSrc = new qbSourceSpout();
@@ -204,11 +211,15 @@ namespace cinder { namespace qb {
 		if (mSrc == nullptr)
 			return false;
 		return ((qbSourceSpout*)mSrc.get())->load( _app, _tex, mFlags );
+#endif
 	}
 #endif
 #ifndef QB_NO_NDI
 	bool qbSourceSelector::loadNDI( const std::string & _app, const std::string & _tex )
 	{
+#ifdef BLENDY_DEMO
+		return false;	// Demo: live input (NDI) disabled, reader compiled out
+#else
 		if (mSrc == nullptr || mSrc->getType() != QB_SOURCE_NDI)
 		{
 			qbSourceNDI *newSrc = nullptr;
@@ -222,6 +233,7 @@ namespace cinder { namespace qb {
 		if (mSrc == nullptr)
 			return false;
 		return ((qbSourceNDI*)mSrc.get())->load( _app, _tex, mFlags );
+#endif
 	}
 #endif
 	void qbSourceSelector::setSource( qbSourceBase * newSrc )
@@ -696,7 +708,7 @@ namespace cinder { namespace qb {
 	//
 	// SYPHON
 	//
-#ifndef QB_NO_SYPHON
+#if !defined(QB_NO_SYPHON) && !defined(BLENDY_DEMO)	// Demo: live-input reader compiled out
 	bool qbSourceSyphon::load( const std::string & _app, char _flags )
 	{
 		return this->load( _app, "", _flags );
@@ -752,7 +764,7 @@ namespace cinder { namespace qb {
 	//
 	// SPOUT (Windows, same as Syphon)
 	//
-#ifdef QB_SPOUT
+#if defined(QB_SPOUT) && !defined(BLENDY_DEMO)	// Demo: live-input reader compiled out
 	bool qbSourceSpout::load( const std::string & _app, char _flags )
 	{
 		return this->load( _app, "", _flags );
@@ -803,7 +815,7 @@ namespace cinder { namespace qb {
 	//
 	// NDI
 	//
-#ifndef QB_NO_NDI
+#if !defined(QB_NO_NDI) && !defined(BLENDY_DEMO)	// Demo: live-input reader compiled out
 	CinderNDIFinderPtr _CinderNDIFinder;
 	qbSourceNDI::qbSourceNDI() : qbSourceBase()
 	{

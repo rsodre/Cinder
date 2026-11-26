@@ -276,6 +276,9 @@ namespace cinder { namespace sgui {
 			mDirSyphon = new ciGuiBlockSyphonDirectory( cfg, _cfgName );
 			_cfg.guiAddBlock( mDirSyphon );
 			mCfg->guiAddParam("Client Framerate",	&mCurrFPSSyphon, 1, true );
+#ifdef BLENDY_DEMO
+			mCfg->guiAddText( "DEMO VERSION, this input is disabled.", true );
+#endif
 		}
 #else
 		mDirSyphon = NULL;
@@ -288,6 +291,9 @@ namespace cinder { namespace sgui {
 			mDirSpout = new ciGuiBlockSpoutDirectory( cfg, _cfgName );
 			_cfg.guiAddBlock( mDirSpout );
 			mCfg->guiAddParam("Client Framerate",	&mCurrFPSSpout, 1, true );
+#ifdef BLENDY_DEMO
+			mCfg->guiAddText( "DEMO VERSION, this input is disabled.", true );
+#endif
 		}
 #endif
 		// COLUMN
@@ -297,6 +303,9 @@ namespace cinder { namespace sgui {
 			mDirNDI = new ciGuiBlockNDIDirectory( cfg, _cfgName );
 			_cfg.guiAddBlock( mDirNDI );
 			mCfg->guiAddParam("Client Framerate",	&mCurrFPSNDI, 1, true );
+#ifdef BLENDY_DEMO
+			mCfg->guiAddText( "DEMO VERSION, this input is disabled.", true );
+#endif
 		}
 #endif
 	}
@@ -595,6 +604,9 @@ namespace cinder { namespace sgui {
 		mLabel = cfg->guiAddText("---");	// update() will set
 		std::map<int,std::string> valueLabels;
 		mListControl = mCfg->guiAddParamList("", &mListId, valueLabels);
+#ifdef BLENDY_DEMO
+		mListControl->lock( true );		// Demo: live input disabled, server list not selectable
+#endif
 		this->update();
 	}
 } } // namespace cinder::sgui
@@ -772,6 +784,9 @@ namespace cinder { namespace sgui {
 		mLabel = cfg->guiAddText("---");	// update() will set
 		std::map<int,std::string> valueLabels;
 		mListControl = mCfg->guiAddParamList("", &mListId, valueLabels);
+#ifdef BLENDY_DEMO
+		mListControl->lock( true );		// Demo: live input disabled, server list not selectable
+#endif
 		this->update();
 	}
 
@@ -875,6 +890,9 @@ namespace cinder { namespace sgui {
 		mLabel = cfg->guiAddText("---");	// update() will set
 		std::map<int,std::string> valueLabels;
 		mListControl = mCfg->guiAddParamList("", &mListId, valueLabels);
+#ifdef BLENDY_DEMO
+		mListControl->lock( true );		// Demo: live input disabled, server list not selectable
+#endif
 		this->update();
 	}
 	

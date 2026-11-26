@@ -226,7 +226,7 @@ namespace cinder { namespace qb {
 
 	//
 	// SYPHON Source
-#ifndef QB_NO_SYPHON
+#if !defined(QB_NO_SYPHON) && !defined(BLENDY_DEMO)	// Demo: live-input reader compiled out
 	class qbSourceSyphon : public qbSourceBase {
 	public:
 		qbSourceSyphon() : qbSourceBase()
@@ -255,7 +255,7 @@ namespace cinder { namespace qb {
 
 	//
 	// SPOUT Source (Windows counterpart of qbSourceSyphon: RECT texture, flipped like Syphon's)
-#ifdef QB_SPOUT
+#if defined(QB_SPOUT) && !defined(BLENDY_DEMO)	// Demo: live-input reader compiled out
 	class qbSourceSpout : public qbSourceBase {
 	public:
 		qbSourceSpout() : qbSourceBase()
@@ -284,7 +284,7 @@ namespace cinder { namespace qb {
 	
 	//
 	// NDI Source
-#ifndef QB_NO_NDI
+#if !defined(QB_NO_NDI) && !defined(BLENDY_DEMO)	// Demo: live-input reader compiled out
 	class qbSourceNDI : public qbSourceBase {
 	public:
 		qbSourceNDI();
