@@ -35,13 +35,25 @@ namespace cinder { namespace sgui {
 		cfg->guiAddParam("", &mFilename);
 		cfg->guiAddSeparator();
 		cfg->guiAddButton("Reset",							this, &ciGuiBlockLoadSave::cbReset)->setPostGap(false);
-		cfg->guiAddButton("Load Default",		cmd+"L",	this, &ciGuiBlockLoadSave::cbLoadDefault)->setPostGap(false);
-        cfg->guiAddButton("Save as Default",    cmd+"S",    this, &ciGuiBlockLoadSave::cbSaveDefault);
-        cfg->guiAddSeparator();
-        cfg->guiAddButton("Open Project Folder",            this, &ciGuiBlockLoadSave::cbOpenProjectFolder);
-        cfg->guiAddSeparator();
-		cfg->guiAddButton("Import Config...",	cmd+"I",	this, &ciGuiBlockLoadSave::cbImportConfig)->setPostGap(false);
-		cfg->guiAddButton("Export Config...",	cmd+"E",	this, &ciGuiBlockLoadSave::cbExportConfig);
+		ButtonControl *bLoad = cfg->guiAddButton("Load Default", cmd+"L", this, &ciGuiBlockLoadSave::cbLoadDefault);
+		bLoad->setPostGap(false);
+		ButtonControl *bSave = cfg->guiAddButton("Save as Default", cmd+"S", this, &ciGuiBlockLoadSave::cbSaveDefault);
+		cfg->guiAddSeparator();
+		ButtonControl *bFolder = cfg->guiAddButton("Open Project Folder", this, &ciGuiBlockLoadSave::cbOpenProjectFolder);
+		cfg->guiAddSeparator();
+		ButtonControl *bImport = cfg->guiAddButton("Import Config...", cmd+"I", this, &ciGuiBlockLoadSave::cbImportConfig);
+		bImport->setPostGap(false);
+		ButtonControl *bExport = cfg->guiAddButton("Export Config...", cmd+"E", this, &ciGuiBlockLoadSave::cbExportConfig);
+#ifdef NO_SAVE
+		// Demo: these actions are compiled out (NO_SAVE guards in the callbacks, in
+		// ciConfig::onKeyDown and in the save/load/openProjectFolder primitives).
+		// Show the buttons locked, keeping their labels, so it is clear they are off.
+		bLoad->lock( true );
+		bSave->lock( true );
+		bFolder->lock( true );
+		bImport->lock( true );
+		bExport->lock( true );
+#endif	// NO_SAVE
 	}
 	
 	void ciGuiBlockLoadSave::update()

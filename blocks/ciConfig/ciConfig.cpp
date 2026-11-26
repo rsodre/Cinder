@@ -101,7 +101,10 @@ namespace cinder {
 		if (parent == NULL)
 		{
 			app::getWindow()->connectKeyDown( & ciConfig::onKeyDown, this );
+#ifndef NO_SAVE
+			// a project file dropped on the window, or opened from the system (delivered as a drop)
 			app::getWindow()->connectFileDrop( & ciConfig::onFileDrop, this );
+#endif
 		}
 #endif
 		
@@ -363,9 +366,11 @@ namespace cinder {
 		}
 	}
 	void ciConfig::onFileDrop(FileDropEvent & event) {
+#ifndef NO_SAVE
 		if ( event.getNumFiles() > 0 )
 			if ( this->readFile( event.getFile( 0 ).string() ) )
 				event.setHandled();
+#endif
 	}
 
 	
@@ -1733,6 +1738,9 @@ namespace cinder {
 	// Open / Save from picking a file
 	bool ciConfig::import()
 	{
+#ifdef NO_SAVE
+		return false;	// Demo: import disabled
+#else
 		std::vector<std::string> extensions;
 		extensions.push_back( fileExt );
 		std::string path = app::getOpenFilePath( mFolderSave, extensions ).string();
@@ -1744,9 +1752,13 @@ namespace cinder {
 			return true;
 		}
 		return false;
+#endif	// NO_SAVE
 	}
 	bool ciConfig::exportas()
 	{
+#ifdef NO_SAVE
+		return false;	// Demo: export disabled
+#else
 		std::vector<std::string> extensions;
 		extensions.push_back( fileExt );
 		std::string path = app::getSaveFilePath( mFolderSave, extensions ).string();
@@ -1758,11 +1770,15 @@ namespace cinder {
 			return true;
 		}
 		return false;
+#endif	// NO_SAVE
 	}
 	//
 	// Open the default save folder on Finder
 	void ciConfig::openProjectFolder()
 	{
+#ifdef NO_SAVE
+		return;		// Demo: project folder access disabled
+#endif
 		if ( mFolderDefault.empty() )
 			return;
 		// Create it if nothing was saved yet
@@ -1774,6 +1790,9 @@ namespace cinder {
 	// Load default file
 	int ciConfig::load(char preset)
 	{
+#ifdef NO_SAVE
+		return 0;	// Demo: load / snapshot-load disabled
+#endif
 		for ( int n = 0 ; n < mFolderList.size() ; n++ )
 		{
 			std::string f = this->makeFileName( mFolderList[n], preset );
@@ -1790,6 +1809,9 @@ namespace cinder {
 	// Save default file
 	int ciConfig::save(char preset)
 	{
+#ifdef NO_SAVE
+		return 0;	// Demo: save / snapshot-save disabled
+#endif
 		std::string f = this->makeFileName( mFolderDefault, preset );
 		return this->saveFile( f, preset );
 	}
@@ -1865,6 +1887,9 @@ namespace cinder {
 	// Return saved params
 	int ciConfig::readFile(const std::string & f, char preset)
 	{
+#ifdef NO_SAVE
+		return 0;	// Demo: no project file is read (import, snapshots, dropped or double-clicked files)
+#else
 		XmlTree doc;
 		if ( ! this->getPresetXml(f, doc) )
 		{
@@ -1934,12 +1959,16 @@ namespace cinder {
 
 		// return param count
 		return (int) params.size();
+#endif	// NO_SAVE
 	}
 	//
 	// SAVE to file on data folder
 	// Return saved params
 	int ciConfig::saveFile(const std::string & f, char preset)
 	{
+#ifdef NO_SAVE
+		return 0;	// Demo: no project file is written
+#else
 		XmlTree doc;
 		if ( ! this->getPresetXml(f, doc) )
 			printf("-------------- SAVE XML ERROR! NOT XML!\n");
@@ -2030,6 +2059,7 @@ namespace cinder {
 		// return param count
 		return (int) params.size();
  
+#endif	// NO_SAVE
 	}
 	//
 	// Set the display filename from a saved/loaded file
@@ -2079,6 +2109,9 @@ namespace cinder {
 	//fputs("#\n",fp);
 	int ciConfig::readFile_old(const std::string & f, char preset)
 	{
+#ifdef NO_SAVE
+		return 0;	// Demo: no project file is read
+#else
 		// Open file
 		FILE *fp = fopen (f.c_str(),"r");
 		if (fp == NULL)
@@ -2167,6 +2200,7 @@ namespace cinder {
 		
 		// return param count
 		return (int) params.size();
+#endif	// NO_SAVE
 	}
 
 	
