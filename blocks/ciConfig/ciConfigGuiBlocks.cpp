@@ -544,7 +544,14 @@ namespace cinder { namespace sgui {
 			if ( getTemplateMode( it.second ) == mode )
 				labels[it.first] = getTemplateLabel( it.second );
 		if ( ! labels.empty() )
-			mCfg->guiAddParamList( "", mCfg->getPointerInt( cfgSelector ), labels );
+		{
+			// A new list snaps a value it does not hold to one of its own items: the lists of the other modes
+			// would leave the selector on the last mode (Panorama) when no saved config overrides it
+			int * selector = mCfg->getPointerInt( cfgSelector );
+			const int selected = *selector;
+			mCfg->guiAddParamList( "", selector, labels );
+			*selector = selected;
+		}
 	}
 	// Show current mode panels only
 	void ciGuiBlockQBSourceTab::switchTemplateMode()
